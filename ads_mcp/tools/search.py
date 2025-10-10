@@ -14,19 +14,20 @@
 
 """Tools for exposing the API Search method to the MCP server."""
 
-from typing import Any, Dict, List
-from ads_mcp.coordinator import mcp
+from typing import Any
+
 import ads_mcp.utils as utils
+from ads_mcp.coordinator import mcp
 
 
 def search(
     customer_id: str,
-    fields: List[str],
+    fields: list[str],
     resource: str,
-    conditions: List[str] = None,
-    orderings: List[str] = None,
-    limit: int | str = None,
-) -> List[Dict[str, Any]]:
+    conditions: list[str] | None = None,
+    orderings: list[str] | None = None,
+    limit: int | str | None = None,
+) -> list[dict[str, Any]]:
     """Fetches data from the Google Ads API using the search method
 
     Args:
@@ -59,7 +60,7 @@ def search(
         customer_id=customer_id, query=query
     )
 
-    final_output: List = []
+    final_output: list[dict[str, Any]] = []
     for batch in query_result:
         for row in batch.results:
             final_output.append(
@@ -77,7 +78,7 @@ def _search_tool_description() -> str:
     )
 
     try:
-        with open(utils.GAQL_FILEPATH, "r") as file:
+        with open(utils.GAQL_FILEPATH, "r") as file:  # noqa: UP015
             file_content = file.read()
     except FileNotFoundError:
         utils.logger.error("The specified file was not found.")
@@ -104,7 +105,7 @@ def _search_tool_description() -> str:
     Requests to resource change_event must specify a LIMIT of less than or equal to 10000
 
 ### Hints for conversions questions
-    https://developers.google.com/google-ads/api/docs/conversions/upload-summaries 
+    https://developers.google.com/google-ads/api/docs/conversions/upload-summaries
 
 
 ### Hints for all fields

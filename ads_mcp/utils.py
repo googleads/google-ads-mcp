@@ -16,18 +16,21 @@
 
 """Common utilities used by the MCP server."""
 
-from typing import Any
-import proto
 import logging
+import os
+from collections.abc import Iterable
+from typing import Any
+
+import google.auth
+import proto
 from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.util import get_nested_attr
 from google.ads.googleads.v21.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
+from google.auth.credentials import Credentials
 
-from google.ads.googleads.util import get_nested_attr
-import google.auth
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
-import os
 
 GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
 
@@ -38,10 +41,10 @@ logging.basicConfig(level=logging.INFO)
 _READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
-def _create_credentials() -> google.auth.credentials.Credentials:
+def _create_credentials() -> Credentials:
     """Returns Application Default Credentials with read-only scope."""
     (credentials, _) = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
-    return credentials
+    return credentials  # type: ignore[no-any-return]
 
 
 def _get_developer_token() -> str:
@@ -54,7 +57,7 @@ def _get_developer_token() -> str:
     return dev_token
 
 
-def _get_login_customer_id() -> str:
+def _get_login_customer_id() -> str | None:
     """Returns login customer id, if set, from the environment variable GOOGLE_ADS_LOGIN_CUSTOMER_ID."""
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
@@ -75,12 +78,12 @@ _googleads_client = _get_googleads_client()
 
 
 def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _googleads_client.get_service(
+    return _googleads_client.get_service( # type: ignore[no-any-return]
         serviceName, interceptors=[MCPHeaderInterceptor()]
     )
 
 
-def get_googleads_type(typeName: str):
+def get_googleads_type(typeName: str) -> Any:
     return _googleads_client.get_type(typeName)
 
 
@@ -91,7 +94,7 @@ def format_output_value(value: Any) -> Any:
         return value
 
 
-def format_output_row(row: proto.Message, attributes):
+def format_output_row(row: proto.Message, attributes: Iterable[Any]) -> dict[str, Any]:
     return {
         attr: format_output_value(get_nested_attr(row, attr))
         for attr in attributes

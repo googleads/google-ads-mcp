@@ -14,20 +14,24 @@
 
 """Tools for exposing simple, core API methods to the MCP server."""
 
-from typing import List
-from ads_mcp.coordinator import mcp
+from typing import TYPE_CHECKING
 
 import ads_mcp.utils as utils
-
+from ads_mcp.coordinator import mcp
 from google.ads.googleads.v21.services.types.customer_service import (
     ListAccessibleCustomersResponse,
 )
 
+if TYPE_CHECKING:
+    from google.ads.googleads.v21.services.services.customer_service import (
+        CustomerServiceClient,
+    )
+
 
 @mcp.tool()
-def list_accessible_customers() -> List[str]:
+def list_accessible_customers() -> list[str]:
     """Returns ids of customers directly accessible by the user authenticating the call."""
-    ga_service = utils.get_googleads_service("CustomerService")
+    ga_service: CustomerServiceClient = utils.get_googleads_service("CustomerService")  # type: ignore[assignment]
     accessible_customers: ListAccessibleCustomersResponse = (
         ga_service.list_accessible_customers()
     )

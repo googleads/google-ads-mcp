@@ -14,15 +14,22 @@
 
 """Tools for generating file containing a list of resources and their fields."""
 
-import utils
-import json
 import collections
+import json
+import typing
+
+import ads_mcp.utils as utils
+
+if typing.TYPE_CHECKING:
+    from google.ads.googleads.v21.services.services.google_ads_field_service import (
+        GoogleAdsFieldServiceClient,
+    )
 
 
-def update_gaql_resource_file():
+def update_gaql_resource_file() -> None:
     """Fetches all Google Ads fields and their attributes, groups them by resource, and saves to a JSON file."""
 
-    ga_service = utils.get_googleads_service("GoogleAdsFieldService")
+    ga_service: GoogleAdsFieldServiceClient = utils.get_googleads_service("GoogleAdsFieldService") # type: ignore[assignment]
 
     request = utils.get_googleads_type("SearchGoogleAdsFieldsRequest")
 
@@ -45,7 +52,7 @@ def update_gaql_resource_file():
     # Example: {'campaign': {'selectable': [], 'filterable': [], 'sortable': []}, ...}
     resource_data = collections.defaultdict(
         lambda: {"selectable": [], "filterable": [], "sortable": []}
-    )
+    )  # type: ignore[var-annotated]
 
     for googleads_field in response:
         field_name = googleads_field.name
@@ -81,7 +88,7 @@ def update_gaql_resource_file():
         with open(utils.GAQL_FILEPATH, "w") as file:
             json.dump(output_list, file, indent=4)
         print(f"Successfully updated resource file: {utils.GAQL_FILEPATH}")
-    except IOError as e:
+    except OSError as e:
         raise RuntimeError(
             f"Failed to write to file {utils.GAQL_FILEPATH}: {e}"
         )
