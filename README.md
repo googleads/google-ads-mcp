@@ -202,6 +202,40 @@ The final file will look like this:
   }
   ```
 
+#### Subject Delegation (Service Accounts Only)
+
+If you're using service account credentials and need to impersonate a specific user, you can add the `GOOGLE_ADS_SUBJECT` environment variable with the email address of the user to impersonate.
+
+**Important Notes:**
+- This feature **only works with service account credentials**. If you're using OAuth credentials (Option 1 with user credentials), the subject parameter will be logged but ignored.
+- The service account must have domain-wide delegation enabled and the appropriate scopes granted by a workspace administrator.
+
+See [Domain-wide delegation](https://developers.google.com/identity/protocols/oauth2/service-account#delegatingauthority) for more details.
+
+Example configuration with subject delegation:
+
+```json
+{
+  "mcpServers": {
+    "google-ads-mcp": {
+      "command": "pipx",
+      "args": [
+        "run",
+        "--spec",
+        "git+https://github.com/googleads/google-ads-mcp.git",
+        "google-ads-mcp"
+      ],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "PATH_TO_SERVICE_ACCOUNT_JSON",
+        "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
+        "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN",
+        "GOOGLE_ADS_SUBJECT": "user@example.com"
+      }
+    }
+  }
+}
+```
+
 
 ## Try it out
 

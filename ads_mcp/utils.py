@@ -19,6 +19,7 @@
 from typing import Any
 import proto
 import logging
+import json
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v21.services.services.google_ads_service import (
     GoogleAdsServiceClient,
@@ -26,6 +27,7 @@ from google.ads.googleads.v21.services.services.google_ads_service import (
 
 from google.ads.googleads.util import get_nested_attr
 import google.auth
+from google.oauth2 import service_account
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 import os
 import importlib.resources
@@ -40,8 +42,48 @@ logging.basicConfig(level=logging.INFO)
 _READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
+def _get_subject() -> str:
+    """Returns the subject for impersonation from the environment variable GOOGLE_ADS_SUBJECT."""
+    return os.environ.get("GOOGLE_ADS_SUBJECT")
+
+
 def _create_credentials() -> google.auth.credentials.Credentials:
-    """Returns Application Default Credentials with read-only scope."""
+    """Returns credentials with optional subject delegation support."""
+    subject = _get_subject()
+    credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    
+    if subject and credentials_path:
+        logger.info(f"Subject specified: {subject}")
+        
+        try:
+            # Check if it's a service account file
+            with open(credentials_path, 'r') as f:
+                creds_info = json.load(f)
+            
+            if creds_info.get('type') == 'service_account':
+                logger.info("Using service account with subject delegation")
+                # Service account credentials with subject delegation
+                credentials = service_account.Credentials.from_service_account_file(
+                    credentials_path,
+                    scopes=[_READ_ONLY_ADS_SCOPE]
+                )
+                # Apply subject delegation
+                delegated_credentials = credentials.with_subject(subject)
+                logger.info(f"Successfully applied subject delegation for: {subject}")
+                return delegated_credentials
+            else:
+                # OAuth credentials - subject parameter is logged but ignored
+                logger.info(f"Subject '{subject}' specified but using OAuth credentials. Subject delegation requires service account credentials. Proceeding with OAuth.")
+                
+        except Exception as e:
+            logger.warning(f"Error processing credentials file for subject delegation: {e}. Falling back to default authentication.")
+    
+    # Default behavior: no subject or fallback
+    if subject:
+        logger.info("Using default authentication (subject parameter ignored)")
+    else:
+        logger.info("Using default authentication (no subject specified)")
+    
     (credentials, _) = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
     return credentials
 
