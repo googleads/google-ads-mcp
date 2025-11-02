@@ -55,19 +55,35 @@ def _get_developer_token() -> str:
         )
     return dev_token
 
+def _get_refresh_token() -> str:
+    """Returns refresh token, if set, from the environment variable GOOGLE_ADS_REFRESH_TOKEN."""
+    return os.environ.get("GOOGLE_ADS_REFRESH_TOKEN")
 
 def _get_login_customer_id() -> str:
     """Returns login customer id, if set, from the environment variable GOOGLE_ADS_LOGIN_CUSTOMER_ID."""
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
+def _get_client_id() -> str:
+    """Returns client id, if set, from the environment variable GOOGLE_ADS_CLIENT_ID."""
+    return os.environ.get("GOOGLE_ADS_CLIENT_ID")
+
+def _get_cliet_secret() -> str:
+    """Returns client secret, if set, from the environment variable GOOGLE_ADS_CLIENT_SECRET."""
+    return os.environ.get("GOOGLE_ADS_CLIENT_SECRET")
 
 def _get_googleads_client() -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
-    client = GoogleAdsClient(
+    config = dict(
         credentials=_create_credentials(),
         developer_token=_get_developer_token(),
         login_customer_id=_get_login_customer_id(),
+        refresh_token=_get_refresh_token(),
+        client_id=_get_client_id(),
+        client_secret=_get_cliet_secret(),
+    )
+    client = GoogleAdsClient(
+        
     )
 
     return client
