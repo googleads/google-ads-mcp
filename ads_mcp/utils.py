@@ -16,7 +16,9 @@
 
 """Common utilities used by the MCP server."""
 
+import importlib.resources
 import logging
+import pathlib
 from collections.abc import Iterable
 from typing import Any, Literal, overload
 
@@ -43,7 +45,8 @@ from proto.message import Message as ProtoMessage
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 from ads_mcp.settings import google_ads_settings
 
-GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
+# filename for generated field information used by search
+_GAQL_FILENAME = "gaql_resources.json"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -78,7 +81,6 @@ def _get_googleads_client(
         developer_token=_get_developer_token(),
         login_customer_id=_get_login_customer_id(),
         credentials=credentials,
-        version="v22",
     )
 
     return client
@@ -149,3 +151,9 @@ def format_output_row(
         attr: format_output_value(get_nested_attr(row, attr))
         for attr in attributes
     }
+
+
+def get_gaql_resources_filepath() -> pathlib.Path:
+    package_root = importlib.resources.files("ads_mcp")
+    file_path = package_root.joinpath(_GAQL_FILENAME)
+    return file_path  # type: ignore[return-value]

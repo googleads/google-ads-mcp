@@ -80,7 +80,7 @@ def _search_tool_description() -> str:
     )
 
     try:
-        with open(utils.GAQL_FILEPATH, "r") as file:  # noqa: UP015
+        with open(utils.get_gaql_resources_filepath(), "r") as file:  # noqa: UP015
             file_content = file.read()
     except FileNotFoundError:
         utils.logger.error("The specified file was not found.")
