@@ -178,7 +178,7 @@ need to add the customer ID of the manager account to the settings file.
 
 See [here](https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid) for details.
 
-  The final file will look like this:
+The final file will look like this:
 
   ```json
   {

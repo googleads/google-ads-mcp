@@ -16,14 +16,8 @@
 
 import collections
 import json
-import typing
 
 import ads_mcp.utils as utils
-
-if typing.TYPE_CHECKING:
-    from google.ads.googleads.v21.services.services.google_ads_field_service import (
-        GoogleAdsFieldServiceClient,
-    )
 
 
 def update_gaql_resource_file() -> None:
@@ -88,14 +82,14 @@ def update_gaql_resource_file() -> None:
     # Sort the list of resources for consistent output
     output_list.sort(key=lambda x: x["resource"])
 
+    file_path = utils.get_gaql_resources_filepath()
+
     try:
-        with open(utils.GAQL_FILEPATH, "w") as file:
+        with open(file_path, "w") as file:
             json.dump(output_list, file, indent=4)
-        print(f"Successfully updated resource file: {utils.GAQL_FILEPATH}")
+        print(f"Successfully updated resource file: {file_path}")
     except OSError as e:
-        raise RuntimeError(
-            f"Failed to write to file {utils.GAQL_FILEPATH}: {e}"
-        )
+        raise RuntimeError(f"Failed to write to file {file_path}: {e}")
 
 
 if __name__ == "__main__":
