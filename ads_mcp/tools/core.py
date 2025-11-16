@@ -31,10 +31,10 @@ if TYPE_CHECKING:
 @mcp.tool()
 def list_accessible_customers() -> list[str]:
     """Returns ids of customers directly accessible by the user authenticating the call."""
-    ga_service: CustomerServiceClient = utils.get_googleads_service("CustomerService")  # type: ignore[assignment]
-    accessible_customers: ListAccessibleCustomersResponse = (
-        ga_service.list_accessible_customers()
+    ga_service = utils.get_googleads_service(
+        credentials={}, service_name="CustomerService"
     )
+    accessible_customers = ga_service.list_accessible_customers()
     # remove customer/ from the start of each resource
     return [
         cust_rn.removeprefix("customers/")

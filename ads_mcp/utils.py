@@ -17,20 +17,31 @@
 """Common utilities used by the MCP server."""
 
 import logging
-import os
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal, overload
 
 import google.auth
 import proto
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.util import get_nested_attr
-from google.ads.googleads.v21.services.services.google_ads_service import (
+from google.ads.googleads.v22.services.services.customer_service import (
+    CustomerServiceClient,
+)
+from google.ads.googleads.v22.services.services.google_ads_field_service import (
+    GoogleAdsFieldServiceClient,
+)
+from google.ads.googleads.v22.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
+from google.ads.googleads.v22.services.types.google_ads_field_service import (
+    SearchGoogleAdsFieldsRequest,
+)
 from google.auth.credentials import Credentials
+from google.protobuf.message import Message as GoogleProtobufMessage
+from proto.message import Message as ProtoMessage
 
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
+from ads_mcp.settings import google_ads_settings
 
 GAQL_FILEPATH = "ads_mcp/gaql_resources.txt"
 
@@ -49,42 +60,79 @@ def _create_credentials() -> Credentials:
 
 def _get_developer_token() -> str:
     """Returns the developer token from the environment variable GOOGLE_ADS_DEVELOPER_TOKEN."""
-    dev_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
-    if dev_token is None:
-        raise ValueError(
-            "GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set."
-        )
-    return dev_token
+    return google_ads_settings.developer_token
 
 
 def _get_login_customer_id() -> str | None:
     """Returns login customer id, if set, from the environment variable GOOGLE_ADS_LOGIN_CUSTOMER_ID."""
-    return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+    return google_ads_settings.login_customer_id
 
 
-def _get_googleads_client() -> GoogleAdsClient:
+def _get_googleads_client(
+    credentials: dict[str, Any],
+) -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
+    # GoogleAdsClient.load_from_storage()
     client = GoogleAdsClient(
-        credentials=_create_credentials(),
         developer_token=_get_developer_token(),
-        login_customer_id=_get_login_customer_id()
+        login_customer_id=_get_login_customer_id(),
+        credentials=credentials,
+        version="v22",
     )
 
     return client
 
 
-_googleads_client = _get_googleads_client()
+@overload
+def get_googleads_service(
+    credentials: dict[str, Any], service_name: Literal["GoogleAdsService"]
+) -> GoogleAdsServiceClient: ...
 
 
-def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _googleads_client.get_service( # type: ignore[no-any-return]
-        serviceName, interceptors=[MCPHeaderInterceptor()]
+@overload
+def get_googleads_service(
+    credentials: dict[str, Any], service_name: Literal["GoogleAdsFieldService"]
+) -> GoogleAdsFieldServiceClient: ...
+
+
+@overload
+def get_googleads_service(
+    credentials: dict[str, Any], service_name: Literal["CustomerService"]
+) -> CustomerServiceClient: ...
+
+
+@overload
+def get_googleads_service(
+    credentials: dict[str, Any], service_name: str
+) -> Any: ...
+
+
+def get_googleads_service(
+    credentials: dict[str, Any], service_name: str
+) -> Any:
+    return _get_googleads_client(credentials).get_service(
+        service_name, interceptors=[MCPHeaderInterceptor()]
     )
 
 
-def get_googleads_type(typeName: str) -> Any:
-    return _googleads_client.get_type(typeName)
+@overload
+def get_googleads_type(
+    credentials: dict[str, Any],
+    type_name: Literal["SearchGoogleAdsFieldsRequest"],
+) -> SearchGoogleAdsFieldsRequest: ...
+
+
+@overload
+def get_googleads_type(
+    credentials: dict[str, Any], type_name: str
+) -> ProtoMessage | GoogleProtobufMessage: ...
+
+
+def get_googleads_type(
+    credentials: dict[str, Any], type_name: str
+) -> ProtoMessage | GoogleProtobufMessage:
+    return _get_googleads_client(credentials).get_type(type_name)
 
 
 def format_output_value(value: Any) -> Any:
@@ -94,7 +142,9 @@ def format_output_value(value: Any) -> Any:
         return value
 
 
-def format_output_row(row: proto.Message, attributes: Iterable[Any]) -> dict[str, Any]:
+def format_output_row(
+    row: proto.Message, attributes: Iterable[Any]
+) -> dict[str, Any]:
     return {
         attr: format_output_value(get_nested_attr(row, attr))
         for attr in attributes

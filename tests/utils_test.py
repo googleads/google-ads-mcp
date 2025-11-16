@@ -28,7 +28,9 @@ class TestUtils(unittest.TestCase):
     def test_format_output_value(self) -> None:
         """Tests that output values are formatted correctly."""
 
-        client = utils._get_googleads_client()  # noqa: F841
+        client = utils._get_googleads_client(  # noqa: F841
+            credentials={},
+        )
         self.assertEqual(
             utils.format_output_value(
                 CampaignStatusEnum.CampaignStatus.ENABLED

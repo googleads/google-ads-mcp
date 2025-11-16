@@ -40,7 +40,9 @@ def search(
 
     """
 
-    ga_service = utils.get_googleads_service("GoogleAdsService")
+    ga_service = utils.get_googleads_service(
+        credentials={}, service_name="GoogleAdsService"
+    )
 
     query_parts = [f"SELECT {','.join(fields)} FROM {resource}"]
 

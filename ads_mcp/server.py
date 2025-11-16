@@ -24,7 +24,10 @@ from ads_mcp.tools import core, search  # noqa: F401
 
 
 def run_server() -> None:
-    mcp.run()
+    from ads_mcp.settings import ServerSettings
+
+    settings = ServerSettings()
+    mcp.run(transport=settings.transport)
 
 
 if __name__ == "__main__":

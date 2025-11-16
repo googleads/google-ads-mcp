@@ -10,6 +10,7 @@ GOOGLE_TOKEN_VERIFICATION_ENDPOINT: Final[str] = (
 )
 HTTP_TIMEOUT_SECONDS: Final[float] = 5.0
 
+
 class GoogleTokenVerifier(TokenVerifier):
     required_scopes: list[str]
 
@@ -46,7 +47,9 @@ class GoogleTokenVerifier(TokenVerifier):
                 rscopes = set(self.required_scopes)
                 missing_scopes = rscopes.difference(scopes)
                 if missing_scopes:
-                    logging.debug(f"Token is missing required scopes: {missing_scopes}")
+                    logging.debug(
+                        f"Token is missing required scopes: {missing_scopes}"
+                    )
                     return None
                 return AccessToken(
                     token=token,

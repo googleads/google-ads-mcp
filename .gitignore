@@ -38,3 +38,5 @@ coverage.xml
 
 
 /.venv
+.env
+/secrets

@@ -29,9 +29,13 @@ if typing.TYPE_CHECKING:
 def update_gaql_resource_file() -> None:
     """Fetches all Google Ads fields and their attributes, groups them by resource, and saves to a JSON file."""
 
-    ga_service: GoogleAdsFieldServiceClient = utils.get_googleads_service("GoogleAdsFieldService") # type: ignore[assignment]
+    ga_service = utils.get_googleads_service(
+        credentials={}, service_name="GoogleAdsFieldService"
+    )
 
-    request = utils.get_googleads_type("SearchGoogleAdsFieldsRequest")
+    request = utils.get_googleads_type(
+        credentials={}, type_name="SearchGoogleAdsFieldsRequest"
+    )
 
     # Query to select the name and key attributes for ALL fields.
     # We no longer filter by category = 'RESOURCE' here, as we need attributes

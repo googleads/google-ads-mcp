@@ -11,9 +11,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black",
-    "nox >=2025.5.1, <2026",
+    "nox>=2025.5.1,<2026",
     "mypy>=1.18.2",
     "ruff>=0.14.0",
+
+    "types-protobuf>=6.32.1.20251105",
 ]
 
 [project.urls]
@@ -29,10 +31,13 @@ google-ads-mcp-update-gaql = "ads_mcp.update_references:update_gaql_resource_fil
 requires = ["setuptools>=69.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["ads_mcp"]
+
 [tool.mypy]
 strict = false
 files = [
-    "analytics_mcp",
+    "ads_mcp",
     "tests",
 ]
 warn_return_any = true
@@ -49,7 +54,7 @@ follow_untyped_imports = true
 
 [tool.ruff]
 line-length = 80
-src = ["analytics_mcp", "tests"]
+src = ["ads_mcp", "tests"]
 target-version = "py310"
 
 [tool.ruff.lint]
