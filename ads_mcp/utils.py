@@ -61,13 +61,16 @@ def _get_login_customer_id() -> str:
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
 
-def _get_googleads_client() -> GoogleAdsClient:
+def _get_googleads_client(login_customer_id: str = None) -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
+    if not login_customer_id:
+        login_customer_id = _get_login_customer_id()
+
     client = GoogleAdsClient(
         credentials=_create_credentials(),
         developer_token=_get_developer_token(),
-        login_customer_id=_get_login_customer_id(),
+        login_customer_id=login_customer_id,
     )
 
     return client
@@ -76,8 +79,14 @@ def _get_googleads_client() -> GoogleAdsClient:
 _googleads_client = _get_googleads_client()
 
 
-def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _googleads_client.get_service(
+def get_googleads_service(
+    serviceName: str, login_customer_id: str = None
+) -> GoogleAdsServiceClient:
+    client = _googleads_client
+    if login_customer_id:
+        client = _get_googleads_client(login_customer_id)
+
+    return client.get_service(
         serviceName, interceptors=[MCPHeaderInterceptor()]
     )
 
