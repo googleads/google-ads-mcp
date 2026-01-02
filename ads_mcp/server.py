@@ -21,11 +21,59 @@ from ads_mcp.coordinator import mcp
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
 from ads_mcp.tools import search, core  # noqa: F401
+import contextlib
+
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.authentication import (
+    AuthCredentials,
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+)
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+import base64
+import binascii
+
+import os
+
+BASIC_AUTH_USERNAME = os.getenv("MCP_BASIC_AUTH_USERNAME", "admin")
+BASIC_AUTH_PASSWORD = os.getenv("MCP_BASIC_AUTH_PASSWORD", "password")
 
 
-def run_server() -> None:
-    mcp.run()
+class BasicAuthBackend(AuthenticationBackend):
+    async def authenticate(self, conn):
+        if "Authorization" not in conn.headers:
+            return
+
+        auth = conn.headers["Authorization"]
+        try:
+            scheme, credentials = auth.split()
+            if scheme.lower() != "basic":
+                return
+            decoded = base64.b64decode(credentials).decode("ascii")
+        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+            raise AuthenticationError("Invalid basic auth credentials")
+
+        username, _, password = decoded.partition(":")
+        if username != BASIC_AUTH_USERNAME or password != BASIC_AUTH_PASSWORD:
+            raise AuthenticationError("Invalid username or password")
+        return AuthCredentials(["authenticated"]), SimpleUser(username)
 
 
-if __name__ == "__main__":
-    run_server()
+@contextlib.asynccontextmanager
+async def lifespan(app: Starlette):
+    async with mcp.session_manager.run():
+        yield
+
+
+middleware = [Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())]
+
+app = Starlette(
+    routes=[
+        Mount("/", app=mcp.streamable_http_app()),
+    ],
+    lifespan=lifespan,
+    middleware=middleware,
+)

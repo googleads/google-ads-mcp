@@ -246,3 +246,7 @@ How many active campaigns do I have for customer id 1234567890
 ## Contributing
 
 Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).
+
+# FOR WITHIN ENGINEERS
+
+- Run server using `dotenv run uvicorn ads_mcp.server:app` locally.

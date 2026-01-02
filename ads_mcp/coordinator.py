@@ -21,4 +21,4 @@ of the server.
 
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Google Ads Server")
+mcp = FastMCP("Google Ads Server", stateless_http=True)
