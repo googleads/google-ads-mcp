@@ -40,9 +40,7 @@ def search(
 
     """
 
-    ga_service = utils.get_googleads_service(
-        credentials={}, service_name="GoogleAdsService"
-    )
+    ga_service = utils.get_googleads_service(service_name="GoogleAdsService")
 
     query_parts = [f"SELECT {','.join(fields)} FROM {resource}"]
 
@@ -90,7 +88,7 @@ def _search_tool_description() -> str:
 
 ### Hints
     Language Grammar can be found at https://developers.google.com/google-ads/api/docs/query/grammar
-    All resources and descriptions are found at https://developers.google.com/google-ads/api/fields/v21/overview
+    All resources and descriptions are found at https://developers.google.com/google-ads/api/fields/v22/overview
 
     For Conversion issues try looking in offline_conversion_upload_conversion_action_summary
 
@@ -126,4 +124,5 @@ mcp.add_tool(
     search,
     title="Fetches data from the Google Ads API using the search method",
     description=_search_tool_description(),
+    structured_output=True,
 )

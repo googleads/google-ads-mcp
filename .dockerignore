@@ -1,0 +1,103 @@
+# Secrets and sensitive files
+.env
+.env.*
+*.key
+*.pem
+*_rsa
+*_rsa.*
+*.p12
+*.pfx
+.aws/
+.ssh/
+credentials
+secrets.yml
+secrets.yaml
+secrets/
+
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+*.egg-info/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Documentation
+*.md
+README*
+LICENSE*
+CHANGELOG*
+MANIFEST.in
+CODEOWNERS
+docs/
+documentation/
+.readthedocs.yml
+mkdocs.yml
+
+# Tests & Coverage
+test/
+tests/
+__tests__/
+*.test.py
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+jest.config.js
+vitest.config.js
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+.travis.yml
+azure-pipelines.yml
+Jenkinsfile
+.drone.yml
+
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini

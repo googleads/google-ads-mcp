@@ -1,0 +1,8 @@
+services:
+  google-ads-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - .env
