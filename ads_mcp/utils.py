@@ -29,6 +29,8 @@ from google.ads.googleads.client import GoogleAdsClient
 # from google.ads.googleads import oauth2
 from google.ads.googleads.util import get_nested_attr
 from google.auth.credentials import Credentials
+from google.oauth2.credentials import Credentials as OAuth2Credentials
+from mcp.server.auth.middleware.auth_context import get_access_token
 
 from ads_mcp.coordinator import mcp
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
@@ -62,10 +64,8 @@ _READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 if mcp.settings.auth is not None:
     def _create_credentials() -> Credentials:
-        from mcp.server.auth.middleware.auth_context import get_access_token
         access_token = get_access_token()
         assert access_token is not None, "Access token is required but not found in context."
-        from google.oauth2.credentials import Credentials as OAuth2Credentials
         credentials = OAuth2Credentials(
             client_id=google_ads_settings.client_id,
             client_secret=google_ads_settings.client_secret.get_secret_value(),
