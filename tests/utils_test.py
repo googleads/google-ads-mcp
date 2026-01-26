@@ -17,7 +17,7 @@
 import unittest
 
 from ads_mcp import utils
-from google.ads.googleads.v21.enums.types.campaign_status import (
+from google.ads.googleads.v22.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
 
@@ -28,9 +28,7 @@ class TestUtils(unittest.TestCase):
     def test_format_output_value(self) -> None:
         """Tests that output values are formatted correctly."""
 
-        client = utils._get_googleads_client(  # noqa: F841
-            credentials={},
-        )
+        client = utils._get_googleads_client()  # noqa: F841
         self.assertEqual(
             utils.format_output_value(
                 CampaignStatusEnum.CampaignStatus.ENABLED

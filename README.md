@@ -7,7 +7,7 @@ This repo contains the source code for running a local
 ## Tools
 
 The server uses the
-[Google Ads API](https://developers.google.com/google-ads/api/reference/rpc/v21/overview)
+[Google Ads API](https://developers.google.com/google-ads/api/reference/rpc/v22/overview)
 to provide several
 [Tools](https://modelcontextprotocol.io/docs/concepts/tools) for use with LLMs.
 
@@ -222,7 +222,7 @@ Here are some sample prompts to get you started:
   what customers do I have access to?
   ```
 
-- Ask about campaigns 
+- Ask about campaigns
 
   ```
   How many active campaigns do I have?
@@ -234,7 +234,7 @@ Here are some sample prompts to get you started:
 
 ### Note about Customer ID
 
-Your agent will need and ask for a customer id for most prompts. If you are 
+Your agent will need and ask for a customer id for most prompts. If you are
 moving between multiple customers, including the customer ID in the prompt may
 be simpler.
 

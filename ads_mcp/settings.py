@@ -1,6 +1,7 @@
+import datetime as dt
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp.server import (
@@ -11,6 +12,16 @@ from mcp.server.lowlevel.server import LifespanResultT
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def create_settings_config(path: tuple[str, ...]) -> SettingsConfigDict:
+    env_path = "_".join(path).lower() + "_"
+    return SettingsConfigDict(
+        env_prefix=env_path,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class FastMcpSettings(BaseFastMcpSettings):
@@ -64,23 +75,48 @@ class FastMcpSettings(BaseFastMcpSettings):
     transport_security: TransportSecuritySettings | None = None
 
 
+class BasicAuthSettings(BaseSettings):
+    model_config = create_settings_config(("basic", "auth"))
+
+    username: str
+    password: SecretStr
+
+
+class BearerAuthSettings(BaseSettings):
+    model_config = create_settings_config(("bearer", "auth"))
+
+    token: SecretStr | None = None
+
+
+class JwtProviderSettings(BaseSettings):
+    model_config = create_settings_config(("jwt", "provider"))
+
+    private_keys: list[dict[str, Any]]
+    algorithm: str | None = None
+    token_lifetime: dt.timedelta = dt.timedelta(minutes=1)
+    claims: dict[str, Any] = Field(default_factory=dict)
+
+
+class TokenVerifierSettings(BaseSettings):
+    model_config = create_settings_config(("token", "verifier"))
+
+    url: str = "https://www.googleapis.com/oauth2/v1/tokeninfo"
+    auth: Literal["bearer", "basic", "none"] = "none"
+    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] = "GET"
+    required_scopes: list[str] | None = None
+    content_type: Literal[
+        "application/json", "application/x-www-form-urlencoded"
+    ] = "application/json"
+
+
 class ServerSettings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="FASTMCP_",
-        env_file=".env",
-        extra="ignore",
-    )
+    model_config = create_settings_config(("server",))
 
     transport: Literal["stdio", "streamable-http", "sse"] = "stdio"
 
 
 class GoogleAdsSettings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="google_ads_",
-        env_file=".env",
-        extra="ignore",
-        case_sensitive=False,
-    )
+    model_config = create_settings_config(("google", "ads"))
 
     client_id: str
     client_secret: SecretStr
@@ -89,9 +125,3 @@ class GoogleAdsSettings(BaseSettings):
 
 
 google_ads_settings = GoogleAdsSettings()  # type: ignore[call-arg]
-
-__all__ = [
-    "FastMcpSettings",
-    "ServerSettings",
-    "GoogleAdsSettings",
-]

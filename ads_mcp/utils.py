@@ -20,30 +20,36 @@ import importlib.resources
 import logging
 import pathlib
 from collections.abc import Iterable
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import google.auth
 import proto
 from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.util import get_nested_attr
-from google.ads.googleads.v22.services.services.customer_service import (
-    CustomerServiceClient,
-)
-from google.ads.googleads.v22.services.services.google_ads_field_service import (
-    GoogleAdsFieldServiceClient,
-)
-from google.ads.googleads.v22.services.services.google_ads_service import (
-    GoogleAdsServiceClient,
-)
-from google.ads.googleads.v22.services.types.google_ads_field_service import (
-    SearchGoogleAdsFieldsRequest,
-)
-from google.auth.credentials import Credentials
-from google.protobuf.message import Message as GoogleProtobufMessage
-from proto.message import Message as ProtoMessage
 
+# from google.ads.googleads import oauth2
+from google.ads.googleads.util import get_nested_attr
+from google.auth.credentials import Credentials
+
+from ads_mcp.coordinator import mcp
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 from ads_mcp.settings import google_ads_settings
+
+if TYPE_CHECKING:
+    from google.ads.googleads.v22.services.services.customer_service import (
+        CustomerServiceClient,
+    )
+    from google.ads.googleads.v22.services.services.google_ads_field_service import (
+        GoogleAdsFieldServiceClient,
+    )
+    from google.ads.googleads.v22.services.services.google_ads_service import (
+        GoogleAdsServiceClient,
+    )
+    from google.ads.googleads.v22.services.types.google_ads_field_service import (
+        SearchGoogleAdsFieldsRequest,
+    )
+    from google.protobuf.message import Message as GoogleProtobufMessage
+    from proto.message import Message as ProtoMessage
+
 
 # filename for generated field information used by search
 _GAQL_FILENAME = "gaql_resources.json"
@@ -54,11 +60,25 @@ logging.basicConfig(level=logging.INFO)
 # Read-only scope for Analytics Admin API and Analytics Data API.
 _READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
+if mcp.settings.auth is not None:
+    def _create_credentials() -> Credentials:
+        from mcp.server.auth.middleware.auth_context import get_access_token
+        access_token = get_access_token()
+        assert access_token is not None, "Access token is required but not found in context."
+        from google.oauth2.credentials import Credentials as OAuth2Credentials
+        credentials = OAuth2Credentials(
+            client_id=google_ads_settings.client_id,
+            client_secret=google_ads_settings.client_secret.get_secret_value(),
+            token=access_token.token
+        )
+        return credentials
 
-def _create_credentials() -> Credentials:
-    """Returns Application Default Credentials with read-only scope."""
-    (credentials, _) = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
-    return credentials  # type: ignore[no-any-return]
+else:
+    def _create_credentials() -> Credentials:
+        """Returns Application Default Credentials with read-only scope."""
+        (credentials, _) = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
+        return credentials
+
 
 
 def _get_developer_token() -> str:
@@ -71,16 +91,16 @@ def _get_login_customer_id() -> str | None:
     return google_ads_settings.login_customer_id
 
 
-def _get_googleads_client(
-    credentials: dict[str, Any],
-) -> GoogleAdsClient:
+
+def _get_googleads_client() -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
     # GoogleAdsClient.load_from_storage()
     client = GoogleAdsClient(
         developer_token=_get_developer_token(),
         login_customer_id=_get_login_customer_id(),
-        credentials=credentials,
+        credentials=_create_credentials(),  # type: ignore[arg-type]
+        version="v22",
     )
 
     return client
@@ -88,53 +108,52 @@ def _get_googleads_client(
 
 @overload
 def get_googleads_service(
-    credentials: dict[str, Any], service_name: Literal["GoogleAdsService"]
-) -> GoogleAdsServiceClient: ...
+    service_name: Literal["GoogleAdsService"]
+) -> "GoogleAdsServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    credentials: dict[str, Any], service_name: Literal["GoogleAdsFieldService"]
-) -> GoogleAdsFieldServiceClient: ...
+    service_name: Literal["GoogleAdsFieldService"]
+) -> "GoogleAdsFieldServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    credentials: dict[str, Any], service_name: Literal["CustomerService"]
-) -> CustomerServiceClient: ...
+    service_name: Literal["CustomerService"]
+) -> "CustomerServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    credentials: dict[str, Any], service_name: str
+    service_name: str
 ) -> Any: ...
 
 
 def get_googleads_service(
-    credentials: dict[str, Any], service_name: str
+    service_name: str
 ) -> Any:
-    return _get_googleads_client(credentials).get_service(
+    return _get_googleads_client().get_service(
         service_name, interceptors=[MCPHeaderInterceptor()]
     )
 
 
 @overload
 def get_googleads_type(
-    credentials: dict[str, Any],
     type_name: Literal["SearchGoogleAdsFieldsRequest"],
-) -> SearchGoogleAdsFieldsRequest: ...
+) -> "SearchGoogleAdsFieldsRequest": ...
 
 
 @overload
 def get_googleads_type(
-    credentials: dict[str, Any], type_name: str
-) -> ProtoMessage | GoogleProtobufMessage: ...
+    type_name: str
+) -> "ProtoMessage | GoogleProtobufMessage": ...
 
 
 def get_googleads_type(
-    credentials: dict[str, Any], type_name: str
-) -> ProtoMessage | GoogleProtobufMessage:
-    return _get_googleads_client(credentials).get_type(type_name)
+    type_name: str
+) -> "ProtoMessage | GoogleProtobufMessage":
+    return _get_googleads_client().get_type(type_name)
 
 
 def format_output_value(value: Any) -> Any:

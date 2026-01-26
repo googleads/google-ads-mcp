@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for exposing simple, core API methods to the MCP server."""
+"""Entry point for the MCP server."""
 
-import ads_mcp.utils as utils
 from ads_mcp.coordinator import mcp
 
+# The following imports are necessary to register the tools with the `mcp`
+# object, even though they are not directly used in this file.
+# The `# noqa: F401` comment tells the linter to ignore the "unused import"
+# warning.
+from ads_mcp.tools import core, search  # noqa: F401
 
-@mcp.tool(structured_output=True)
-def list_accessible_customers() -> list[str]:
-    """Returns ids of customers directly accessible by the user authenticating the call."""
-    ga_service = utils.get_googleads_service(service_name="CustomerService")
-    accessible_customers = ga_service.list_accessible_customers()
-    # remove customer/ from the start of each resource
-    return [
-        cust_rn.removeprefix("customers/")
-        for cust_rn in accessible_customers.resource_names
-    ]
+app = mcp.streamable_http_app()
