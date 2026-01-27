@@ -18,6 +18,13 @@ from typing import Any
 
 import ads_mcp.utils as utils
 from ads_mcp.coordinator import mcp
+from pydantic import BaseModel
+
+
+class Rows(BaseModel):
+    """Model for structured output of search results."""
+
+    rows: list[dict[str, Any]]
 
 
 def search(
@@ -27,20 +34,24 @@ def search(
     conditions: list[str] | None = None,
     orderings: list[str] | None = None,
     limit: int | str | None = None,
-) -> list[dict[str, Any]]:
+    login_customer_id: str | None = None,
+) -> Rows:
     """Fetches data from the Google Ads API using the search method
 
     Args:
         customer_id: The id of the customer
         fields: The fields to fetch
         resource: The resource to return fields from
+        login_customer_id:The customer ID of the manager account when accessing client accounts.
         conditions: List of conditions to filter the data, combined using AND clauses
         orderings: How the data is ordered
         limit: The maximum number of rows to return
 
     """
 
-    ga_service = utils.get_googleads_service(service_name="GoogleAdsService")
+    ga_service = utils.get_googleads_service(
+        service_name="GoogleAdsService", login_customer_id=login_customer_id
+    )
 
     query_parts = [f"SELECT {','.join(fields)} FROM {resource}"]
 
@@ -66,7 +77,8 @@ def search(
             final_output.append(
                 utils.format_output_row(row, batch.field_mask.paths)
             )
-    return final_output
+    # wraping the output in a pydantic model for structured output
+    return Rows(rows=final_output)
 
 
 def _search_tool_description() -> str:
@@ -95,6 +107,31 @@ def _search_tool_description() -> str:
 ### Hint for customer_id
     should be a string of numbers without punctuation
     if presented in the form 123-456-7890 remove the hyphens and use 1234567890
+
+### Hint for login_customer_id
+    WHEN TO USE:
+    - REQUIRED when customer_id is a client account (sub-account) under a manager (MCC)
+    - OMIT when querying the manager account directly (customer_id = manager ID)
+    - Sets the 'login-customer-id' HTTP header to run queries in manager context
+
+    FORMAT:
+    - Plain numeric string (no hyphens, no "customers/" prefix), follow the same format as customer_id
+    - Example: "0123456789" not "customers/0123456789" or "012-345-6789"
+
+    EXAMPLE:
+    To query client account 6833594660 through manager 3209651415:
+        customer_id = "6833594660"
+        login_customer_id = "3209651415"
+
+    TROUBLESHOOTING:
+    - Error "USER_PERMISSION_DENIED": add login_customer_id with manager account ID
+    - Still failing: verify manager has access to client account
+    - Developer token errors (DEVELOPER_TOKEN_NOT_APPROVED) and account enablement
+      (CUSTOMER_NOT_ENABLED) are separate issues unaffected by this parameter
+
+    NESTED HIERARCHIES:
+    - Use the manager ID that has direct authority over the client account
+    - For multi-level MCC structures, use the immediate parent manager
 
 ### Hints for Dates
     All dates should be in the form YYYY-MM-DD and must include the dashes (-)
