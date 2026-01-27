@@ -16,15 +16,23 @@
 
 import ads_mcp.utils as utils
 from ads_mcp.coordinator import mcp
+from pydantic import BaseModel
+
+
+class Customers(BaseModel):
+    customers: list[str]
 
 
 @mcp.tool(structured_output=True)
-def list_accessible_customers() -> list[str]:
+def list_accessible_customers() -> Customers:
     """Returns ids of customers directly accessible by the user authenticating the call."""
     ga_service = utils.get_googleads_service(service_name="CustomerService")
     accessible_customers = ga_service.list_accessible_customers()
     # remove customer/ from the start of each resource
-    return [
-        cust_rn.removeprefix("customers/")
-        for cust_rn in accessible_customers.resource_names
-    ]
+    # wraping the output in a pydantic model for structured output
+    return Customers(
+        customers=[
+            cust_rn.removeprefix("customers/")
+            for cust_rn in accessible_customers.resource_names
+        ]
+    )

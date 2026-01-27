@@ -92,13 +92,13 @@ def _get_login_customer_id() -> str | None:
 
 
 
-def _get_googleads_client() -> GoogleAdsClient:
+def _get_googleads_client(login_customer_id: str | None = None) -> GoogleAdsClient:
     # Use this line if you have a google-ads.yaml file
     # client = GoogleAdsClient.load_from_storage()
     # GoogleAdsClient.load_from_storage()
     client = GoogleAdsClient(
         developer_token=_get_developer_token(),
-        login_customer_id=_get_login_customer_id(),
+        login_customer_id=login_customer_id or _get_login_customer_id(),
         credentials=_create_credentials(),  # type: ignore[arg-type]
         version="v22",
     )
@@ -108,32 +108,37 @@ def _get_googleads_client() -> GoogleAdsClient:
 
 @overload
 def get_googleads_service(
-    service_name: Literal["GoogleAdsService"]
+    service_name: Literal["GoogleAdsService"],
+    login_customer_id: str | None = None,
 ) -> "GoogleAdsServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    service_name: Literal["GoogleAdsFieldService"]
+    service_name: Literal["GoogleAdsFieldService"],
+    login_customer_id: str | None = None,
 ) -> "GoogleAdsFieldServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    service_name: Literal["CustomerService"]
+    service_name: Literal["CustomerService"],
+    login_customer_id: str | None = None,
 ) -> "CustomerServiceClient": ...
 
 
 @overload
 def get_googleads_service(
-    service_name: str
+    service_name: str,
+    login_customer_id: str | None = None,
 ) -> Any: ...
 
 
 def get_googleads_service(
-    service_name: str
+    service_name: str,
+    login_customer_id: str | None = None,
 ) -> Any:
-    return _get_googleads_client().get_service(
+    return _get_googleads_client(login_customer_id=login_customer_id).get_service(
         service_name, interceptors=[MCPHeaderInterceptor()]
     )
 
