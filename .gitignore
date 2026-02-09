@@ -40,3 +40,4 @@ coverage.xml
 /.venv
 .env
 /secrets
+*.env
