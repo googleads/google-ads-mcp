@@ -4,8 +4,9 @@ version = "0.0.1"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
-    "google-ads>=28.0.0",
-    "mcp[cli]>=1.2.0"
+    "google-ads>=28.4.1",
+    "joserfc>=1.6.1",
+    "mcp[cli]>=1.26.0",
 ]
 
 description = "MCP Server for Google Ads, depends on Google Ads API."
@@ -18,10 +19,25 @@ classifiers = [
     "Programming Language :: Python"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
+    "nox>=2025.5.1,<2026",
+    { include-group = "lint" },
+    { include-group = "test" },
+]
+
+lint = [
     "black",
-    "nox >=2025.5.1, <2026"
+    "mypy>=1.19.1",
+    "ruff>=0.14.14",
+    "types-protobuf>=6.32.1.20251210",
+    "types-cachetools>=6.2.0",
+]
+
+test = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-mock>=3.15.1",
 ]
 
 [project.urls]
@@ -32,3 +48,51 @@ issues = "https://github.com/googleads/google-ads-mcp/issues"
 [project.scripts]
 google-ads-mcp = "ads_mcp.server:run_server"
 google-ads-mcp-update-gaql = "ads_mcp.update_references:update_gaql_resource_file"
+
+[build-system]
+requires = ["setuptools>=69.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["ads_mcp"]
+
+[tool.mypy]
+strict = false
+files = [
+    "ads_mcp",
+    "tests",
+]
+warn_return_any = true
+warn_unused_ignores = true
+warn_unreachable = true
+show_error_codes = true
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["proto.*", "google.auth.*", "google.ads.*", "grpc.*"]
+follow_untyped_imports = true
+
+[tool.ruff]
+line-length = 80
+src = ["ads_mcp", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG001", # unused arguments in functions
+]
+ignore = [
+    "B008",  # do not perform function calls in argument defaults
+    "B904",  # Allow raising exceptions without from e, for HTTPException
+    "C408",  # Unnecessary `dict` call
+    "E501",  # Line too long
+]

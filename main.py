@@ -22,13 +22,4 @@ from ads_mcp.coordinator import mcp
 # warning.
 from ads_mcp.tools import core, search  # noqa: F401
 
-
-def run_server() -> None:
-    from ads_mcp.settings import ServerSettings
-
-    settings = ServerSettings()
-    mcp.run(transport=settings.transport)
-
-
-if __name__ == "__main__":
-    run_server()
+app = mcp.streamable_http_app()

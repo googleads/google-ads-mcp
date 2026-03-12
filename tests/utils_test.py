@@ -15,20 +15,20 @@
 """Test cases for the utils module."""
 
 import unittest
-from google.ads.googleads.v21.enums.types.campaign_status import (
-    CampaignStatusEnum,
-)
 
 from ads_mcp import utils
+from google.ads.googleads.v22.enums.types.campaign_status import (
+    CampaignStatusEnum,
+)
 
 
 class TestUtils(unittest.TestCase):
     """Test cases for the utils module."""
 
-    def test_format_output_value(self):
+    def test_format_output_value(self) -> None:
         """Tests that output values are formatted correctly."""
 
-        client = utils.get_googleads_client()
+        client = utils._get_googleads_client()  # noqa: F841
         self.assertEqual(
             utils.format_output_value(
                 CampaignStatusEnum.CampaignStatus.ENABLED

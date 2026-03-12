@@ -14,18 +14,60 @@
 
 """Tools for generating file containing a list of resources and their fields."""
 
-import utils
-import json
 import collections
+import functools
+import json
+import os
+import typing
+from collections.abc import Callable
+
+from google.ads.googleads.v22.services.services.google_ads_field_service import (
+    GoogleAdsFieldServiceClient,
+)
+from google.ads.googleads.v22.services.types.google_ads_field_service import (
+    SearchGoogleAdsFieldsRequest,
+)
+from mcp.server.auth.middleware.auth_context import auth_context_var
+from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
+from mcp.server.auth.provider import AccessToken
+
+import ads_mcp.utils as utils
+
+T = typing.TypeVar("T")
+P = typing.ParamSpec("P")
 
 
-def update_gaql_resource_file():
+def set_auth_context(fn: Callable[P, T]) -> Callable[P, T]:
+    """Sets the auth context for the MCP server using service account credentials."""
+
+    @functools.wraps(fn)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        GADS_ACCESS_TOKEN = os.getenv("GADS_ACCESS_TOKEN")
+        if GADS_ACCESS_TOKEN:
+            at = AccessToken(
+                token=GADS_ACCESS_TOKEN,
+                client_id="",
+                scopes=[],
+                expires_at=0,
+                resource=None,
+            )
+            auth_context_var.set(AuthenticatedUser(at))
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+@set_auth_context
+def update_gaql_resource_file() -> None:
     """Fetches all Google Ads fields and their attributes, groups them by resource, and saves to a JSON file."""
 
-    ga_service = utils.get_googleads_service("GoogleAdsFieldService")
+    ga_service: GoogleAdsFieldServiceClient = utils.get_googleads_service(
+        "GoogleAdsFieldService"
+    )
 
-    request = utils.get_googleads_type("SearchGoogleAdsFieldsRequest")
-
+    request: SearchGoogleAdsFieldsRequest = utils.get_googleads_type(
+        "SearchGoogleAdsFieldsRequest"
+    )
     # Query to select the name and key attributes for ALL fields.
     # We no longer filter by category = 'RESOURCE' here, as we need attributes
     # for all fields associated with resources.
@@ -45,7 +87,7 @@ def update_gaql_resource_file():
     # Example: {'campaign': {'selectable': [], 'filterable': [], 'sortable': []}, ...}
     resource_data = collections.defaultdict(
         lambda: {"selectable": [], "filterable": [], "sortable": []}
-    )
+    )  # type: ignore[var-annotated]
 
     for googleads_field in response:
         field_name = googleads_field.name
@@ -83,7 +125,7 @@ def update_gaql_resource_file():
         with open(file_path, "w") as file:
             json.dump(output_list, file, indent=4)
         print(f"Successfully updated resource file: {file_path}")
-    except IOError as e:
+    except OSError as e:
         raise RuntimeError(f"Failed to write to file {file_path}: {e}")
 
 

@@ -14,11 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import grpc
 import logging
 from importlib import metadata
 
+import grpc
+
 logger = logging.getLogger(__name__)
+
+
+def _get_package_version_with_fallback() -> str:
+    """Returns the version of the package.
+
+    Falls back to 'unknown' if the version can't be resolved.
+    """
+    try:
+        return metadata.version("google-ads-mcp")
+    except metadata.PackageNotFoundError:
+        return "unknown"
 
 
 class MCPHeaderInterceptor(
@@ -27,22 +39,11 @@ class MCPHeaderInterceptor(
     """A custom metadata interceptor to add the 'google-ads-mcp' header."""
 
     _API_CLIENT_HEADER = "x-goog-api-client"
-
-    def _get_package_version_with_fallback():
-        """Returns the version of the package.
-
-        Falls back to 'unknown' if the version can't be resolved.
-        """
-        try:
-            return metadata.version("google-ads-mcp")
-        except:
-            return "unknown"
-
     _MCP_EXTRA_HEADER = (
         f" google-ads-mcp/{_get_package_version_with_fallback()}"
     )
 
-    def _mcp_intercept(self, continuation, client_call_details, request):
+    def _mcp_intercept(self, continuation, client_call_details, request):  # type: ignore[no-untyped-def]
         """Generic interceptor used for Unary-Unary and Unary-Stream requests.
 
         Args:
@@ -82,14 +83,14 @@ class MCPHeaderInterceptor(
                 metadata=metadata
             )
             return continuation(new_client_call_details, request)
-        except:
+        except Exception:
             logger.error("Error in MCPHeaderInterceptor", exc_info=True)
             return continuation(client_call_details, request)
 
-    def intercept_unary_stream(
+    def intercept_unary_stream(  # type: ignore[no-untyped-def]
         self, continuation, client_call_details, request
     ):
         return self._mcp_intercept(continuation, client_call_details, request)
 
-    def intercept_unary_unary(self, continuation, client_call_details, request):
+    def intercept_unary_unary(self, continuation, client_call_details, request):  # type: ignore[no-untyped-def]
         return self._mcp_intercept(continuation, client_call_details, request)

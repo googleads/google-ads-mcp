@@ -1,0 +1,18 @@
+name: Release to prod
+
+run-name: Deploy to 'prod'
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: stape-io/stape-github-actions/.github/workflows/mcp-release-prod.yaml@OPS-1927
+    with:
+      name: mcp-gads
+      image: mcp-gads
+      secret_vault: google-ads-mcp
+    secrets: inherit

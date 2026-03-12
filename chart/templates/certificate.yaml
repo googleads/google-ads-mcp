@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  commonName: "mcp-gads.{{ .Values.domain }}"
+  secretName: {{ .Release.Name }}-certificate
+  dnsNames:
+    - "mcp-gads.{{ .Values.domain }}"
+  issuerRef:
+    name: cloudflare
+    kind: ClusterIssuer

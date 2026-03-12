@@ -1,0 +1,15 @@
+name: Deploy to Non-production
+
+run-name: Deploy to 'dev'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: stape-io/stape-github-actions/.github/workflows/mcp-deploy-dev.yaml@OPS-1927
+    with:
+      name: mcp-gads
+      image: mcp-gads
+      secret_vault: google-ads-mcp-dev
+    secrets: inherit
