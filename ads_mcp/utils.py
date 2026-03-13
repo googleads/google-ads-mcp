@@ -62,8 +62,6 @@ def _get_login_customer_id() -> str | None:
 
 
 def _get_googleads_client() -> GoogleAdsClient:
-    # Use this line if you have a google-ads.yaml file
-    # client = GoogleAdsClient.load_from_storage()
     args = {
         "credentials": _create_credentials(),
         "developer_token": _get_developer_token(),
@@ -80,21 +78,18 @@ def _get_googleads_client() -> GoogleAdsClient:
     return client
 
 
-_googleads_client = _get_googleads_client()
-
-
 def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _googleads_client.get_service(
+    return _get_googleads_client().get_service(
         serviceName, interceptors=[MCPHeaderInterceptor()]
     )
 
 
 def get_googleads_type(typeName: str):
-    return _googleads_client.get_type(typeName)
+    return _get_googleads_client().get_type(typeName)
 
 
 def get_googleads_client():
-    return _googleads_client
+    return _get_googleads_client()
 
 
 def format_output_value(value: Any) -> Any:
