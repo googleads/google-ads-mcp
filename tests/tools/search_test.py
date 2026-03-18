@@ -58,7 +58,7 @@ class TestSearch(unittest.TestCase):
             "WHERE campaign.status = 'ENABLED' "
             "ORDER BY campaign.name ASC "
             "LIMIT 10"
-            "PARAMETERS omit_unselected_resource_names=true"
+            " PARAMETERS omit_unselected_resource_names=true"
         )
         mock_service.search_stream.assert_called_once_with(
             customer_id="1234567890", query=expected_query
