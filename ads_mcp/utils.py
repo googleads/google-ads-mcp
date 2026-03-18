@@ -50,9 +50,7 @@ def _get_developer_token() -> str:
     """Returns the developer token from the environment variable GOOGLE_ADS_DEVELOPER_TOKEN."""
     dev_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
     if dev_token is None:
-        raise ValueError(
-            "GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set."
-        )
+        raise ValueError("GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set.")
     return dev_token
 
 
@@ -99,9 +97,24 @@ def format_output_value(value: Any) -> Any:
         return value
 
 
+def _to_proto_attr(attr: str) -> str:
+    """Converts a field path to use protobuf-safe attribute names.
+
+    When use_proto_plus=False, protobuf field names that collide with Python
+    builtins (e.g. 'type') must be accessed with a trailing underscore
+    (e.g. 'type_'). This function applies that conversion to each segment
+    of a dotted attribute path.
+
+    See: https://developers.google.com/google-ads/api/docs/client-libs/python/protobuf-messages
+    """
+    _RESERVED = frozenset({"type"})
+    segments = attr.split(".")
+    return ".".join(f"{s}_" if s in _RESERVED else s for s in segments)
+
+
 def format_output_row(row: proto.Message, attributes):
     return {
-        attr: format_output_value(get_nested_attr(row, attr))
+        attr: format_output_value(get_nested_attr(row, _to_proto_attr(attr)))
         for attr in attributes
     }
 

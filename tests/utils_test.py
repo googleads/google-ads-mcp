@@ -19,7 +19,7 @@ from google.ads.googleads.v23.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
 
-from ads_mcp import utils
+from ads_mcp.utils import _to_proto_attr, format_output_value
 
 
 class TestUtils(unittest.TestCase):
@@ -29,8 +29,25 @@ class TestUtils(unittest.TestCase):
         """Tests that output values are formatted correctly."""
 
         self.assertEqual(
-            utils.format_output_value(
-                CampaignStatusEnum.CampaignStatus.ENABLED
-            ),
+            format_output_value(CampaignStatusEnum.CampaignStatus.ENABLED),
             "ENABLED",
         )
+
+    def test_to_proto_attr_reserved_type(self):
+        """Tests that 'type' is converted to 'type_' in attribute paths."""
+
+        self.assertEqual(_to_proto_attr("ad.type"), "ad.type_")
+        self.assertEqual(
+            _to_proto_attr("ad_group_ad.ad.type"),
+            "ad_group_ad.ad.type_",
+        )
+        self.assertEqual(
+            _to_proto_attr("conversion_action.type"),
+            "conversion_action.type_",
+        )
+
+    def test_to_proto_attr_no_change(self):
+        """Tests that non-reserved attributes are unchanged."""
+
+        self.assertEqual(_to_proto_attr("campaign.name"), "campaign.name")
+        self.assertEqual(_to_proto_attr("metrics.clicks"), "metrics.clicks")
