@@ -29,9 +29,9 @@ spec:
             - name: SERVER_TRANSPORT
               value: "streamable-http"
             - name: FASTMCP_AUTH__ISSUER_URL
-              value: "https://mcp-auth.{{ .Values.domain }}"
+              value: "https://{{ .Values.auth.issuerHost }}"
             - name: FASTMCP_AUTH__RESOURCE_SERVER_URL
-              value: "https://mcp-gads.{{ .Values.domain }}/mcp"
+              value: "https://{{ .Values.host }}/mcp"
             - name: FASTMCP_AUTH__REQUIRED_SCOPES
               value: '["https://www.googleapis.com/auth/adwords"]'
           envFrom:

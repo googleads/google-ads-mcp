@@ -1,8 +1,13 @@
-domain: "example.com"
+host: "example.com"
+auth:
+  issuerHost: "auth.example.com"
 image:
-  repository: "europe-west1-docker.pkg.dev/stape-development/stape"
-  name: "mcp-gads"
+  repository: "example.com/example"
+  name: "app"
   tag: "latest"
+
+secret:
+  create: false
 
 resources:
   requests:

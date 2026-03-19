@@ -1,5 +1,4 @@
-domain: "stape.dev"
+secret:
+  create: false
 image:
-  repository: "europe-west1-docker.pkg.dev/stape-development/stape"
-  name: "mcp-gads"
   tag: "latest"

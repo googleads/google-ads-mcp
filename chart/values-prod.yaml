@@ -1,5 +1,4 @@
-domain: "stape.ai"
+secret:
+  create: false
 image:
-  repository: "europe-west1-docker.pkg.dev/stape-production/stape"
-  name: "mcp-gads"
   tag: "latest"

@@ -3,14 +3,9 @@ name: Release to prod
 run-name: Deploy to 'prod'
 
 on:
-  # push:
-  #   branches:
-  #     - main
   workflow_dispatch:
 
 env:
-  NAME: mcp-gads
-  VAULT: google-ads-mcp
   REGISTRY: europe-west1-docker.pkg.dev
   REPOSITORY: stape-production/stape
   IMAGE: mcp-gads
@@ -24,9 +19,7 @@ jobs:
     name: Build Docker Image and Push to GAR
     needs: generate-image-tag
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    permissions: write-all
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,61 +49,34 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.generate-image-tag.outputs.image_tag }}
 
-  deploy-to-kubernetes:
-    name: Deploy to prod
+  update-argocd:
+    name: Update ArgoCD config
     needs:
       - generate-image-tag
       - build-and-push-image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    permissions: write-all
     steps:
+      - name: Create Releaser GitHub App Token
+        uses: actions/create-github-app-token@v1
+        id: create-releaser-github-app-token
+        with:
+          app-id: ${{ secrets.RELEASER_APP_ID }}
+          private-key: ${{ secrets.RELEASER_APP_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
+      - name: Update Image Tag in values-prod.yaml
+        uses: fjogeleit/yaml-update-action@main
         with:
-          workload_identity_provider: projects/207001532273/locations/global/workloadIdentityPools/github/providers/stape-io
-          service_account: github-actions@stape-production.iam.gserviceaccount.com
-
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          project_id: ${{ secrets.PROJECT_ID }}
-          cluster_name: ${{ secrets.GKE_CLUSTER }}
-          location: ${{ secrets.GKE_LOCATION }}
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v1
-
-      - name: Render Kubernetes secret from 1Password
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-        run: |
-          op item get env.prod --vault "${VAULT}" --format json \
-            | jq -r '.fields[] | select(.label != "notesPlain" and .value != null and .value != "") | "\(.label)=\(.value)"' > .env.local
-          kubectl create secret generic "${NAME}" --dry-run=client \
-            --from-env-file=.env.local \
-            -o yaml > chart/templates/secret.yaml
-
-      - name: Update chart image tag
-        run: |
-          sed -i "s/tag: .*/tag: \"${{ needs.generate-image-tag.outputs.image_tag }}\"/" chart/values-prod.yaml
-
-      - name: Deploy Helm Chart
-        run: |
-          helm upgrade --install "${NAME}" chart/ \
-            --namespace "${NAME}" \
-            --create-namespace \
-            --values chart/values-prod.yaml \
-            --wait \
-            --timeout 10m
+          branch: main
+          changes: |
+            {
+              "chart/values-prod.yaml": {
+                "image.tag": "${{ needs.generate-image-tag.outputs.image_tag }}"
+              }
+            }
+          message: Updated image.tag in values-prod.yaml
+          quotingType: '"'
+          token: ${{ steps.create-releaser-github-app-token.outputs.token }}

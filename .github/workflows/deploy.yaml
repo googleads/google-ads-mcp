@@ -6,8 +6,6 @@ on:
   workflow_dispatch:
 
 env:
-  NAME: mcp-gads
-  VAULT: google-ads-mcp-dev
   REGISTRY: europe-west1-docker.pkg.dev
   REPOSITORY: stape-development/stape
   IMAGE: mcp-gads
@@ -21,9 +19,7 @@ jobs:
     name: Build Docker Image and Push to GAR
     needs: generate-image-tag
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    permissions: write-all
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,35 +49,30 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.generate-image-tag.outputs.image_tag }}
 
-  deploy-to-kubernetes:
-    name: Deploy to dev
+  update-argocd:
+    name: Update ArgoCD config
     needs:
       - generate-image-tag
       - build-and-push-image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    permissions: write-all
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        id: auth
+      - name: Authenticate to Google Cloud for iris
+        id: auth-iris
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/664050025753/locations/global/workloadIdentityPools/github/providers/stape-io
           service_account: github-actions@stape-development.iam.gserviceaccount.com
 
-      - name: Get GKE credentials
+      - name: Get GKE credentials for iris
         uses: google-github-actions/get-gke-credentials@v2
         with:
           project_id: stape-development
           cluster_name: ${{ secrets.GKE_CLUSTER_DEV }}
           location: ${{ secrets.GKE_LOCATION_DEV }}
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -89,25 +80,56 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@v1
 
-      - name: Render Kubernetes secret from 1Password
+      - name: Sync dev secret to iris
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
         run: |
-          op item get env.dev --vault "${VAULT}" --format json \
-            | jq -r '.fields[] | select(.label != "notesPlain" and .value != null and .value != "") | "\(.label)=\(.value)"' > .env.local
-          kubectl create secret generic "${NAME}-dev" --dry-run=client \
+          item_json=$(op item get env.dev --vault google-ads-mcp-dev --format json)
+
+          printf '%s' "$item_json" | jq -r '
+            [ .fields[]? | select(.label != "notesPlain" and .value != null and .value != "") | "\(.label)=\(.value)" ] as $pairs
+            | if ($pairs | length) > 0 then
+                $pairs[]
+              else
+                (.fields[]? | select(.label == "notesPlain") | .value // empty)
+              end
+          ' > .env.local
+
+          test -s .env.local
+
+          kubectl create namespace mcp-gads-dev --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic mcp-gads-dev \
+            --namespace mcp-gads-dev \
+            --dry-run=client \
             --from-env-file=.env.local \
-            -o yaml > chart/templates/secret.yaml
+            -o yaml | kubectl apply -f -
 
-      - name: Update chart image tag
+      - name: Set env.BRANCH_NAME
         run: |
-          sed -i "s/tag: .*/tag: \"${{ needs.generate-image-tag.outputs.image_tag }}\"/" chart/values-dev.yaml
+          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
 
-      - name: Deploy Helm Chart
+      - name: Update Image Tag in values-dev.yaml
+        uses: fjogeleit/yaml-update-action@main
+        with:
+          branch: ${{ env.BRANCH_NAME }}
+          changes: |
+            {
+              "chart/values-dev.yaml": {
+                "image.tag": "${{ needs.generate-image-tag.outputs.image_tag }}"
+              }
+            }
+          message: Updated image.tag in values-dev.yaml
+          quotingType: '"'
+          token: ${{ github.token }}
+
+      - name: Set updated short SHA
         run: |
-          helm upgrade --install "${NAME}-dev" chart/ \
-            --namespace "${NAME}-dev" \
-            --create-namespace \
-            --values chart/values-dev.yaml \
-            --wait \
-            --timeout 10m
+          git fetch origin "${BRANCH_NAME}" --depth=1
+          echo "UPD_SHA_SHORT=$(git rev-parse --short "origin/${BRANCH_NAME}")" >> $GITHUB_ENV
+
+      - name: Push Tag
+        uses: thejeff77/action-push-tag@v1.0.0
+        with:
+          tag: iris-gcp
+          ref: ${{ env.UPD_SHA_SHORT }}
+          force: true
