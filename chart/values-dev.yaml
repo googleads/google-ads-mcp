@@ -1,4 +1,4 @@
 secret:
   create: false
 image:
-  tag: "latest"
+  tag: effd06a-23304012041-1
