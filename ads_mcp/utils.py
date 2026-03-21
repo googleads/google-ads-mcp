@@ -36,13 +36,13 @@ _GAQL_FILENAME = "gaql_resources.json"
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Read-only scope for Analytics Admin API and Analytics Data API.
-_READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
+# Google Ads API scope (read and write).
+_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
 def _create_credentials() -> google.auth.credentials.Credentials:
-    """Returns Application Default Credentials with read-only scope."""
-    credentials, _ = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
+    """Returns Application Default Credentials with Google Ads scope."""
+    credentials, _ = google.auth.default(scopes=[_ADS_SCOPE])
     return credentials
 
 
@@ -110,3 +110,24 @@ def get_gaql_resources_filepath():
     package_root = importlib.resources.files("ads_mcp")
     file_path = package_root.joinpath(_GAQL_FILENAME)
     return file_path
+
+
+def create_field_mask(updated_message):
+    """Creates a FieldMask by comparing the updated message against an empty/None state.
+
+    Uses protobuf_helpers.field_mask to detect which fields have been set
+    on the updated message, which is the pattern recommended by the
+    Google Ads API documentation.
+
+    Args:
+        updated_message: The proto-plus message with fields set for update.
+            Can be either a proto-plus wrapper or a raw protobuf message.
+
+    Returns:
+        A FieldMask protobuf message.
+    """
+    from google.api_core import protobuf_helpers
+
+    # Handle both proto-plus wrapped messages and raw protobuf messages
+    pb_message = getattr(updated_message, "_pb", updated_message)
+    return protobuf_helpers.field_mask(None, pb_message)
