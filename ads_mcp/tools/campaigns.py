@@ -57,7 +57,9 @@ def create_campaign(
     campaign_budget = campaign_budget_operation.create
     campaign_budget.name = f"Budget for {name}"
     campaign_budget.amount_micros = budget_amount_micros
-    campaign_budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
+    campaign_budget.delivery_method = (
+        client.enums.BudgetDeliveryMethodEnum.STANDARD
+    )
 
     budget_response = campaign_budget_service.mutate_campaign_budgets(
         customer_id=customer_id, operations=[campaign_budget_operation]
@@ -83,9 +85,7 @@ def create_campaign(
 
     # Set bidding strategy using client.copy_from for empty message fields
     if bidding_strategy_type == "MANUAL_CPC":
-        client.copy_from(
-            campaign.manual_cpc, client.get_type("ManualCpc")
-        )
+        client.copy_from(campaign.manual_cpc, client.get_type("ManualCpc"))
     elif bidding_strategy_type == "MAXIMIZE_CONVERSIONS":
         client.copy_from(
             campaign.maximize_conversions,
@@ -98,16 +98,16 @@ def create_campaign(
         )
     elif bidding_strategy_type == "TARGET_CPA":
         if target_cpa_micros is None:
-            raise ValueError("target_cpa_micros is required for TARGET_CPA bidding.")
+            raise ValueError(
+                "target_cpa_micros is required for TARGET_CPA bidding."
+            )
         campaign.maximize_conversions.target_cpa_micros = target_cpa_micros
     elif bidding_strategy_type == "TARGET_ROAS":
         if target_roas is None:
             raise ValueError("target_roas is required for TARGET_ROAS bidding.")
         campaign.maximize_conversion_value.target_roas = target_roas
     elif bidding_strategy_type == "TARGET_SPEND":
-        client.copy_from(
-            campaign.target_spend, client.get_type("TargetSpend")
-        )
+        client.copy_from(campaign.target_spend, client.get_type("TargetSpend"))
 
     # Set network settings for Search campaigns
     if advertising_channel_type == "SEARCH":
@@ -192,7 +192,9 @@ def create_performance_max_campaign(
     campaign_budget = budget_op.campaign_budget_operation.create
     campaign_budget.name = f"PMax Budget for {name}"
     campaign_budget.amount_micros = budget_amount_micros
-    campaign_budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
+    campaign_budget.delivery_method = (
+        client.enums.BudgetDeliveryMethodEnum.STANDARD
+    )
     campaign_budget.explicitly_shared = False
     # Use temporary resource name for referencing in same batch
     budget_temp_rn = f"customers/{customer_id}/campaignBudgets/-1"
@@ -273,8 +275,12 @@ def create_performance_max_campaign(
         customer_id=customer_id, mutate_operations=operations
     )
 
-    budget_rn = response.mutate_operation_responses[0].campaign_budget_result.resource_name
-    campaign_rn = response.mutate_operation_responses[1].campaign_result.resource_name
+    budget_rn = response.mutate_operation_responses[
+        0
+    ].campaign_budget_result.resource_name
+    campaign_rn = response.mutate_operation_responses[
+        1
+    ].campaign_result.resource_name
 
     return {
         "campaign_resource_name": campaign_rn,
@@ -337,7 +343,9 @@ def update_campaign(
             budget_response = budget_service.mutate_campaign_budgets(
                 customer_id=customer_id, operations=[budget_operation]
             )
-            results["budget_resource_name"] = budget_response.results[0].resource_name
+            results["budget_resource_name"] = budget_response.results[
+                0
+            ].resource_name
 
     # Update campaign fields if any are specified
     if any([name, status, start_date, end_date]):
@@ -365,7 +373,9 @@ def update_campaign(
         campaign_response = campaign_service.mutate_campaigns(
             customer_id=customer_id, operations=[campaign_operation]
         )
-        results["campaign_resource_name"] = campaign_response.results[0].resource_name
+        results["campaign_resource_name"] = campaign_response.results[
+            0
+        ].resource_name
 
     results["message"] = f"Campaign {campaign_id} updated successfully."
     return results

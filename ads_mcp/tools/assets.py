@@ -230,6 +230,7 @@ def create_image_asset(
     # Load image data from URL or local file
     if image_source.startswith(("http://", "https://")):
         import urllib.request
+
         image_data = urllib.request.urlopen(image_source).read()
     elif os.path.isfile(image_source):
         with open(image_source, "rb") as f:
@@ -312,9 +313,13 @@ def create_promotion_asset(
     if percent_off is not None:
         asset.promotion_asset.percent_off = percent_off
     elif money_amount_off_micros is not None:
-        asset.promotion_asset.money_amount_off.amount_micros = money_amount_off_micros
+        asset.promotion_asset.money_amount_off.amount_micros = (
+            money_amount_off_micros
+        )
         if money_amount_off_currency:
-            asset.promotion_asset.money_amount_off.currency_code = money_amount_off_currency
+            asset.promotion_asset.money_amount_off.currency_code = (
+                money_amount_off_currency
+            )
 
     # Set occasion
     occasion_enum = client.enums.PromotionExtensionOccasionEnum
@@ -394,7 +399,9 @@ def create_price_asset(
         price_offering.header = offering["header"]
         price_offering.description = offering["description"]
         price_offering.price.amount_micros = int(offering["price_micros"])
-        price_offering.price.currency_code = offering.get("currency_code", "USD")
+        price_offering.price.currency_code = offering.get(
+            "currency_code", "USD"
+        )
         price_offering.final_url = offering["final_url"]
 
         unit = offering.get("unit", "NONE")
