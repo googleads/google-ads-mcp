@@ -1,0 +1,250 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Tools for creating ads and keywords via the MCP server."""
+
+from typing import Dict, Any, List, Optional
+from ads_mcp.coordinator import mcp
+import ads_mcp.utils as utils
+
+
+@mcp.tool()
+def create_responsive_search_ad(
+    customer_id: str,
+    ad_group_id: str,
+    headlines: List[str],
+    descriptions: List[str],
+    final_url: str,
+    path1: Optional[str] = None,
+    path2: Optional[str] = None,
+    status: str = "ENABLED",
+) -> Dict[str, Any]:
+    """Creates a responsive search ad in an ad group.
+
+    Responsive search ads allow you to provide multiple headlines and descriptions,
+    and Google Ads will automatically test different combinations.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group to add the ad to.
+        headlines: List of headline texts (min 3, max 15). Each headline max 30 characters.
+        descriptions: List of description texts (min 2, max 4). Each description max 90 characters.
+        final_url: The landing page URL for the ad.
+        path1: First URL path text (max 15 characters). Optional.
+        path2: Second URL path text (max 15 characters). Optional.
+        status: Ad status. One of: ENABLED, PAUSED. Default: ENABLED.
+
+    Returns:
+        Dictionary with the created ad resource name.
+    """
+    if len(headlines) < 3:
+        raise ValueError("At least 3 headlines are required.")
+    if len(headlines) > 15:
+        raise ValueError("Maximum 15 headlines allowed.")
+    if len(descriptions) < 2:
+        raise ValueError("At least 2 descriptions are required.")
+    if len(descriptions) > 4:
+        raise ValueError("Maximum 4 descriptions allowed.")
+
+    client = utils.get_googleads_client()
+    ad_group_ad_service = client.get_service("AdGroupAdService")
+    ad_group_service = client.get_service("AdGroupService")
+
+    ad_group_ad_operation = client.get_type("AdGroupAdOperation")
+    ad_group_ad = ad_group_ad_operation.create
+    ad_group_ad.ad_group = ad_group_service.ad_group_path(
+        customer_id, ad_group_id
+    )
+
+    # Set status
+    status_enum = client.enums.AdGroupAdStatusEnum
+    ad_group_ad.status = getattr(status_enum, status)
+
+    # Set up responsive search ad
+    ad = ad_group_ad.ad
+    ad.final_urls.append(final_url)
+
+    for headline_text in headlines:
+        ad_text_asset = client.get_type("AdTextAsset")
+        ad_text_asset.text = headline_text
+        ad.responsive_search_ad.headlines.append(ad_text_asset)
+
+    for description_text in descriptions:
+        ad_text_asset = client.get_type("AdTextAsset")
+        ad_text_asset.text = description_text
+        ad.responsive_search_ad.descriptions.append(ad_text_asset)
+
+    if path1:
+        ad.responsive_search_ad.path1 = path1
+    if path2:
+        ad.responsive_search_ad.path2 = path2
+
+    response = ad_group_ad_service.mutate_ad_group_ads(
+        customer_id=customer_id, operations=[ad_group_ad_operation]
+    )
+
+    return {
+        "ad_resource_name": response.results[0].resource_name,
+        "message": f"Responsive search ad created successfully in ad group {ad_group_id}.",
+    }
+
+
+@mcp.tool()
+def add_keywords(
+    customer_id: str,
+    ad_group_id: str,
+    keywords: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    """Adds keywords to an ad group.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group to add keywords to.
+        keywords: List of keyword objects, each with:
+            - text: The keyword text (e.g., "buy shoes online").
+            - match_type: One of: EXACT, PHRASE, BROAD. Default: BROAD.
+            - cpc_bid_micros: Optional CPC bid in micros for this keyword.
+
+    Returns:
+        Dictionary with created keyword resource names and count.
+    """
+    client = utils.get_googleads_client()
+    ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+    ad_group_service = client.get_service("AdGroupService")
+
+    operations = []
+    for kw in keywords:
+        operation = client.get_type("AdGroupCriterionOperation")
+        criterion = operation.create
+        criterion.ad_group = ad_group_service.ad_group_path(
+            customer_id, ad_group_id
+        )
+        criterion.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
+
+        # Set keyword
+        criterion.keyword.text = kw["text"]
+        match_type = kw.get("match_type", "BROAD")
+        match_type_enum = client.enums.KeywordMatchTypeEnum
+        criterion.keyword.match_type = getattr(match_type_enum, match_type)
+
+        # Set optional bid
+        if "cpc_bid_micros" in kw:
+            criterion.cpc_bid_micros = int(kw["cpc_bid_micros"])
+
+        operations.append(operation)
+
+    response = ad_group_criterion_service.mutate_ad_group_criteria(
+        customer_id=customer_id, operations=operations
+    )
+
+    return {
+        "keyword_resource_names": [
+            result.resource_name for result in response.results
+        ],
+        "keywords_added": len(response.results),
+        "message": f"{len(response.results)} keyword(s) added to ad group {ad_group_id}.",
+    }
+
+
+@mcp.tool()
+def update_ad_status(
+    customer_id: str,
+    ad_group_id: str,
+    ad_id: str,
+    status: str,
+) -> Dict[str, str]:
+    """Enables, pauses, or removes an ad.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group containing the ad.
+        ad_id: The ID of the ad to update.
+        status: New status. One of: ENABLED, PAUSED, REMOVED.
+
+    Returns:
+        Dictionary with the updated resource name and confirmation message.
+    """
+    client = utils.get_googleads_client()
+    ad_group_ad_service = client.get_service("AdGroupAdService")
+    ad_group_ad_operation = client.get_type("AdGroupAdOperation")
+    ad_group_ad = ad_group_ad_operation.update
+    ad_group_ad.resource_name = ad_group_ad_service.ad_group_ad_path(
+        customer_id, ad_group_id, ad_id
+    )
+
+    status_enum = client.enums.AdGroupAdStatusEnum
+    ad_group_ad.status = getattr(status_enum, status)
+
+    client.copy_from(
+        ad_group_ad_operation.update_mask,
+        utils.create_field_mask(ad_group_ad),
+    )
+
+    response = ad_group_ad_service.mutate_ad_group_ads(
+        customer_id=customer_id, operations=[ad_group_ad_operation]
+    )
+
+    return {
+        "ad_resource_name": response.results[0].resource_name,
+        "message": f"Ad {ad_id} status set to {status}.",
+    }
+
+
+@mcp.tool()
+def update_keyword(
+    customer_id: str,
+    ad_group_id: str,
+    criterion_id: str,
+    status: Optional[str] = None,
+    cpc_bid_micros: Optional[int] = None,
+) -> Dict[str, str]:
+    """Updates a keyword's status or bid.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group containing the keyword.
+        criterion_id: The criterion ID of the keyword.
+        status: New status. One of: ENABLED, PAUSED, REMOVED. Optional.
+        cpc_bid_micros: New CPC bid in micros. Optional.
+
+    Returns:
+        Dictionary with the updated resource name and confirmation message.
+    """
+    client = utils.get_googleads_client()
+    criterion_service = client.get_service("AdGroupCriterionService")
+    operation = client.get_type("AdGroupCriterionOperation")
+    criterion = operation.update
+    criterion.resource_name = criterion_service.ad_group_criterion_path(
+        customer_id, ad_group_id, criterion_id
+    )
+
+    if status is not None:
+        status_enum = client.enums.AdGroupCriterionStatusEnum
+        criterion.status = getattr(status_enum, status)
+    if cpc_bid_micros is not None:
+        criterion.cpc_bid_micros = cpc_bid_micros
+
+    client.copy_from(
+        operation.update_mask,
+        utils.create_field_mask(criterion),
+    )
+
+    response = criterion_service.mutate_ad_group_criteria(
+        customer_id=customer_id, operations=[operation]
+    )
+
+    return {
+        "keyword_resource_name": response.results[0].resource_name,
+        "message": f"Keyword {criterion_id} updated successfully.",
+    }
