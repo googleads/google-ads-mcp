@@ -52,7 +52,7 @@ def search(
     if limit:
         query_parts.append(f" LIMIT {limit}")
 
-    query_parts.append("PARAMETERS omit_unselected_resource_names=true")
+    query_parts.append(" PARAMETERS omit_unselected_resource_names=true")
 
     query = "".join(query_parts)
     utils.logger.info(f"ads_mcp.search query {query}")
