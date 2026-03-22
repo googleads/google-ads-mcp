@@ -81,8 +81,16 @@ def _get_googleads_client(
     return client
 
 
-# Default client using env var login_customer_id
-_default_client = _get_googleads_client()
+# Lazy default client - initialized on first use to avoid
+# crashing at import time when credentials are not available
+_default_client = None
+
+
+def _get_default_client():
+    global _default_client
+    if _default_client is None:
+        _default_client = _get_googleads_client()
+    return _default_client
 
 
 def get_googleads_service(
@@ -96,9 +104,10 @@ def get_googleads_service(
             instead of the env var. Required when accessing a
             client account through a different manager account.
     """
-    client = _default_client
     if login_customer_id:
         client = _get_googleads_client(login_customer_id)
+    else:
+        client = _get_default_client()
 
     return client.get_service(
         serviceName, interceptors=[MCPHeaderInterceptor()]
@@ -106,13 +115,13 @@ def get_googleads_service(
 
 
 def get_googleads_type(typeName: str):
-    return _default_client.get_type(typeName)
+    return _get_default_client().get_type(typeName)
 
 
 def get_googleads_client(login_customer_id: str = None):
     if login_customer_id:
         return _get_googleads_client(login_customer_id)
-    return _default_client
+    return _get_default_client()
 
 
 def format_output_value(value: Any) -> Any:
