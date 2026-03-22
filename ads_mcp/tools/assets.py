@@ -320,9 +320,7 @@ def create_promotion_asset(
 
     # Set discount
     if discount_modifier and discount_modifier != "NONE":
-        discount_enum = (
-            client.enums.PromotionExtensionDiscountModifierEnum
-        )
+        discount_enum = client.enums.PromotionExtensionDiscountModifierEnum
         asset.promotion_asset.discount_modifier = getattr(
             discount_enum, discount_modifier
         )
@@ -342,12 +340,8 @@ def create_promotion_asset(
 
     # Set occasion
     if occasion and occasion != "NONE":
-        occasion_enum = (
-            client.enums.PromotionExtensionOccasionEnum
-        )
-        asset.promotion_asset.occasion = getattr(
-            occasion_enum, occasion
-        )
+        occasion_enum = client.enums.PromotionExtensionOccasionEnum
+        asset.promotion_asset.occasion = getattr(occasion_enum, occasion)
 
     # Set dates
     if start_date:
