@@ -41,6 +41,7 @@ def create_asset_group(
     path1: Optional[str] = None,
     path2: Optional[str] = None,
     status: str = "ENABLED",
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates an asset group for a Performance Max campaign and links all provided assets to it.
 
@@ -73,11 +74,12 @@ def create_asset_group(
         path1: First URL path text (max 15 characters). Optional.
         path2: Second URL path text (max 15 characters). Optional.
         status: Asset group status. One of: ENABLED, PAUSED. Default: ENABLED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset group resource name and linked asset count.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ga_service = client.get_service("GoogleAdsService")
     campaign_service = client.get_service("CampaignService")
 
@@ -169,6 +171,7 @@ def add_assets_to_asset_group(
     customer_id: str,
     asset_group_resource_name: str,
     assets: List[Dict[str, str]],
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Adds assets to an existing asset group.
 
@@ -182,11 +185,12 @@ def add_assets_to_asset_group(
             - field_type: One of: HEADLINE, DESCRIPTION, LONG_HEADLINE,
                 MARKETING_IMAGE, SQUARE_MARKETING_IMAGE, LOGO,
                 LANDSCAPE_LOGO, YOUTUBE_VIDEO, CALL_TO_ACTION_SELECTION.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the count of assets added.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ga_service = client.get_service("GoogleAdsService")
 
     operations = []
@@ -217,6 +221,7 @@ def remove_asset_from_asset_group(
     asset_group_resource_name: str,
     asset_resource_name: str,
     field_type: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """Removes an asset from an asset group.
 
@@ -227,11 +232,12 @@ def remove_asset_from_asset_group(
         field_type: The field type of the asset. One of: HEADLINE, DESCRIPTION,
             LONG_HEADLINE, MARKETING_IMAGE, SQUARE_MARKETING_IMAGE, LOGO,
             LANDSCAPE_LOGO, YOUTUBE_VIDEO, CALL_TO_ACTION_SELECTION.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_group_asset_service = client.get_service("AssetGroupAssetService")
 
     operation = client.get_type("AssetGroupAssetOperation")

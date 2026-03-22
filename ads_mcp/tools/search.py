@@ -26,6 +26,7 @@ def search(
     conditions: List[str] = None,
     orderings: List[str] = None,
     limit: int | str = None,
+    login_customer_id: str = None,
 ) -> List[Dict[str, Any]]:
     """Fetches data from the Google Ads API using the search method
 
@@ -36,10 +37,13 @@ def search(
         conditions: List of conditions to filter the data, combined using AND clauses
         orderings: How the data is ordered
         limit: The maximum number of rows to return
+        login_customer_id: The Manager Account ID to use when accessing client accounts. Optional.
 
     """
 
-    ga_service = utils.get_googleads_service("GoogleAdsService")
+    ga_service = utils.get_googleads_service(
+        "GoogleAdsService", login_customer_id=login_customer_id
+    )
 
     query_parts = [f"SELECT {','.join(fields)} FROM {resource}"]
 
@@ -96,6 +100,10 @@ def _search_tool_description() -> str:
 ### Hint for customer_id
     should be a string of numbers without punctuation
     if presented in the form 123-456-7890 remove the hyphens and use 1234567890
+
+### Hint for login_customer_id
+    Required when accessing a client account through a Manager Account.
+    Should be the Manager Account ID (without punctuation).
 
 ### Hints for Dates
     All dates should be in the form YYYY-MM-DD and must include the dashes (-)

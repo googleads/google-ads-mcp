@@ -31,6 +31,7 @@ def create_campaign(
     target_roas: Optional[float] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a new Google Ads campaign with a budget.
 
@@ -45,11 +46,12 @@ def create_campaign(
         target_roas: Target ROAS (e.g., 2.0 for 200%), required when bidding_strategy_type is TARGET_ROAS.
         start_date: Campaign start date in YYYY-MM-DD format. Optional.
         end_date: Campaign end date in YYYY-MM-DD format. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with created campaign and budget resource names.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
 
     # Step 1: Create the campaign budget
     campaign_budget_service = client.get_service("CampaignBudgetService")
@@ -152,6 +154,7 @@ def create_performance_max_campaign(
     final_url_expansion_opt_out: bool = False,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a Performance Max campaign with a budget, business name, and logo.
 
@@ -178,11 +181,12 @@ def create_performance_max_campaign(
         final_url_expansion_opt_out: Set True to opt out of final URL expansion. Default: False.
         start_date: Campaign start date in YYYY-MM-DD format. Optional.
         end_date: Campaign end date in YYYY-MM-DD format. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with created campaign and budget resource names.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ga_service = client.get_service("GoogleAdsService")
 
     operations = []
@@ -298,6 +302,7 @@ def update_campaign(
     budget_amount_micros: Optional[int] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Updates an existing Google Ads campaign's settings.
 
@@ -309,11 +314,12 @@ def update_campaign(
         budget_amount_micros: New daily budget in micros (e.g., 10000000 = $10.00). Optional.
         start_date: New start date in YYYY-MM-DD format. Optional.
         end_date: New end date in YYYY-MM-DD format. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the updated resource names and a confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     results = {}
 
     # Update campaign budget if specified
@@ -386,6 +392,7 @@ def set_campaign_status(
     customer_id: str,
     campaign_id: str,
     status: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """Enables, pauses, or removes a Google Ads campaign.
 
@@ -395,11 +402,12 @@ def set_campaign_status(
         customer_id: The Google Ads customer ID (numbers only, no hyphens).
         campaign_id: The ID of the campaign.
         status: The new status. One of: ENABLED, PAUSED, REMOVED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the updated resource name and confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     campaign_service = client.get_service("CampaignService")
     campaign_operation = client.get_type("CampaignOperation")
     campaign = campaign_operation.update

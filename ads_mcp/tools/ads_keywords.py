@@ -29,6 +29,7 @@ def create_responsive_search_ad(
     path1: Optional[str] = None,
     path2: Optional[str] = None,
     status: str = "ENABLED",
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a responsive search ad in an ad group.
 
@@ -44,6 +45,7 @@ def create_responsive_search_ad(
         path1: First URL path text (max 15 characters). Optional.
         path2: Second URL path text (max 15 characters). Optional.
         status: Ad status. One of: ENABLED, PAUSED. Default: ENABLED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created ad resource name.
@@ -57,7 +59,7 @@ def create_responsive_search_ad(
     if len(descriptions) > 4:
         raise ValueError("Maximum 4 descriptions allowed.")
 
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_ad_service = client.get_service("AdGroupAdService")
     ad_group_service = client.get_service("AdGroupService")
 
@@ -105,6 +107,7 @@ def add_keywords(
     customer_id: str,
     ad_group_id: str,
     keywords: List[Dict[str, str]],
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Adds keywords to an ad group.
 
@@ -115,11 +118,12 @@ def add_keywords(
             - text: The keyword text (e.g., "buy shoes online").
             - match_type: One of: EXACT, PHRASE, BROAD. Default: BROAD.
             - cpc_bid_micros: Optional CPC bid in micros for this keyword.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with created keyword resource names and count.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_criterion_service = client.get_service("AdGroupCriterionService")
     ad_group_service = client.get_service("AdGroupService")
 
@@ -163,6 +167,7 @@ def update_ad_status(
     ad_group_id: str,
     ad_id: str,
     status: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """Enables, pauses, or removes an ad.
 
@@ -171,11 +176,12 @@ def update_ad_status(
         ad_group_id: The ID of the ad group containing the ad.
         ad_id: The ID of the ad to update.
         status: New status. One of: ENABLED, PAUSED, REMOVED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the updated resource name and confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_ad_service = client.get_service("AdGroupAdService")
     ad_group_ad_operation = client.get_type("AdGroupAdOperation")
     ad_group_ad = ad_group_ad_operation.update
@@ -208,6 +214,7 @@ def update_keyword(
     criterion_id: str,
     status: Optional[str] = None,
     cpc_bid_micros: Optional[int] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """Updates a keyword's status or bid.
 
@@ -217,11 +224,12 @@ def update_keyword(
         criterion_id: The criterion ID of the keyword.
         status: New status. One of: ENABLED, PAUSED, REMOVED. Optional.
         cpc_bid_micros: New CPC bid in micros. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the updated resource name and confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     criterion_service = client.get_service("AdGroupCriterionService")
     operation = client.get_type("AdGroupCriterionOperation")
     criterion = operation.update

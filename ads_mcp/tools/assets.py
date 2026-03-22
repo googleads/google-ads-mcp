@@ -28,6 +28,7 @@ def create_sitelink_asset(
     description2: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a sitelink asset that can be linked to campaigns or ad groups.
 
@@ -41,11 +42,12 @@ def create_sitelink_asset(
         description2: Second line of description (max 35 characters). Optional.
         start_date: Start date in YYYY-MM-DD format. Optional.
         end_date: End date in YYYY-MM-DD format. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -78,6 +80,7 @@ def create_callout_asset(
     callout_text: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a callout asset that can be linked to campaigns or ad groups.
 
@@ -88,11 +91,12 @@ def create_callout_asset(
         callout_text: The callout text (max 25 characters).
         start_date: Start date in YYYY-MM-DD format. Optional.
         end_date: End date in YYYY-MM-DD format. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -119,6 +123,7 @@ def create_structured_snippet_asset(
     customer_id: str,
     header: str,
     values: List[str],
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a structured snippet asset that can be linked to campaigns or ad groups.
 
@@ -131,11 +136,12 @@ def create_structured_snippet_asset(
             Destinations, Featured hotels, Insurance coverage, Models, Neighborhoods,
             Service catalog, Shows, Styles, Types.
         values: List of values for the snippet (min 3 values recommended).
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -160,6 +166,7 @@ def create_call_asset(
     country_code: str,
     phone_number: str,
     call_conversion_reporting_state: str = "DISABLED",
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a call asset that can be linked to campaigns or ad groups.
 
@@ -171,11 +178,12 @@ def create_call_asset(
         phone_number: The phone number string.
         call_conversion_reporting_state: One of: DISABLED, USE_ACCOUNT_LEVEL_CALL_CONVERSION_ACTION,
             USE_RESOURCE_LEVEL_CALL_CONVERSION_ACTION. Default: DISABLED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -203,6 +211,7 @@ def create_image_asset(
     customer_id: str,
     image_source: str,
     asset_name: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates an image asset from a URL or local file path.
 
@@ -218,13 +227,14 @@ def create_image_asset(
         customer_id: The Google Ads customer ID (numbers only, no hyphens).
         image_source: Either a URL (https://...) or a local file path (/path/to/image.jpg).
         asset_name: A name for the image asset.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
     import os
 
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     # Load image data from URL or local file
@@ -271,6 +281,7 @@ def create_promotion_asset(
     redemption_start_date: Optional[str] = None,
     redemption_end_date: Optional[str] = None,
     promotion_code: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a promotion asset that can be linked to campaigns or ad groups.
 
@@ -292,11 +303,12 @@ def create_promotion_asset(
         redemption_start_date: Promotion redemption start date in YYYY-MM-DD format. Optional.
         redemption_end_date: Promotion redemption end date in YYYY-MM-DD format. Optional.
         promotion_code: A promotion code users can use (e.g., "SAVE20"). Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -356,6 +368,7 @@ def create_price_asset(
     price_offerings: List[Dict[str, str]],
     language_code: str = "en",
     price_qualifier: str = "NONE",
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a price asset that can be linked to campaigns or ad groups.
 
@@ -374,11 +387,12 @@ def create_price_asset(
             - final_url: The landing page URL for this offering.
         language_code: Language code (e.g., "en"). Default: "en".
         price_qualifier: One of: NONE, FROM, UP_TO, AVERAGE. Default: "NONE".
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -431,6 +445,7 @@ def create_lead_form_asset(
     fields: List[str],
     post_submit_headline: Optional[str] = None,
     post_submit_description: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a lead form asset that can be linked to campaigns or ad groups.
 
@@ -450,11 +465,12 @@ def create_lead_form_asset(
             JOB_TITLE, FIRST_NAME, LAST_NAME.
         post_submit_headline: Headline shown after form submission. Optional.
         post_submit_description: Description shown after form submission. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -500,6 +516,7 @@ def create_lead_form_asset(
 def create_text_asset(
     customer_id: str,
     text: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a text asset for use in Performance Max asset groups.
 
@@ -512,11 +529,12 @@ def create_text_asset(
             - Headlines: max 30 characters
             - Long headlines: max 90 characters
             - Descriptions: max 90 characters
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")
@@ -538,6 +556,7 @@ def create_youtube_video_asset(
     customer_id: str,
     youtube_video_id: str,
     asset_name: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a YouTube video asset for use in Performance Max campaigns.
 
@@ -545,11 +564,12 @@ def create_youtube_video_asset(
         customer_id: The Google Ads customer ID (numbers only, no hyphens).
         youtube_video_id: The YouTube video ID (e.g., "dQw4w9WgXcQ" from the URL).
         asset_name: Optional name for the asset. If not provided, uses the video ID.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created asset resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_service = client.get_service("AssetService")
 
     asset_operation = client.get_type("AssetOperation")

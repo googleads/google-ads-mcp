@@ -27,6 +27,7 @@ def create_ad_group(
     cpc_bid_micros: int = 1000000,
     ad_group_type: str = "SEARCH_STANDARD",
     status: str = "ENABLED",
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Creates a new ad group within a campaign.
 
@@ -37,11 +38,12 @@ def create_ad_group(
         cpc_bid_micros: Default max CPC bid in micros (e.g., 1000000 = $1.00). Default: 1000000.
         ad_group_type: Ad group type. One of: SEARCH_STANDARD, DISPLAY_STANDARD, SHOPPING_PRODUCT_ADS, VIDEO_BUMPER, VIDEO_TRUE_VIEW_IN_STREAM. Default: SEARCH_STANDARD.
         status: Initial status. One of: ENABLED, PAUSED. Default: ENABLED.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created ad group resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_service = client.get_service("AdGroupService")
     campaign_service = client.get_service("CampaignService")
 
@@ -76,6 +78,7 @@ def update_ad_group(
     name: Optional[str] = None,
     status: Optional[str] = None,
     cpc_bid_micros: Optional[int] = None,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Updates an existing ad group's settings.
 
@@ -85,11 +88,12 @@ def update_ad_group(
         name: New ad group name. Optional.
         status: New status. One of: ENABLED, PAUSED, REMOVED. Optional.
         cpc_bid_micros: New default max CPC bid in micros. Optional.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the updated resource name and confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_service = client.get_service("AdGroupService")
     ad_group_operation = client.get_type("AdGroupOperation")
     ad_group = ad_group_operation.update

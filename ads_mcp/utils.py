@@ -61,14 +61,17 @@ def _get_login_customer_id() -> str | None:
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
 
-def _get_googleads_client() -> GoogleAdsClient:
+def _get_googleads_client(
+    login_customer_id: str = None,
+) -> GoogleAdsClient:
     args = {
         "credentials": _create_credentials(),
         "developer_token": _get_developer_token(),
     }
 
-    # If the login-customer-id is not set, avoid setting None.
-    login_customer_id = _get_login_customer_id()
+    # Use provided login_customer_id, fall back to env var.
+    if not login_customer_id:
+        login_customer_id = _get_login_customer_id()
 
     if login_customer_id:
         args["login_customer_id"] = login_customer_id
@@ -78,18 +81,38 @@ def _get_googleads_client() -> GoogleAdsClient:
     return client
 
 
-def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _get_googleads_client().get_service(
+# Default client using env var login_customer_id
+_default_client = _get_googleads_client()
+
+
+def get_googleads_service(
+    serviceName: str, login_customer_id: str = None
+) -> GoogleAdsServiceClient:
+    """Gets a Google Ads service client.
+
+    Args:
+        serviceName: The service name (e.g., "GoogleAdsService").
+        login_customer_id: Optional manager account ID to use
+            instead of the env var. Required when accessing a
+            client account through a different manager account.
+    """
+    client = _default_client
+    if login_customer_id:
+        client = _get_googleads_client(login_customer_id)
+
+    return client.get_service(
         serviceName, interceptors=[MCPHeaderInterceptor()]
     )
 
 
 def get_googleads_type(typeName: str):
-    return _get_googleads_client().get_type(typeName)
+    return _default_client.get_type(typeName)
 
 
-def get_googleads_client():
-    return _get_googleads_client()
+def get_googleads_client(login_customer_id: str = None):
+    if login_customer_id:
+        return _get_googleads_client(login_customer_id)
+    return _default_client
 
 
 def format_output_value(value: Any) -> Any:

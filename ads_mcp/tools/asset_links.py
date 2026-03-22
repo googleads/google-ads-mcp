@@ -25,6 +25,7 @@ def link_asset_to_campaign(
     campaign_id: str,
     asset_resource_name: str,
     field_type: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Links an existing asset to a campaign.
 
@@ -38,11 +39,12 @@ def link_asset_to_campaign(
         field_type: The asset field type. One of: SITELINK, CALLOUT, STRUCTURED_SNIPPET,
             CALL, PROMOTION, PRICE, LEAD_FORM, MOBILE_APP, HOTEL_CALLOUT, IMAGE,
             BUSINESS_NAME, BUSINESS_LOGO.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created campaign asset link resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     campaign_asset_service = client.get_service("CampaignAssetService")
     campaign_service = client.get_service("CampaignService")
 
@@ -72,6 +74,7 @@ def link_asset_to_ad_group(
     ad_group_id: str,
     asset_resource_name: str,
     field_type: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Links an existing asset to an ad group.
 
@@ -84,11 +87,12 @@ def link_asset_to_ad_group(
         asset_resource_name: The resource name of the asset (from create_*_asset tools).
         field_type: The asset field type. One of: SITELINK, CALLOUT, STRUCTURED_SNIPPET,
             CALL, PROMOTION, PRICE, LEAD_FORM, MOBILE_APP, HOTEL_CALLOUT, IMAGE.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created ad group asset link resource name.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     ad_group_asset_service = client.get_service("AdGroupAssetService")
     ad_group_service = client.get_service("AdGroupService")
 
@@ -117,6 +121,7 @@ def link_assets_to_customer(
     customer_id: str,
     asset_resource_names: List[str],
     field_type: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Links assets at the customer (account) level so they apply to all campaigns.
 
@@ -125,11 +130,12 @@ def link_assets_to_customer(
         asset_resource_names: List of asset resource names to link.
         field_type: The asset field type. One of: SITELINK, CALLOUT, STRUCTURED_SNIPPET,
             CALL, PROMOTION, PRICE, LEAD_FORM, MOBILE_APP, BUSINESS_NAME, BUSINESS_LOGO.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with the created customer asset link resource names.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     customer_asset_service = client.get_service("CustomerAssetService")
 
     operations = []
@@ -162,6 +168,7 @@ def remove_campaign_asset(
     campaign_id: str,
     asset_id: str,
     field_type: str,
+    login_customer_id: Optional[str] = None,
 ) -> Dict[str, str]:
     """Removes an asset link from a campaign.
 
@@ -170,11 +177,12 @@ def remove_campaign_asset(
         campaign_id: The ID of the campaign.
         asset_id: The ID of the asset to unlink.
         field_type: The asset field type (e.g., SITELINK, CALLOUT).
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
 
     Returns:
         Dictionary with confirmation message.
     """
-    client = utils.get_googleads_client()
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
     campaign_asset_service = client.get_service("CampaignAssetService")
 
     resource_name = campaign_asset_service.campaign_asset_path(
