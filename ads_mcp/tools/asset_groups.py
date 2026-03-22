@@ -242,8 +242,7 @@ def remove_asset_from_asset_group(
 
     operation = client.get_type("AssetGroupAssetOperation")
 
-    # Build the resource name for the asset group asset
-    # Format: customers/{customer_id}/assetGroupAssets/{asset_group_id}~{asset_id}~{field_type}
+    # Resource name format uses the field type string name
     asset_group_id = asset_group_resource_name.split("/")[-1]
     asset_id = asset_resource_name.split("/")[-1]
     resource_name = (

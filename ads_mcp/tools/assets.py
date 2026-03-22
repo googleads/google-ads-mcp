@@ -270,6 +270,7 @@ def create_image_asset(
 def create_promotion_asset(
     customer_id: str,
     promotion_target: str,
+    final_url: str = "https://example.com",
     discount_modifier: str = "NONE",
     percent_off: Optional[int] = None,
     money_amount_off_micros: Optional[int] = None,
@@ -313,17 +314,23 @@ def create_promotion_asset(
 
     asset_operation = client.get_type("AssetOperation")
     asset = asset_operation.create
+    asset.final_urls.append(final_url)
     asset.promotion_asset.promotion_target = promotion_target
     asset.promotion_asset.language_code = language_code
 
     # Set discount
-    discount_enum = client.enums.PromotionExtensionDiscountModifierEnum
-    asset.promotion_asset.discount_modifier = getattr(
-        discount_enum, discount_modifier
-    )
+    if discount_modifier and discount_modifier != "NONE":
+        discount_enum = (
+            client.enums.PromotionExtensionDiscountModifierEnum
+        )
+        asset.promotion_asset.discount_modifier = getattr(
+            discount_enum, discount_modifier
+        )
 
     if percent_off is not None:
-        asset.promotion_asset.percent_off = percent_off
+        # Proto-plus auto-multiplies by 100, so for 20% we need
+        # 200_000 (which becomes 20_000_000 micros internally)
+        asset.promotion_asset.percent_off = int(percent_off) * 10_000
     elif money_amount_off_micros is not None:
         asset.promotion_asset.money_amount_off.amount_micros = (
             money_amount_off_micros
@@ -334,8 +341,13 @@ def create_promotion_asset(
             )
 
     # Set occasion
-    occasion_enum = client.enums.PromotionExtensionOccasionEnum
-    asset.promotion_asset.occasion = getattr(occasion_enum, occasion)
+    if occasion and occasion != "NONE":
+        occasion_enum = (
+            client.enums.PromotionExtensionOccasionEnum
+        )
+        asset.promotion_asset.occasion = getattr(
+            occasion_enum, occasion
+        )
 
     # Set dates
     if start_date:
@@ -480,6 +492,8 @@ def create_lead_form_asset(
     lead_form.headline = headline
     lead_form.description = description
     lead_form.privacy_policy_url = privacy_policy_url
+    lead_form.call_to_action_description = description
+    asset.final_urls.append(privacy_policy_url)
 
     # Set call to action
     cta_enum = client.enums.LeadFormCallToActionTypeEnum
