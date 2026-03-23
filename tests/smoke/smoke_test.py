@@ -12,9 +12,7 @@ class SmokeTest(unittest.TestCase):
 
         # Sort to ensure deterministic comparison
         if "tools" in current_tools:
-            current_tools["tools"].sort(
-                key=lambda x: x.get("name", "")
-            )
+            current_tools["tools"].sort(key=lambda x: x.get("name", ""))
 
         golden_path = os.path.join(
             os.path.dirname(__file__), "golden_tools_list.json"
@@ -49,23 +47,15 @@ class SmokeTest(unittest.TestCase):
             self.fail(msg)
 
         # Verify each tool has required params matching
-        current_by_name = {
-            t["name"]: t for t in current_tools.get("tools", [])
-        }
-        golden_by_name = {
-            t["name"]: t for t in golden_tools.get("tools", [])
-        }
+        current_by_name = {t["name"]: t for t in current_tools.get("tools", [])}
+        golden_by_name = {t["name"]: t for t in golden_tools.get("tools", [])}
 
         for name in golden_names:
             golden_req = sorted(
-                golden_by_name[name]
-                .get("inputSchema", {})
-                .get("required", [])
+                golden_by_name[name].get("inputSchema", {}).get("required", [])
             )
             current_req = sorted(
-                current_by_name[name]
-                .get("inputSchema", {})
-                .get("required", [])
+                current_by_name[name].get("inputSchema", {}).get("required", [])
             )
             self.assertEqual(
                 golden_req,
