@@ -66,7 +66,9 @@ def create_responsive_search_ad(
 
     ad_group_ad_operation = client.get_type("AdGroupAdOperation")
     ad_group_ad = ad_group_ad_operation.create
-    ad_group_ad.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
+    ad_group_ad.ad_group = ad_group_service.ad_group_path(
+        customer_id, ad_group_id
+    )
 
     # Set status
     status_enum = client.enums.AdGroupAdStatusEnum
@@ -130,7 +132,9 @@ def add_keywords(
     for kw in keywords:
         operation = client.get_type("AdGroupCriterionOperation")
         criterion = operation.create
-        criterion.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
+        criterion.ad_group = ad_group_service.ad_group_path(
+            customer_id, ad_group_id
+        )
         criterion.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
 
         # Set keyword
@@ -150,7 +154,9 @@ def add_keywords(
     )
 
     return {
-        "keyword_resource_names": [result.resource_name for result in response.results],
+        "keyword_resource_names": [
+            result.resource_name for result in response.results
+        ],
         "keywords_added": len(response.results),
         "message": f"{len(response.results)} keyword(s) added to ad group {ad_group_id}.",
     }
@@ -279,7 +285,9 @@ async def remove_ad(
     from pydantic import BaseModel, Field
 
     class Confirmation(BaseModel):
-        confirm: bool = Field(description="Set to true to permanently remove this ad.")
+        confirm: bool = Field(
+            description="Set to true to permanently remove this ad."
+        )
 
     # Ask user for confirmation via elicitation
     # Falls back gracefully if client doesn't support elicitation
@@ -312,7 +320,9 @@ async def remove_ad(
 
     return {
         "removed_resource_name": response.results[0].resource_name,
-        "message": (f"Ad {ad_id} permanently removed " f"from ad group {ad_group_id}."),
+        "message": (
+            f"Ad {ad_id} permanently removed " f"from ad group {ad_group_id}."
+        ),
     }
 
 

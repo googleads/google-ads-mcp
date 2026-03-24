@@ -51,7 +51,9 @@ def link_asset_to_campaign(
 
     operation = client.get_type("CampaignAssetOperation")
     campaign_asset = operation.create
-    campaign_asset.campaign = campaign_service.campaign_path(customer_id, campaign_id)
+    campaign_asset.campaign = campaign_service.campaign_path(
+        customer_id, campaign_id
+    )
     campaign_asset.asset = asset_resource_name
 
     field_type_enum = client.enums.AssetFieldTypeEnum
@@ -97,7 +99,9 @@ def link_asset_to_ad_group(
 
     operation = client.get_type("AdGroupAssetOperation")
     ad_group_asset = operation.create
-    ad_group_asset.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
+    ad_group_asset.ad_group = ad_group_service.ad_group_path(
+        customer_id, ad_group_id
+    )
     ad_group_asset.asset = asset_resource_name
 
     field_type_enum = client.enums.AssetFieldTypeEnum
@@ -216,5 +220,7 @@ async def remove_campaign_asset(
 
     return {
         "removed_resource_name": response.results[0].resource_name,
-        "message": (f"Asset {asset_id} removed from " f"campaign {campaign_id}."),
+        "message": (
+            f"Asset {asset_id} removed from " f"campaign {campaign_id}."
+        ),
     }

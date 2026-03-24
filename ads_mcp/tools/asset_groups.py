@@ -90,7 +90,9 @@ def create_asset_group(
     asset_group_op = client.get_type("MutateOperation")
     asset_group = asset_group_op.asset_group_operation.create
     asset_group.name = name
-    asset_group.campaign = campaign_service.campaign_path(customer_id, campaign_id)
+    asset_group.campaign = campaign_service.campaign_path(
+        customer_id, campaign_id
+    )
     asset_group.final_urls.append(final_url)
     if final_mobile_url:
         asset_group.final_mobile_urls.append(final_mobile_url)
@@ -150,7 +152,9 @@ def create_asset_group(
             _add_asset_group_asset_op(rn, "YOUTUBE_VIDEO")
 
     # Execute the batch mutate
-    response = ga_service.mutate(customer_id=customer_id, mutate_operations=operations)
+    response = ga_service.mutate(
+        customer_id=customer_id, mutate_operations=operations
+    )
 
     # First result is the asset group, rest are asset links
     asset_group_result = response.mutate_operation_responses[0]
@@ -202,7 +206,9 @@ def add_assets_to_asset_group(
 
         operations.append(op)
 
-    response = ga_service.mutate(customer_id=customer_id, mutate_operations=operations)
+    response = ga_service.mutate(
+        customer_id=customer_id, mutate_operations=operations
+    )
 
     return {
         "assets_added": len(response.mutate_operation_responses),
