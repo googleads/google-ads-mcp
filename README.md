@@ -1,21 +1,88 @@
-# Google Ads MCP Server (Experimental)
+# Google Ads MCP Server (Full)
 
-This repo contains the source code for running a local
-[MCP](https://modelcontextprotocol.io) server that interacts with the
-[Google Ads API](https://developers.google.com/google-ads/api).
+This repo extends the [official Google Ads MCP server](https://github.com/googleads/google-ads-mcp) with **30 write tools**, transforming it from read-only to a full campaign management platform. Manage campaigns, ad groups, ads, keywords, assets, and Performance Max — all through natural language.
+
+> For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ## Tools
 
 The server uses the
 [Google Ads API](https://developers.google.com/google-ads/api/reference/rpc/v21/overview)
-to provide several
+to provide **32**
 [Tools](https://modelcontextprotocol.io/docs/concepts/tools) for use with LLMs.
 
-### Tools available
+### Tools available (32)
 
-- `search`: Retrieves information about the Google Ads account.
-- `list_accessible_customers`: Returns names of customers directly accessible
-  by the user authenticating the call.
+#### Read & Discovery (3)
+
+| Tool | Description |
+|---|---|
+| `list_accessible_customers` | List all Google Ads accounts you have access to |
+| `search` | Query Google Ads data using [GAQL](https://developers.google.com/google-ads/api/docs/query/overview) |
+| `get_resource_metadata` | Get selectable, filterable, and sortable fields for any resource |
+
+#### Campaign Management (4)
+
+| Tool | Description |
+|---|---|
+| `create_campaign` | Create Search, Display, or Shopping campaigns with budget and bidding strategy |
+| `create_performance_max_campaign` | Create PMax campaigns with business name and logo via batch mutate |
+| `update_campaign` | Update campaign name, status, budget, or dates |
+| `set_campaign_status` | Quick enable/pause/remove toggle |
+
+#### Ad Group Management (2)
+
+| Tool | Description |
+|---|---|
+| `create_ad_group` | Create ad groups with CPC bids and type settings |
+| `update_ad_group` | Update ad group name, status, or bids |
+
+#### Ads & Keywords (6)
+
+| Tool | Description |
+|---|---|
+| `create_responsive_search_ad` | Create RSAs with multiple headlines and descriptions |
+| `add_keywords` | Add keywords with match types (exact, phrase, broad) and optional bids |
+| `update_ad_status` | Enable, pause, or remove an ad |
+| `update_keyword` | Update a keyword's status or bid |
+| `remove_ad` | Permanently remove an ad (with [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) confirmation) |
+| `remove_keyword` | Permanently remove a keyword (with MCP elicitation confirmation) |
+
+#### Asset Creation (10)
+
+| Tool | Description |
+|---|---|
+| `create_text_asset` | Text assets for PMax headlines, descriptions, long headlines |
+| `create_image_asset` | Upload images from URL or local file path |
+| `create_youtube_video_asset` | YouTube video assets by video ID |
+| `create_sitelink_asset` | Sitelink extensions with URLs and descriptions |
+| `create_callout_asset` | Callout extensions (e.g., "Free Shipping", "24/7 Support") |
+| `create_structured_snippet_asset` | Structured snippets (e.g., Brands: Nike, Adidas, Puma) |
+| `create_call_asset` | Phone number extensions |
+| `create_promotion_asset` | Promotion extensions with discounts and dates |
+| `create_price_asset` | Price listing extensions with offerings |
+| `create_lead_form_asset` | Lead generation form extensions with custom fields |
+
+#### Asset Linking (4)
+
+| Tool | Description |
+|---|---|
+| `link_asset_to_campaign` | Attach an asset to a campaign |
+| `link_asset_to_ad_group` | Attach an asset to an ad group |
+| `link_assets_to_customer` | Attach assets at account level (all campaigns) |
+| `remove_campaign_asset` | Remove an asset from a campaign (with MCP elicitation confirmation) |
+
+#### Asset Groups / Performance Max (3)
+
+| Tool | Description |
+|---|---|
+| `create_asset_group` | Create a PMax asset group and link all assets in one batch mutate |
+| `add_assets_to_asset_group` | Add more assets to an existing asset group |
+| `remove_asset_from_asset_group` | Remove an asset from an asset group (with MCP elicitation confirmation) |
+
+### MCP Elicitation
+
+All 4 destructive tools (`remove_ad`, `remove_keyword`, `remove_campaign_asset`, `remove_asset_from_asset_group`) implement [MCP Elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to prompt users for confirmation before proceeding. Falls back gracefully on clients that don't support elicitation yet.
 
 ## Notes
 
@@ -105,24 +172,16 @@ If you have already done this and have a working `google-ads.yaml` , you can reu
 
 In the utils.py file, change get_googleads_client() to use the load_from_storage() method.
 
-### Configure Gemini
+### Configure your MCP Client
 
-1.  Install [Gemini
-    CLI](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/index.md)
-    or [Gemini Code
-    Assist](https://marketplace.visualstudio.com/items?itemName=Google.geminicodeassist)
-
-1.  Create or edit the file at `~/.gemini/settings.json`, adding your server
-    to the `mcpServers` list.
-
+Add the server to your MCP client's configuration file. See [SETUP.md](SETUP.md) for detailed instructions for Claude Desktop, Claude Code CLI, and Gemini.
 
 - Option 1: the Application Default Credentials method
 
     Replace `PATH_TO_CREDENTIALS_JSON` with the path you copied in the previous
     step.
 
-    We also recommend that you add a `GOOGLE_CLOUD_PROJECT` attribute to the
-    `env` object. Replace `YOUR_PROJECT_ID` in the following example with the
+    Replace `YOUR_PROJECT_ID` with the
     [project ID](https://support.google.com/googleapi/answer/7014113) of your
     Google Cloud project.
 
@@ -136,7 +195,7 @@ In the utils.py file, change get_googleads_client() to use the load_from_storage
           "args": [
             "run",
             "--spec",
-            "git+https://github.com/googleads/google-ads-mcp.git",
+            "git+https://github.com/SaiSatya16/google-ads-mcp-full.git",
             "google-ads-mcp"
           ],
           "env": {
@@ -159,7 +218,7 @@ In the utils.py file, change get_googleads_client() to use the load_from_storage
           "args": [
             "run",
             "--spec",
-            "git+https://github.com/googleads/google-ads-mcp.git",
+            "git+https://github.com/SaiSatya16/google-ads-mcp-full.git",
             "google-ads-mcp"
           ],
           "env": {
@@ -188,7 +247,7 @@ The final file will look like this:
         "args": [
           "run",
           "--spec",
-          "git+https://github.com/googleads/google-ads-mcp.git",
+          "git+https://github.com/SaiSatya16/google-ads-mcp-full.git",
           "google-ads-mcp"
         ],
         "env": {
@@ -205,10 +264,7 @@ The final file will look like this:
 
 ## Try it out
 
-Launch Gemini Code Assist or Gemini CLI and type `/mcp`. You should see
-`google-ads-mcp` listed in the results.
-
-Here are some sample prompts to get you started:
+Restart your MCP client after configuration. Here are some sample prompts to get you started:
 
 - Ask what the server can do:
 
@@ -241,6 +297,24 @@ be simpler.
 ```
 How many active campaigns do I have for customer id 1234567890
 ```
+
+- Create a campaign:
+
+  ```
+  Create a paused Search campaign called "Spring Sale" with $10/day budget
+  ```
+
+- Manage assets:
+
+  ```
+  Create a sitelink for "Free Shipping" pointing to /shipping and link it to my campaign
+  ```
+
+- Full PMax setup:
+
+  ```
+  Create a Performance Max campaign with headlines, descriptions, images, and sitelinks
+  ```
 
 
 ## Contributing
