@@ -16,16 +16,19 @@
 
 from typing import Dict, List, Any
 from ads_mcp.coordinator import mcp
+from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, cacheControl=CacheControl(maxAge=3600)))
 def get_resource_metadata(resource_name: str) -> Dict[str, Any]:
     """Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource.
 
     Use this tool to find out which fields you can select, filter by, or sort by
     when querying a specific resource (e.g., 'campaign', 'ad_group').
     Do not guess fields, you MUST use this tool to discover them.
+
+    The responses of this tool should be cached, as they don't change frequently.
 
     Args:
         resource_name: The name of the Google Ads resource (e.g., 'campaign', 'ad_group').
