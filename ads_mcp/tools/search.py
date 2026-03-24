@@ -78,7 +78,7 @@ def _search_tool_description() -> str:
     """Returns the description for the `search` tool."""
     # Add a warning that will be part of the description
     file_content = (
-        "WARNING: The table of selectable fields is missing. "
+        "WARNING: The list of valid resources is missing. "
         "Tool may not function correctly."
     )
 
@@ -117,10 +117,11 @@ def _search_tool_description() -> str:
     https://developers.google.com/google-ads/api/docs/conversions/upload-summaries 
 
 
-### Hints for all fields
-    What follows is a table of resources and their selectable fields (fields), filterable fields (used in the condition) and sortable fields (use in the ordering)
-    Fields are comma separated, the whole field must be used, wildcards and partial fields are not allowed
-    All fields must come from this table and be prefixed with the resource being searched
+### Hints for all resources
+    What follows is a list of valid resources that can be queried.
+    To find out which specific fields you can select, filter by, or sort by for a given resource, you MUST use the `get_resource_metadata` tool.
+    Do not guess the fields. Use the tool to look them up.
+    Once you have the fields, ensure the whole field name is used (e.g., 'campaign.id', not just 'id'). Wildcards and partial fields are not allowed.
     {file_content}
 """
 

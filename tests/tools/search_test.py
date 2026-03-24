@@ -72,14 +72,15 @@ class TestSearch(unittest.TestCase):
     def test_search_tool_description(self):
         """Tests that the tool description is generated correctly."""
         # Mocking open as if the file exists
-        m = mock_open(read_data="resource1: field1, field2")
+        m = mock_open(read_data="campaign\nad_group\nasset")
         with patch("builtins.open", m):
             with patch(
                 "ads_mcp.utils.get_gaql_resources_filepath",
                 return_value="/fake/path",
             ):
                 description = search._search_tool_description()
-                self.assertIn("resource1: field1, field2", description)
+                self.assertIn("campaign", description)
+                self.assertIn("get_resource_metadata", description)
                 self.assertIn("Language Grammar", description)
 
     def test_search_tool_description_file_not_found(self):
@@ -92,7 +93,7 @@ class TestSearch(unittest.TestCase):
                 with patch("ads_mcp.utils.logger.error") as mock_log_error:
                     description = search._search_tool_description()
                     self.assertIn(
-                        "WARNING: The table of selectable fields is missing.",
+                        "WARNING: The list of valid resources is missing.",
                         description,
                     )
                     mock_log_error.assert_called_once()

@@ -23,6 +23,7 @@ from ads_mcp.coordinator import mcp
 from ads_mcp.tools import (
     search,
     core,
+    get_resource_metadata,
     campaigns,
     ad_groups,
     ads_keywords,
