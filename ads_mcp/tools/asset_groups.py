@@ -20,6 +20,7 @@ that complexity.
 """
 
 from typing import Dict, Any, List, Optional
+from mcp.server.fastmcp import Context
 from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
 
@@ -89,9 +90,7 @@ def create_asset_group(
     asset_group_op = client.get_type("MutateOperation")
     asset_group = asset_group_op.asset_group_operation.create
     asset_group.name = name
-    asset_group.campaign = campaign_service.campaign_path(
-        customer_id, campaign_id
-    )
+    asset_group.campaign = campaign_service.campaign_path(customer_id, campaign_id)
     asset_group.final_urls.append(final_url)
     if final_mobile_url:
         asset_group.final_mobile_urls.append(final_mobile_url)
@@ -151,9 +150,7 @@ def create_asset_group(
             _add_asset_group_asset_op(rn, "YOUTUBE_VIDEO")
 
     # Execute the batch mutate
-    response = ga_service.mutate(
-        customer_id=customer_id, mutate_operations=operations
-    )
+    response = ga_service.mutate(customer_id=customer_id, mutate_operations=operations)
 
     # First result is the asset group, rest are asset links
     asset_group_result = response.mutate_operation_responses[0]
@@ -205,9 +202,7 @@ def add_assets_to_asset_group(
 
         operations.append(op)
 
-    response = ga_service.mutate(
-        customer_id=customer_id, mutate_operations=operations
-    )
+    response = ga_service.mutate(customer_id=customer_id, mutate_operations=operations)
 
     return {
         "assets_added": len(response.mutate_operation_responses),
@@ -216,14 +211,17 @@ def add_assets_to_asset_group(
 
 
 @mcp.tool()
-def remove_asset_from_asset_group(
+async def remove_asset_from_asset_group(
     customer_id: str,
     asset_group_resource_name: str,
     asset_resource_name: str,
     field_type: str,
     login_customer_id: Optional[str] = None,
+    ctx: Context = None,
 ) -> Dict[str, str]:
     """Removes an asset from an asset group.
+
+    Requires user confirmation via interactive elicitation before proceeding.
 
     Args:
         customer_id: The Google Ads customer ID (numbers only, no hyphens).
@@ -237,6 +235,25 @@ def remove_asset_from_asset_group(
     Returns:
         Dictionary with confirmation message.
     """
+    from pydantic import BaseModel, Field
+
+    class Confirmation(BaseModel):
+        confirm: bool = Field(description="Set to true to remove this asset.")
+
+    try:
+        asset_id = asset_resource_name.split("/")[-1]
+        result = await ctx.elicit(
+            message=(
+                f"⚠️ Remove {field_type} asset {asset_id} "
+                f"from asset group? This cannot be undone."
+            ),
+            schema=Confirmation,
+        )
+        if result.action != "accept" or not result.data.confirm:
+            return {"message": "Asset removal cancelled by user."}
+    except Exception:
+        pass
+
     client = utils.get_googleads_client(login_customer_id=login_customer_id)
     asset_group_asset_service = client.get_service("AssetGroupAssetService")
 

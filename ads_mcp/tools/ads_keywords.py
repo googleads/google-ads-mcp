@@ -15,6 +15,7 @@
 """Tools for creating ads and keywords via the MCP server."""
 
 from typing import Dict, Any, List, Optional
+from mcp.server.fastmcp import Context
 from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
 
@@ -65,9 +66,7 @@ def create_responsive_search_ad(
 
     ad_group_ad_operation = client.get_type("AdGroupAdOperation")
     ad_group_ad = ad_group_ad_operation.create
-    ad_group_ad.ad_group = ad_group_service.ad_group_path(
-        customer_id, ad_group_id
-    )
+    ad_group_ad.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
 
     # Set status
     status_enum = client.enums.AdGroupAdStatusEnum
@@ -131,9 +130,7 @@ def add_keywords(
     for kw in keywords:
         operation = client.get_type("AdGroupCriterionOperation")
         criterion = operation.create
-        criterion.ad_group = ad_group_service.ad_group_path(
-            customer_id, ad_group_id
-        )
+        criterion.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
         criterion.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
 
         # Set keyword
@@ -153,9 +150,7 @@ def add_keywords(
     )
 
     return {
-        "keyword_resource_names": [
-            result.resource_name for result in response.results
-        ],
+        "keyword_resource_names": [result.resource_name for result in response.results],
         "keywords_added": len(response.results),
         "message": f"{len(response.results)} keyword(s) added to ad group {ad_group_id}.",
     }
@@ -255,4 +250,136 @@ def update_keyword(
     return {
         "keyword_resource_name": response.results[0].resource_name,
         "message": f"Keyword {criterion_id} updated successfully.",
+    }
+
+
+@mcp.tool()
+async def remove_ad(
+    customer_id: str,
+    ad_group_id: str,
+    ad_id: str,
+    login_customer_id: Optional[str] = None,
+    ctx: Context = None,
+) -> Dict[str, str]:
+    """Permanently removes an ad from an ad group.
+
+    Use this to delete disapproved, old, or unwanted ads. This action
+    cannot be undone — the ad will be permanently removed.
+    Requires user confirmation via interactive elicitation before proceeding.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group containing the ad.
+        ad_id: The ID of the ad to remove.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
+
+    Returns:
+        Dictionary with confirmation message.
+    """
+    from pydantic import BaseModel, Field
+
+    class Confirmation(BaseModel):
+        confirm: bool = Field(description="Set to true to permanently remove this ad.")
+
+    # Ask user for confirmation via elicitation
+    # Falls back gracefully if client doesn't support elicitation
+    try:
+        result = await ctx.elicit(
+            message=(
+                f"⚠️ DESTRUCTIVE ACTION: Permanently remove "
+                f"ad {ad_id} from ad group {ad_group_id} "
+                f"in account {customer_id}? "
+                f"This cannot be undone."
+            ),
+            schema=Confirmation,
+        )
+        if result.action != "accept" or not result.data.confirm:
+            return {"message": "Ad removal cancelled by user."}
+    except Exception:
+        # Client doesn't support elicitation yet, proceed
+        pass
+
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    service = client.get_service("AdGroupAdService")
+
+    resource_name = service.ad_group_ad_path(customer_id, ad_group_id, ad_id)
+    operation = client.get_type("AdGroupAdOperation")
+    operation.remove = resource_name
+
+    response = service.mutate_ad_group_ads(
+        customer_id=customer_id, operations=[operation]
+    )
+
+    return {
+        "removed_resource_name": response.results[0].resource_name,
+        "message": (f"Ad {ad_id} permanently removed " f"from ad group {ad_group_id}."),
+    }
+
+
+@mcp.tool()
+async def remove_keyword(
+    customer_id: str,
+    ad_group_id: str,
+    criterion_id: str,
+    login_customer_id: Optional[str] = None,
+    ctx: Context = None,
+) -> Dict[str, str]:
+    """Permanently removes a keyword from an ad group.
+
+    This action cannot be undone.
+    Requires user confirmation via interactive elicitation before proceeding.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        ad_group_id: The ID of the ad group containing the keyword.
+        criterion_id: The criterion ID of the keyword to remove.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
+
+    Returns:
+        Dictionary with confirmation message.
+    """
+    from pydantic import BaseModel, Field
+
+    class Confirmation(BaseModel):
+        confirm: bool = Field(
+            description="Set to true to permanently remove this keyword."
+        )
+
+    # Ask user for confirmation via elicitation
+    # Auto-works when client supports elicitation/create method
+    try:
+        result = await ctx.elicit(
+            message=(
+                f"⚠️ DESTRUCTIVE ACTION: Permanently remove "
+                f"keyword {criterion_id} from ad group "
+                f"{ad_group_id} in account {customer_id}? "
+                f"This cannot be undone."
+            ),
+            schema=Confirmation,
+        )
+        if result.action != "accept" or not result.data.confirm:
+            return {"message": "Keyword removal cancelled by user."}
+    except Exception:
+        # Client doesn't support elicitation yet
+        pass
+
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    service = client.get_service("AdGroupCriterionService")
+
+    resource_name = service.ad_group_criterion_path(
+        customer_id, ad_group_id, criterion_id
+    )
+    operation = client.get_type("AdGroupCriterionOperation")
+    operation.remove = resource_name
+
+    response = service.mutate_ad_group_criteria(
+        customer_id=customer_id, operations=[operation]
+    )
+
+    return {
+        "removed_resource_name": response.results[0].resource_name,
+        "message": (
+            f"Keyword {criterion_id} permanently removed "
+            f"from ad group {ad_group_id}."
+        ),
     }

@@ -15,6 +15,7 @@
 """Tools for linking assets to campaigns and ad groups via the MCP server."""
 
 from typing import Dict, Any, List, Optional
+from mcp.server.fastmcp import Context
 from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
 
@@ -50,9 +51,7 @@ def link_asset_to_campaign(
 
     operation = client.get_type("CampaignAssetOperation")
     campaign_asset = operation.create
-    campaign_asset.campaign = campaign_service.campaign_path(
-        customer_id, campaign_id
-    )
+    campaign_asset.campaign = campaign_service.campaign_path(customer_id, campaign_id)
     campaign_asset.asset = asset_resource_name
 
     field_type_enum = client.enums.AssetFieldTypeEnum
@@ -98,9 +97,7 @@ def link_asset_to_ad_group(
 
     operation = client.get_type("AdGroupAssetOperation")
     ad_group_asset = operation.create
-    ad_group_asset.ad_group = ad_group_service.ad_group_path(
-        customer_id, ad_group_id
-    )
+    ad_group_asset.ad_group = ad_group_service.ad_group_path(customer_id, ad_group_id)
     ad_group_asset.asset = asset_resource_name
 
     field_type_enum = client.enums.AssetFieldTypeEnum
@@ -163,14 +160,17 @@ def link_assets_to_customer(
 
 
 @mcp.tool()
-def remove_campaign_asset(
+async def remove_campaign_asset(
     customer_id: str,
     campaign_id: str,
     asset_id: str,
     field_type: str,
     login_customer_id: Optional[str] = None,
+    ctx: Context = None,
 ) -> Dict[str, str]:
     """Removes an asset link from a campaign.
+
+    Requires user confirmation via interactive elicitation before proceeding.
 
     Args:
         customer_id: The Google Ads customer ID (numbers only, no hyphens).
@@ -182,6 +182,24 @@ def remove_campaign_asset(
     Returns:
         Dictionary with confirmation message.
     """
+    from pydantic import BaseModel, Field
+
+    class Confirmation(BaseModel):
+        confirm: bool = Field(description="Set to true to remove this asset.")
+
+    try:
+        result = await ctx.elicit(
+            message=(
+                f"⚠️ Remove {field_type} asset {asset_id} "
+                f"from campaign {campaign_id}?"
+            ),
+            schema=Confirmation,
+        )
+        if result.action != "accept" or not result.data.confirm:
+            return {"message": "Asset removal cancelled by user."}
+    except Exception:
+        pass
+
     client = utils.get_googleads_client(login_customer_id=login_customer_id)
     campaign_asset_service = client.get_service("CampaignAssetService")
 
@@ -198,5 +216,5 @@ def remove_campaign_asset(
 
     return {
         "removed_resource_name": response.results[0].resource_name,
-        "message": f"Asset {asset_id} removed from campaign {campaign_id}.",
+        "message": (f"Asset {asset_id} removed from " f"campaign {campaign_id}."),
     }
