@@ -50,9 +50,7 @@ def _get_developer_token() -> str:
     """Returns the developer token from the environment variable GOOGLE_ADS_DEVELOPER_TOKEN."""
     dev_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
     if dev_token is None:
-        raise ValueError(
-            "GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set."
-        )
+        raise ValueError("GOOGLE_ADS_DEVELOPER_TOKEN environment variable not set.")
     return dev_token
 
 
@@ -96,14 +94,17 @@ def get_googleads_client():
 def format_output_value(value: Any) -> Any:
     if isinstance(value, proto.Enum):
         return value.name
+    elif isinstance(value, proto.Message):
+        return proto.Message.to_dict(value)
+    elif isinstance(value, (list, tuple)):
+        return [format_output_value(item) for item in value]
     else:
         return value
 
 
 def format_output_row(row: proto.Message, attributes):
     return {
-        attr: format_output_value(get_nested_attr(row, attr))
-        for attr in attributes
+        attr: format_output_value(get_nested_attr(row, attr)) for attr in attributes
     }
 
 

@@ -15,6 +15,7 @@
 """Test cases for the utils module."""
 
 import unittest
+from google.ads.googleads.v23.common.types.metrics import Metrics
 from google.ads.googleads.v23.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
@@ -29,8 +30,40 @@ class TestUtils(unittest.TestCase):
         """Tests that output values are formatted correctly."""
 
         self.assertEqual(
-            utils.format_output_value(
-                CampaignStatusEnum.CampaignStatus.ENABLED
-            ),
+            utils.format_output_value(CampaignStatusEnum.CampaignStatus.ENABLED),
             "ENABLED",
         )
+
+    def test_format_output_value_proto_message(self):
+        """Tests that proto.Message values are converted to dict."""
+
+        msg = Metrics(clicks=100, impressions=1000)
+        result = utils.format_output_value(msg)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["clicks"], "100")
+        self.assertEqual(result["impressions"], "1000")
+
+    def test_format_output_value_list(self):
+        """Tests that list values are recursively formatted."""
+
+        result = utils.format_output_value([1, "hello", 3.14])
+        self.assertEqual(result, [1, "hello", 3.14])
+
+    def test_format_output_value_list_with_enums(self):
+        """Tests that lists containing enums are recursively formatted."""
+
+        result = utils.format_output_value(
+            [
+                CampaignStatusEnum.CampaignStatus.ENABLED,
+                CampaignStatusEnum.CampaignStatus.PAUSED,
+            ]
+        )
+        self.assertEqual(result, ["ENABLED", "PAUSED"])
+
+    def test_format_output_value_passthrough(self):
+        """Tests that primitive values pass through unchanged."""
+
+        self.assertEqual(utils.format_output_value("hello"), "hello")
+        self.assertEqual(utils.format_output_value(42), 42)
+        self.assertEqual(utils.format_output_value(3.14), 3.14)
+        self.assertIsNone(utils.format_output_value(None))
