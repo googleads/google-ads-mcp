@@ -119,6 +119,65 @@
       }
     },
     {
+      "name": "add_negative_keywords",
+      "description": "Adds negative keywords to a campaign to block irrelevant traffic.\n\nNegative keywords prevent your ads from showing for specific search terms.\n\nArgs:\n    customer_id: The Google Ads customer ID (numbers only, no hyphens).\n    campaign_id: The ID of the campaign to add negative keywords to.\n    keywords: List of keyword objects, each with:\n        - text: The keyword text (e.g., \"free LMS\").\n        - match_type: One of: EXACT, PHRASE, BROAD. Default: BROAD.\n    login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.\n\nReturns:\n    Dictionary with created negative keyword resource names.\n",
+      "inputSchema": {
+        "properties": {
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "keywords": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Login Customer Id"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "keywords"
+        ],
+        "title": "add_negative_keywordsArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "add_negative_keywordsOutput",
+        "type": "object"
+      }
+    },
+    {
       "name": "create_ad_group",
       "description": "Creates a new ad group within a campaign.\n\nArgs:\n    customer_id: The Google Ads customer ID (numbers only, no hyphens).\n    campaign_id: The ID of the campaign to add the ad group to.\n    name: The name for the new ad group.\n    cpc_bid_micros: Default max CPC bid in micros (e.g., 1000000 = $1.00). Default: 1000000.\n    ad_group_type: Ad group type. One of: SEARCH_STANDARD, DISPLAY_STANDARD, SHOPPING_PRODUCT_ADS, VIDEO_BUMPER, VIDEO_TRUE_VIEW_IN_STREAM. Default: SEARCH_STANDARD.\n    status: Initial status. One of: ENABLED, PAUSED. Default: ENABLED.\n    login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.\n\nReturns:\n    Dictionary with the created ad group resource name.\n",
       "inputSchema": {

@@ -393,3 +393,59 @@ async def remove_keyword(
             f"from ad group {ad_group_id}."
         ),
     }
+
+
+@mcp.tool()
+def add_negative_keywords(
+    customer_id: str,
+    campaign_id: str,
+    keywords: List[Dict[str, str]],
+    login_customer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Adds negative keywords to a campaign to block irrelevant traffic.
+
+    Negative keywords prevent your ads from showing for specific search terms.
+
+    Args:
+        customer_id: The Google Ads customer ID (numbers only, no hyphens).
+        campaign_id: The ID of the campaign to add negative keywords to.
+        keywords: List of keyword objects, each with:
+            - text: The keyword text (e.g., "free LMS").
+            - match_type: One of: EXACT, PHRASE, BROAD. Default: BROAD.
+        login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.
+
+    Returns:
+        Dictionary with created negative keyword resource names.
+    """
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    service = client.get_service("CampaignCriterionService")
+    campaign_service = client.get_service("CampaignService")
+
+    operations = []
+    for kw in keywords:
+        operation = client.get_type("CampaignCriterionOperation")
+        criterion = operation.create
+        criterion.campaign = campaign_service.campaign_path(
+            customer_id, campaign_id
+        )
+        criterion.negative = True
+        criterion.keyword.text = kw["text"]
+        match_type = kw.get("match_type", "BROAD")
+        match_enum = client.enums.KeywordMatchTypeEnum
+        criterion.keyword.match_type = getattr(match_enum, match_type)
+        operations.append(operation)
+
+    response = service.mutate_campaign_criteria(
+        customer_id=customer_id, operations=operations
+    )
+
+    return {
+        "negative_keyword_resource_names": [
+            r.resource_name for r in response.results
+        ],
+        "keywords_added": len(response.results),
+        "message": (
+            f"{len(response.results)} negative keyword(s) "
+            f"added to campaign {campaign_id}."
+        ),
+    }
