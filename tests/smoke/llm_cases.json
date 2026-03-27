@@ -36,6 +36,15 @@
     "tool_tokens": 138
   },
   {
+    "prompt": "Which customers do I have access to?",
+    "expected_tool": "list_accessible_customers",
+    "prompt_tokens": 2465,
+    "output_tokens": 12,
+    "model": "gemini-flash-latest",
+    "thought_tokens": 41,
+    "tool_tokens": 170
+  },
+  {
     "prompt": "Find enabled ad groups for customer {customer_id}.",
     "expected_tool": "search_search",
     "prompt_tokens": 656,

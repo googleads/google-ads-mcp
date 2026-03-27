@@ -29,7 +29,12 @@ def _strip_additional_properties(schema: dict) -> dict:
     if not isinstance(schema, dict):
         return schema
     for key, value in list(schema.items()):
-        if key in ("additionalProperties", "additional_properties"):
+        if key in (
+            "additionalProperties",
+            "additional_properties",
+            "x-fastmcp-wrap-result",
+            "title",
+        ):
             del schema[key]
         elif isinstance(value, dict):
             _strip_additional_properties(value)
