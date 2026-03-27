@@ -2073,6 +2073,63 @@
       }
     },
     {
+      "name": "set_ad_schedule",
+      "description": "Sets ad schedule (day/hour targeting) for a campaign.\n\nControls which days and hours ads are shown.\n\nArgs:\n    customer_id: The Google Ads customer ID.\n    campaign_id: The ID of the campaign.\n    schedules: List of schedule objects, each with:\n        - day_of_week: One of MONDAY, TUESDAY, WEDNESDAY,\n            THURSDAY, FRIDAY, SATURDAY, SUNDAY.\n        - start_hour: Start hour (0-23).\n        - start_minute: One of ZERO, FIFTEEN, THIRTY,\n            FORTY_FIVE. Default: ZERO.\n        - end_hour: End hour (0-23). Use 24 for midnight.\n        - end_minute: One of ZERO, FIFTEEN, THIRTY,\n            FORTY_FIVE. Default: ZERO.\n    login_customer_id: Optional manager account ID.\n\nReturns:\n    Dictionary with created schedule criteria.\n",
+      "inputSchema": {
+        "properties": {
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "schedules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Schedules",
+            "type": "array"
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Login Customer Id"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "schedules"
+        ],
+        "title": "set_ad_scheduleArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "set_ad_scheduleOutput",
+        "type": "object"
+      }
+    },
+    {
       "name": "set_campaign_status",
       "description": "Enables, pauses, or removes a Google Ads campaign.\n\nThis is a convenience tool for quickly changing campaign status.\n\nArgs:\n    customer_id: The Google Ads customer ID (numbers only, no hyphens).\n    campaign_id: The ID of the campaign.\n    status: The new status. One of: ENABLED, PAUSED, REMOVED.\n    login_customer_id: The Manager Account ID for accessing client accounts via a manager. Optional.\n\nReturns:\n    Dictionary with the updated resource name and confirmation message.\n",
       "inputSchema": {
@@ -2124,6 +2181,62 @@
           "result"
         ],
         "title": "set_campaign_statusOutput",
+        "type": "object"
+      }
+    },
+    {
+      "name": "set_geo_targets",
+      "description": "Sets geo targeting for a campaign by adding location criteria.\n\nCommon location IDs (Google Ads geo target constants):\n    US=2840, UK=2826, Canada=2124, Australia=2036,\n    India=2356, Singapore=2702, UAE=2784,\n    Germany=2276, France=2250\n\nFind more IDs at:\nhttps://developers.google.com/google-ads/api/data/geotargets\n\nArgs:\n    customer_id: The Google Ads customer ID.\n    campaign_id: The ID of the campaign.\n    location_ids: List of geo target constant IDs.\n    login_customer_id: Optional manager account ID.\n\nReturns:\n    Dictionary with created location criteria.\n",
+      "inputSchema": {
+        "properties": {
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "location_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Location Ids",
+            "type": "array"
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Login Customer Id"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "location_ids"
+        ],
+        "title": "set_geo_targetsArguments",
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "set_geo_targetsOutput",
         "type": "object"
       }
     },
