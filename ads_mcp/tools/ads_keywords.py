@@ -449,3 +449,124 @@ def add_negative_keywords(
             f"added to campaign {campaign_id}."
         ),
     }
+
+
+@mcp.tool()
+def set_geo_targets(
+    customer_id: str,
+    campaign_id: str,
+    location_ids: List[int],
+    login_customer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Sets geo targeting for a campaign by adding location criteria.
+
+    Common location IDs (Google Ads geo target constants):
+        US=2840, UK=2826, Canada=2124, Australia=2036,
+        India=2356, Singapore=2702, UAE=2784,
+        Germany=2276, France=2250
+
+    Find more IDs at:
+    https://developers.google.com/google-ads/api/data/geotargets
+
+    Args:
+        customer_id: The Google Ads customer ID.
+        campaign_id: The ID of the campaign.
+        location_ids: List of geo target constant IDs.
+        login_customer_id: Optional manager account ID.
+
+    Returns:
+        Dictionary with created location criteria.
+    """
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    service = client.get_service("CampaignCriterionService")
+    campaign_service = client.get_service("CampaignService")
+
+    operations = []
+    for loc_id in location_ids:
+        operation = client.get_type("CampaignCriterionOperation")
+        criterion = operation.create
+        criterion.campaign = campaign_service.campaign_path(
+            customer_id, campaign_id
+        )
+        criterion.location.geo_target_constant = f"geoTargetConstants/{loc_id}"
+        operations.append(operation)
+
+    response = service.mutate_campaign_criteria(
+        customer_id=customer_id, operations=operations
+    )
+
+    return {
+        "location_resource_names": [r.resource_name for r in response.results],
+        "locations_added": len(response.results),
+        "message": (
+            f"{len(response.results)} geo target(s) "
+            f"added to campaign {campaign_id}."
+        ),
+    }
+
+
+@mcp.tool()
+def set_ad_schedule(
+    customer_id: str,
+    campaign_id: str,
+    schedules: List[Dict[str, Any]],
+    login_customer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Sets ad schedule (day/hour targeting) for a campaign.
+
+    Controls which days and hours ads are shown.
+
+    Args:
+        customer_id: The Google Ads customer ID.
+        campaign_id: The ID of the campaign.
+        schedules: List of schedule objects, each with:
+            - day_of_week: One of MONDAY, TUESDAY, WEDNESDAY,
+                THURSDAY, FRIDAY, SATURDAY, SUNDAY.
+            - start_hour: Start hour (0-23).
+            - start_minute: One of ZERO, FIFTEEN, THIRTY,
+                FORTY_FIVE. Default: ZERO.
+            - end_hour: End hour (0-23). Use 24 for midnight.
+            - end_minute: One of ZERO, FIFTEEN, THIRTY,
+                FORTY_FIVE. Default: ZERO.
+        login_customer_id: Optional manager account ID.
+
+    Returns:
+        Dictionary with created schedule criteria.
+    """
+    client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    service = client.get_service("CampaignCriterionService")
+    campaign_service = client.get_service("CampaignService")
+
+    operations = []
+    for sched in schedules:
+        operation = client.get_type("CampaignCriterionOperation")
+        criterion = operation.create
+        criterion.campaign = campaign_service.campaign_path(
+            customer_id, campaign_id
+        )
+        day_enum = client.enums.DayOfWeekEnum
+        criterion.ad_schedule.day_of_week = getattr(
+            day_enum, sched["day_of_week"]
+        )
+        criterion.ad_schedule.start_hour = sched["start_hour"]
+        criterion.ad_schedule.end_hour = sched["end_hour"]
+
+        minute_enum = client.enums.MinuteOfHourEnum
+        start_min = sched.get("start_minute", "ZERO")
+        end_min = sched.get("end_minute", "ZERO")
+        criterion.ad_schedule.start_minute = getattr(minute_enum, start_min)
+        criterion.ad_schedule.end_minute = getattr(minute_enum, end_min)
+        operations.append(operation)
+
+    response = service.mutate_campaign_criteria(
+        customer_id=customer_id, operations=operations
+    )
+
+    return {
+        "schedule_resource_names": [r.resource_name for r in response.results],
+        "schedules_added": len(response.results),
+        "message": (
+            f"{len(response.results)} ad schedule(s) "
+            f"added to campaign {campaign_id}."
+        ),
+    }
