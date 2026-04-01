@@ -37,3 +37,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
+# hjLabs.in additions — credentials and local scripts
+env/
+get_refresh_token.sh
+create_aiml_campaign.py
