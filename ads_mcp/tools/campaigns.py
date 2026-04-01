@@ -803,14 +803,15 @@ def list_conversion_actions(
 def create_conversion_action(
     customer_id: str,
     name: str,
-    category: str = "LEAD",
+    category: str = "SUBMIT_LEAD_FORM",
 ) -> dict:
     """Create a conversion action for tracking leads/form submissions.
 
     Args:
         customer_id: Google Ads customer ID (digits only)
         name: Descriptive name e.g. 'Contact Form Submission' or 'Thank You Page Visit'
-        category: LEAD (default), PURCHASE, SIGNUP, PAGE_VIEW, DOWNLOAD
+        category: SUBMIT_LEAD_FORM (default), PURCHASE, SIGNUP, PAGE_VIEW, DOWNLOAD,
+                  PHONE_CALL_LEAD, IMPORTED_LEAD, QUALIFIED_LEAD, CONVERTED_LEAD, DEFAULT
     """
     client = utils.get_googleads_client()
     svc = client.get_service("ConversionActionService")
