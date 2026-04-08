@@ -278,6 +278,42 @@ How many active campaigns do I have for customer id 1234567890
 ```
 
 
+## Updating
+
+The MCP server does not auto-update. When new changes are pushed to this repo,
+you need to update your local installation manually.
+
+### If you installed with `pipx run --spec git+...` (Gemini settings.json method)
+
+Re-install to pull the latest version:
+
+```shell
+pipx run --spec git+https://github.com/googleads/google-ads-mcp.git google-ads-mcp --version
+```
+
+If `pipx` caches the old version, clear it first:
+
+```shell
+pipx run --clear-cache
+```
+
+### If you installed from a local clone (`pipx install -e .`)
+
+Pull the latest changes and restart your client:
+
+```shell
+cd google-ads-mcp
+git pull
+```
+
+Since editable installs link directly to your local files, the changes take
+effect immediately — no reinstall needed.
+
+### After updating
+
+Restart your MCP client (Gemini CLI, Gemini Code Assist, Claude Code, etc.) to
+pick up the changes.
+
 ## Contributing
 
 Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).

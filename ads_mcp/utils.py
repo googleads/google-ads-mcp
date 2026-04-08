@@ -25,6 +25,9 @@ from google.ads.googleads.v23.services.services.google_ads_service import (
 )
 
 from google.ads.googleads.util import get_nested_attr
+from google.protobuf.message import Message as ProtobufMessage
+from google.protobuf.json_format import MessageToDict
+from google._upb._message import RepeatedScalarContainer, RepeatedCompositeContainer
 import google.auth
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 import os
@@ -104,6 +107,12 @@ def get_googleads_client():
 def format_output_value(value: Any) -> Any:
     if isinstance(value, proto.Enum):
         return value.name
+    elif isinstance(value, RepeatedScalarContainer):
+        return list(value)
+    elif isinstance(value, RepeatedCompositeContainer):
+        return [MessageToDict(v) for v in value]
+    elif isinstance(value, ProtobufMessage):
+        return MessageToDict(value)
     else:
         return value
 
