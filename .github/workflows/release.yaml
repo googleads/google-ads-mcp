@@ -49,21 +49,69 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.generate-image-tag.outputs.image_tag }}
 
+  sync-prod-secret:
+    name: Sync prod secret
+    needs:
+      - generate-image-tag
+      - build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud for thor
+        id: auth-thor
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/207001532273/locations/global/workloadIdentityPools/github/providers/stape-io
+          service_account: github-actions@stape-production.iam.gserviceaccount.com
+
+      - name: Get GKE credentials for thor
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          project_id: stape-production
+          cluster_name: ${{ secrets.GKE_CLUSTER_PROD }}
+          location: ${{ secrets.GKE_LOCATION_PROD }}
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1
+
+      - name: Sync prod secret to thor
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          item_json=$(op item get env.prod --vault google-ads-mcp --format json)
+
+          printf '%s' "$item_json" | jq -r '
+            [ .fields[]? | select(.label != "notesPlain" and .value != null and .value != "") | "\(.label)=\(.value)" ] as $pairs
+            | if ($pairs | length) > 0 then
+                $pairs[]
+              else
+                (.fields[]? | select(.label == "notesPlain") | .value // empty)
+              end
+          ' > .env.local
+
+          test -s .env.local
+
+          kubectl create namespace mcp-gads --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic mcp-gads \
+            --namespace mcp-gads \
+            --dry-run=client \
+            --from-env-file=.env.local \
+            -o yaml | kubectl apply -f -
+
   update-argocd:
     name: Update ArgoCD config
     needs:
       - generate-image-tag
       - build-and-push-image
+      - sync-prod-secret
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: Create Releaser GitHub App Token
-        uses: actions/create-github-app-token@v1
-        id: create-releaser-github-app-token
-        with:
-          app-id: ${{ secrets.RELEASER_APP_ID }}
-          private-key: ${{ secrets.RELEASER_APP_KEY }}
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -79,4 +127,4 @@ jobs:
             }
           message: Updated image.tag in values-prod.yaml
           quotingType: '"'
-          token: ${{ steps.create-releaser-github-app-token.outputs.token }}
+          token: ${{ github.token }}
