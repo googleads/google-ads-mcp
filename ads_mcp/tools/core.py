@@ -26,7 +26,11 @@ from google.ads.googleads.v21.services.types.customer_service import (
 
 @mcp.tool()
 def list_accessible_customers() -> List[str]:
-    """Returns ids of customers directly accessible by the user authenticating the call."""
+    """Returns IDs of customers directly accessible by the user authenticating the call.
+
+    Use this tool first to discover available customer IDs if the user hasn't provided one.
+    Most other tools require a valid customer ID as input.
+    """
     ga_service = utils.get_googleads_service("CustomerService")
     accessible_customers: ListAccessibleCustomersResponse = (
         ga_service.list_accessible_customers()

@@ -30,8 +30,11 @@ def get_metrics() -> str:
     Provides the official documentation for metrics in the Google Ads API,
     listing all available metrics that can be queried to analyze performance
     data.
-    Host LLMs should access this resource to identify which metrics are
-    available and how they are calculated.
+
+    Use this resource to discover available metrics. Note that the
+    `get_resource_metadata` tool only returns fields specific to a resource
+    (e.g., 'campaign.id') and does NOT list available segments or metrics.
+    Refer to this resource to find valid metrics for your queries.
 
     Returns:
         str: The metrics documentation in HTML format.

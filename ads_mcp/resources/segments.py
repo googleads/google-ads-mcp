@@ -30,8 +30,11 @@ def get_segments() -> str:
     Provides the official documentation for segments in the Google Ads API,
     detailing the available segments that can be used in GAQL queries to
     partition metrics.
-    Host LLMs should access this resource to understand which segments
-    can be used with specific resources and metrics.
+
+    Use this resource to discover available segments. Note that the
+    `get_resource_metadata` tool only returns fields specific to a resource
+    (e.g., 'campaign.id') and does NOT list available segments or metrics.
+    Refer to this resource to find valid segments for your queries.
 
     Returns:
         str: The segments documentation in HTML format.

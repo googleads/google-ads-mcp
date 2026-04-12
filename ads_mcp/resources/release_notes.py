@@ -29,9 +29,10 @@ def get_release_notes() -> str:
 
     Provides the official release notes for the Google Ads API, detailing new
     features, changes, deprecations, and bug fixes across all API versions.
-    Host LLMs should access this resource to check for breaking changes,
-    determine if a specific feature is supported in a given API version, or
-    troubleshoot issues by consulting recent API updates.
+
+    Use this resource to check for recent API changes or deprecations. It is
+    generally NOT needed for typical data retrieval tasks unless you encounter
+    errors that might be due to API version differences.
 
     Returns:
         str: The release notes in HTML format.

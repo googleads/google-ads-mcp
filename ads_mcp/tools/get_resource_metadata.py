@@ -26,7 +26,7 @@ def get_resource_metadata(resource_name: str) -> Dict[str, Any]:
 
     Use this tool to find out which fields you can select, filter by, or sort by
     when querying a specific resource (e.g., 'campaign', 'ad_group').
-    Do not guess fields, you MUST use this tool to discover them.
+    Do not guess fields, you MUST use this tool to discover them before constructing a query for the `search` tool.
 
     The responses of this tool should be cached, as they don't change frequently.
 

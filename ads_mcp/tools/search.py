@@ -98,34 +98,20 @@ def _search_tool_description() -> str:
     return f"""
 {search.__doc__}
 
-### Hints
-    Language Grammar can be found at https://developers.google.com/google-ads/api/docs/query/grammar
-    All resources and descriptions are found at https://developers.google.com/google-ads/api/fields/v23/overview
+## CRITICAL RULES
+- **customer_id**: Must be a string of digits ONLY. Remove all hyphens (e.g., use '1234567890', NOT '123-456-7890').
+- **Dates**: Must use 'YYYY-MM-DD' format with dashes. Do NOT use date literals (e.g., 'TODAY', 'YESTERDAY'). Always use finite ranges with start and end dates.
+- **Fields**: Do NOT guess fields. You MUST use the `get_resource_metadata` tool to discover valid fields for a resource before querying. Always use the full field name (e.g., 'campaign.id').
 
-    For Conversion issues try looking in offline_conversion_upload_conversion_action_summary
+## Usage Hints
+- **Query Grammar**: See https://developers.google.com/google-ads/api/docs/query/grammar for syntax.
+- **Resources Overview**: See https://developers.google.com/google-ads/api/fields/v23/overview for all resources.
+- **Conversions**: For conversion issues, check `offline_conversion_upload_conversion_action_summary` or see https://developers.google.com/google-ads/api/docs/conversions/upload-summaries.
+- **Limits**: Queries to `change_event` must have a `LIMIT` <= 10000.
 
-### Hint for customer_id
-    should be a string of numbers without punctuation
-    if presented in the form 123-456-7890 remove the hyphens and use 1234567890
-
-### Hints for Dates
-    All dates should be in the form YYYY-MM-DD and must include the dashes (-)
-    Date literals from the Grammar must NEVER be used
-    Date ranges should be finite and must include a start and end date
-
-### Hints for limits
-    Requests to resource change_event must specify a LIMIT of less than or equal to 10000
-
-### Hints for conversions questions
-    https://developers.google.com/google-ads/api/docs/conversions/upload-summaries 
-
-
-### Hints for all resources
-    What follows is a list of valid resources that can be queried.
-    To find out which specific fields you can select, filter by, or sort by for a given resource, you MUST use the `get_resource_metadata` tool.
-    Do not guess the fields. Use the tool to look them up.
-    Once you have the fields, ensure the whole field name is used (e.g., 'campaign.id', not just 'id'). Wildcards and partial fields are not allowed.
-    {file_content}
+## Valid Resources
+What follows is a list of valid resources that can be queried.
+{file_content}
 """
 
 

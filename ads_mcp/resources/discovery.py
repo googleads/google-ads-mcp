@@ -30,8 +30,11 @@ def get_discovery_document() -> str:
     Provides the discovery document for the Google Ads API v23, which
     describes the API surface, including resources, methods, and
     schemas.
-    Host LLMs should access this resource to understand the structure of
-    the Google Ads API and discover available features.
+
+    Use this resource to get a high-level overview of the API surface or to
+    find available resources. However, for finding specific fields you can
+    select, filter, or sort on, you MUST use the `get_resource_metadata` tool
+    instead, as it provides more targeted and up-to-date information for queries.
 
     Returns:
         str: The discovery document in JSON format.
