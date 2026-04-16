@@ -10,7 +10,7 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Retrieve the Google Ads API discovery document.\n\nProvides the discovery document for the Google Ads API v23, which\ndescribes the API surface, including resources, methods, and\nschemas.\nHost LLMs should access this resource to understand the structure of\nthe Google Ads API and discover available features.\n\nReturns:\n    str: The discovery document in JSON format.",
+      "description": "Retrieve the Google Ads API discovery document.\n\nProvides the discovery document for the Google Ads API v23, which\ndescribes the API surface, including resources, methods, and\nschemas.\n\nUse this resource to get a high-level overview of the API surface or to\nfind available resources. However, for finding specific fields you can\nselect, filter, or sort on, you MUST use the `get_resource_metadata` tool\ninstead, as it provides more targeted and up-to-date information for queries.\n\nReturns:\n    str: The discovery document in JSON format.",
       "mimeType": "application/json",
       "name": "get_discovery_document",
       "uri": "resource://discovery-document"
@@ -25,7 +25,7 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Retrieve the Google Ads API metrics documentation.\n\nProvides the official documentation for metrics in the Google Ads API,\nlisting all available metrics that can be queried to analyze performance\ndata.\nHost LLMs should access this resource to identify which metrics are\navailable and how they are calculated.\n\nReturns:\n    str: The metrics documentation in HTML format.",
+      "description": "Retrieve the Google Ads API metrics documentation.\n\nProvides the official documentation for metrics in the Google Ads API,\nlisting all available metrics that can be queried to analyze performance\ndata.\n\nUse this resource to discover available metrics. Note that the\n`get_resource_metadata` tool only returns fields specific to a resource\n(e.g., 'campaign.id') and does NOT list available segments or metrics.\nRefer to this resource to find valid metrics for your queries.\n\nReturns:\n    str: The metrics documentation in HTML format.",
       "mimeType": "text/html",
       "name": "get_metrics",
       "uri": "resource://metrics"
@@ -40,7 +40,7 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Retrieve the Google Ads API release notes.\n\nProvides the official release notes for the Google Ads API, detailing new\nfeatures, changes, deprecations, and bug fixes across all API versions.\nHost LLMs should access this resource to check for breaking changes,\ndetermine if a specific feature is supported in a given API version, or\ntroubleshoot issues by consulting recent API updates.\n\nReturns:\n    str: The release notes in HTML format.",
+      "description": "Retrieve the Google Ads API release notes.\n\nProvides the official release notes for the Google Ads API, detailing new\nfeatures, changes, deprecations, and bug fixes across all API versions.\n\nUse this resource to check for recent API changes or deprecations. It is\ngenerally NOT needed for typical data retrieval tasks unless you encounter\nerrors that might be due to API version differences.\n\nReturns:\n    str: The release notes in HTML format.",
       "mimeType": "text/html",
       "name": "get_release_notes",
       "uri": "resource://release-notes"
@@ -55,7 +55,7 @@
         "idempotentHint": true,
         "readOnlyHint": true
       },
-      "description": "Retrieve the Google Ads API segments documentation.\n\nProvides the official documentation for segments in the Google Ads API,\ndetailing the available segments that can be used in GAQL queries to\npartition metrics.\nHost LLMs should access this resource to understand which segments\ncan be used with specific resources and metrics.\n\nReturns:\n    str: The segments documentation in HTML format.",
+      "description": "Retrieve the Google Ads API segments documentation.\n\nProvides the official documentation for segments in the Google Ads API,\ndetailing the available segments that can be used in GAQL queries to\npartition metrics.\n\nUse this resource to discover available segments. Note that the\n`get_resource_metadata` tool only returns fields specific to a resource\n(e.g., 'campaign.id') and does NOT list available segments or metrics.\nRefer to this resource to find valid segments for your queries.\n\nReturns:\n    str: The segments documentation in HTML format.",
       "mimeType": "text/html",
       "name": "get_segments",
       "uri": "resource://segments"

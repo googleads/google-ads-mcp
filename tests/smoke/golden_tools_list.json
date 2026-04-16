@@ -9,11 +9,12 @@
       "annotations": {
         "readOnlyHint": true
       },
-      "description": "Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource.\n\nUse this tool to find out which fields you can select, filter by, or sort by\nwhen querying a specific resource (e.g., 'campaign', 'ad_group').\nDo not guess fields, you MUST use this tool to discover them.\n\nThe responses of this tool should be cached, as they don't change frequently.\n\nArgs:\n    resource_name: The name of the Google Ads resource (e.g., 'campaign', 'ad_group').",
+      "description": "Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource.\n\nUse this tool to find out which fields you can select, filter by, or sort by\nwhen querying a specific resource (e.g., 'campaign', 'ad_group').\nDo not guess fields, you MUST use this tool to discover them before constructing a query for the `search` tool.\n\nThe responses of this tool should be cached, as they don't change frequently.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "resource_name": {
+            "description": "The name of the Google Ads resource (e.g., 'campaign', 'ad_group').",
             "type": "string"
           }
         },
@@ -34,7 +35,7 @@
           "tags": []
         }
       },
-      "description": "Returns ids of customers directly accessible by the user authenticating the call.",
+      "description": "Returns IDs of customers directly accessible by the user authenticating the call.\n\nUse this tool first to discover available customer IDs if the user hasn't provided one.\nMost other tools require a valid customer ID as input.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},
@@ -63,21 +64,24 @@
           "tags": []
         }
       },
-      "description": "Fetches data from the Google Ads API using the search method\n\nArgs:\n    customer_id: The id of the customer\n    fields: The fields to fetch\n    resource: The resource to return fields from\n    conditions: List of conditions to filter the data, combined using AND clauses\n    orderings: How the data is ordered\n    limit: The maximum number of rows to return\n\n\n\n### Hints\n    Language Grammar can be found at https://developers.google.com/google-ads/api/docs/query/grammar\n    All resources and descriptions are found at https://developers.google.com/google-ads/api/fields/v23/overview\n\n    For Conversion issues try looking in offline_conversion_upload_conversion_action_summary\n\n### Hint for customer_id\n    should be a string of numbers without punctuation\n    if presented in the form 123-456-7890 remove the hyphens and use 1234567890\n\n### Hints for Dates\n    All dates should be in the form YYYY-MM-DD and must include the dashes (-)\n    Date literals from the Grammar must NEVER be used\n    Date ranges should be finite and must include a start and end date\n\n### Hints for limits\n    Requests to resource change_event must specify a LIMIT of less than or equal to 10000\n\n### Hints for conversions questions\n    https://developers.google.com/google-ads/api/docs/conversions/upload-summaries \n\n\n### Hints for all resources\n    What follows is a list of valid resources that can be queried.\n    To find out which specific fields you can select, filter by, or sort by for a given resource, you MUST use the `get_resource_metadata` tool.\n    Do not guess the fields. Use the tool to look them up.\n    Once you have the fields, ensure the whole field name is used (e.g., 'campaign.id', not just 'id'). Wildcards and partial fields are not allowed.\n    accessible_bidding_strategy\naccount_budget\naccount_budget_proposal\naccount_link\nad\nad_group\nad_group_ad\nad_group_ad_asset_combination_view\nad_group_ad_asset_view\nad_group_ad_label\nad_group_asset\nad_group_asset_set\nad_group_audience_view\nad_group_bid_modifier\nad_group_criterion\nad_group_criterion_customizer\nad_group_criterion_label\nad_group_criterion_simulation\nad_group_customizer\nad_group_label\nad_group_simulation\nad_parameter\nad_schedule_view\nage_range_view\nai_max_search_term_ad_combination_view\nandroid_privacy_shared_key_google_ad_group\nandroid_privacy_shared_key_google_campaign\nandroid_privacy_shared_key_google_network_type\napplied_incentive\nasset\nasset_field_type_view\nasset_group\nasset_group_asset\nasset_group_listing_group_filter\nasset_group_product_group_view\nasset_group_signal\nasset_group_top_combination_view\nasset_set\nasset_set_asset\nasset_set_type_view\naudience\nbatch_job\nbidding_data_exclusion\nbidding_seasonality_adjustment\nbidding_strategy\nbidding_strategy_simulation\nbilling_setup\ncall_view\ncampaign\ncampaign_aggregate_asset_view\ncampaign_asset\ncampaign_asset_set\ncampaign_audience_view\ncampaign_bid_modifier\ncampaign_budget\ncampaign_conversion_goal\ncampaign_criterion\ncampaign_customizer\ncampaign_draft\ncampaign_goal_config\ncampaign_group\ncampaign_label\ncampaign_lifecycle_goal\ncampaign_search_term_insight\ncampaign_search_term_view\ncampaign_shared_set\ncampaign_simulation\ncarrier_constant\nchange_event\nchange_status\nchannel_aggregate_asset_view\nclick_view\ncombined_audience\ncontent_criterion_view\nconversion_action\nconversion_custom_variable\nconversion_goal_campaign_config\nconversion_value_rule\nconversion_value_rule_set\ncurrency_constant\ncustom_audience\ncustom_conversion_goal\ncustom_interest\ncustomer\ncustomer_asset\ncustomer_asset_set\ncustomer_client\ncustomer_client_link\ncustomer_conversion_goal\ncustomer_customizer\ncustomer_label\ncustomer_lifecycle_goal\ncustomer_manager_link\ncustomer_negative_criterion\ncustomer_search_term_insight\ncustomer_user_access\ncustomer_user_access_invitation\ncustomizer_attribute\ndata_link\ndetail_content_suitability_placement_view\ndetail_placement_view\ndetailed_demographic\ndisplay_keyword_view\ndistance_view\ndomain_category\ndynamic_search_ads_search_term_view\nexpanded_landing_page_view\nexperiment\nexperiment_arm\nfinal_url_expansion_asset_view\ngender_view\ngeo_target_constant\ngeographic_view\ngoal\ngroup_content_suitability_placement_view\ngroup_placement_view\nhotel_group_view\nhotel_performance_view\nhotel_reconciliation\nincome_range_view\nkeyword_plan\nkeyword_plan_ad_group\nkeyword_plan_ad_group_keyword\nkeyword_plan_campaign\nkeyword_plan_campaign_keyword\nkeyword_theme_constant\nkeyword_view\nlabel\nlanding_page_view\nlanguage_constant\nlead_form_submission_data\nlife_event\nlocal_services_employee\nlocal_services_lead\nlocal_services_lead_conversation\nlocal_services_verification_artifact\nlocation_interest_view\nlocation_view\nmanaged_placement_view\nmatched_location_interest_view\nmedia_file\nmobile_app_category_constant\nmobile_device_constant\noffline_conversion_upload_client_summary\noffline_conversion_upload_conversion_action_summary\noffline_user_data_job\noperating_system_version_constant\npaid_organic_search_term_view\nparental_status_view\nper_store_view\nperformance_max_placement_view\nproduct_category_constant\nproduct_group_view\nproduct_link\nproduct_link_invitation\nqualifying_question\nrecommendation\nrecommendation_subscription\nremarketing_action\nsearch_term_view\nshared_criterion\nshared_set\nshopping_performance_view\nshopping_product\nsmart_campaign_search_term_view\nsmart_campaign_setting\ntargeting_expansion_view\nthird_party_app_analytics_link\ntopic_constant\ntopic_view\ntravel_activity_group_view\ntravel_activity_performance_view\nuser_interest\nuser_list\nuser_list_customer_type\nuser_location_view\nvideo\nwebpage_view\nyou_tube_video_upload",
+      "description": "Fetches data from the Google Ads API using the search method",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "conditions": {
             "default": null,
+            "description": "List of conditions to filter the data, combined using AND clauses",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "customer_id": {
+            "description": "The id of the customer",
             "type": "string"
           },
           "fields": {
+            "description": "The fields to fetch",
             "items": {
               "type": "string"
             },
@@ -92,16 +96,19 @@
                 "type": "string"
               }
             ],
-            "default": null
+            "default": null,
+            "description": "The maximum number of rows to return"
           },
           "orderings": {
             "default": null,
+            "description": "How the data is ordered",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "resource": {
+            "description": "The resource to return fields from",
             "type": "string"
           }
         },

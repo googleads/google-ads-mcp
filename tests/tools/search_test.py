@@ -80,7 +80,7 @@ class TestSearch(unittest.TestCase):
             ):
                 description = search._search_tool_description()
                 self.assertIn("resource1: field1, field2", description)
-                self.assertIn("Language Grammar", description)
+                self.assertIn("Query Grammar", description)
 
     def test_search_tool_description_file_not_found(self):
         """Tests that the tool description handles missing file correctly."""
