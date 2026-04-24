@@ -35,7 +35,7 @@ class MCPHeaderInterceptor(
         """
         try:
             return metadata.version("google-ads-mcp")
-        except:
+        except Exception:
             return "unknown"
 
     _MCP_EXTRA_HEADER = (
@@ -82,7 +82,7 @@ class MCPHeaderInterceptor(
                 metadata=metadata
             )
             return continuation(new_client_call_details, request)
-        except:
+        except Exception:
             logger.error("Error in MCPHeaderInterceptor", exc_info=True)
             return continuation(client_call_details, request)
 

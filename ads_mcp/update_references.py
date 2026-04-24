@@ -15,8 +15,6 @@
 """Tools for generating file containing a list of resources and their fields."""
 
 import utils
-import json
-import collections
 
 
 def update_gaql_resource_file():
