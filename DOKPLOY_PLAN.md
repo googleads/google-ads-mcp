@@ -162,7 +162,10 @@ The repo now ships with a `Dockerfile` + `docker-compose.yml` + `.dockerignore`.
 - Same Traefik labels, same host, same env vars — nothing else moves.
 
 ### Files that make this work (this commit)
-- `Dockerfile` — `python:3.12-slim` base, installs `.` as a package, drops `build-essential` after install so the image stays ~200MB. TCP healthcheck on 8000.
+- `Dockerfile` — `python:3.12-slim` base, two-phase install for fast incremental rebuilds:
+  - **Phase 1** copies only `pyproject.toml`, extracts `project.dependencies` via stdlib `tomllib`, and `pip install`s the third-party deps (google-ads, mcp[cli], fastmcp and their transitive graph). `build-essential` is added and purged inside the same RUN so it doesn't bloat the layer. **Cached until pyproject.toml changes.**
+  - **Phase 2** copies `README.md`, `MANIFEST.in`, `ads_mcp/` and runs `pip install --no-deps .` — just the local package, no reinstalling the dep tree. Takes ~2–5s even cold.
+  - Net effect: day-to-day code pushes rebuild in ~10–15s (only Phase 2 runs); a dep bump still triggers a full ~90s Phase 1. Single source of truth stays `pyproject.toml` — no separate `requirements.txt` to keep in sync.
 - `docker-compose.yml` — uses `build: .` instead of `image:`. Host rule is parameterized as `${MCP_HOST:-ads-mcp.rahulverma.cc}` so you can reuse the compose across environments without edits.
 - `.dockerignore` — excludes `.git`, `tests/`, `docs/`, planning docs, caches. Keeps the build context small (<1 MB).
 
