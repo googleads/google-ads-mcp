@@ -14,7 +14,7 @@
 
 """Tools for fetching metadata for Google Ads resources."""
 
-from typing import Dict, List, Any
+from typing import Any, Dict
 from ads_mcp.coordinator import mcp
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
