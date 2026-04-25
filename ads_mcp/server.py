@@ -37,6 +37,7 @@ from ads_mcp.tools import (  # noqa: F401
     performance_max,
     bidding_strategies,
     experiments,
+    bid_modifiers,
 )
 from ads_mcp.resources import (
     discovery,
