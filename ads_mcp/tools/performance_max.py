@@ -122,9 +122,12 @@ def create_performance_max_campaign(
 
     with _common.google_ads_errors():
         response = service.mutate_campaigns(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -282,9 +285,12 @@ def create_pmax_asset_group(
 
     with _common.google_ads_errors():
         response = google_ads_service.mutate(
-            customer_id=customer_id,
-            mutate_operations=mutate_operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateGoogleAdsRequest",
+                customer_id=customer_id,
+                mutate_operations=mutate_operations,
+                validate_only=dry_run,
+            )
         )
 
     # Pull out the AssetGroup result (always first)

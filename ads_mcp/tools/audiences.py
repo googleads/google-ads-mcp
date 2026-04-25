@@ -118,9 +118,12 @@ def create_customer_match_user_list(
 
     with _common.google_ads_errors():
         response = service.mutate_user_lists(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateUserListsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -242,9 +245,12 @@ def upload_customer_match_contacts(
     # 3. Add operations (can be called multiple times for large uploads)
     with _common.google_ads_errors():
         add_response = job_service.add_offline_user_data_job_operations(
-            resource_name=job_resource,
-            operations=operations,
-            enable_partial_failure=True,
+            request=_common.build_request(
+                client, "AddOfflineUserDataJobOperationsRequest",
+                resource_name=job_resource,
+                operations=operations,
+                enable_partial_failure=True,
+            )
         )
 
     # 4. Kick the job
@@ -305,9 +311,12 @@ def attach_user_list_to_ad_group(
     c.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
     with _common.google_ads_errors():
         response = service.mutate_ad_group_criteria(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupCriteriaRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -335,9 +344,12 @@ def attach_user_list_to_campaign(
     )
     with _common.google_ads_errors():
         response = service.mutate_campaign_criteria(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignCriteriaRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

@@ -87,10 +87,13 @@ def upload_click_conversions(
 
     with _common.google_ads_errors():
         response = service.upload_click_conversions(
-            customer_id=customer_id,
-            conversions=rows,
-            partial_failure=partial_failure,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "UploadClickConversionsRequest",
+                customer_id=customer_id,
+                conversions=rows,
+                partial_failure=partial_failure,
+                validate_only=dry_run,
+            )
         )
 
     out_rows = []

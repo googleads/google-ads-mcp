@@ -99,9 +99,12 @@ def add_campaign_location_targets(
         operations.append(op)
     with _common.google_ads_errors():
         response = service.mutate_campaign_criteria(
-            customer_id=customer_id,
-            operations=operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignCriteriaRequest",
+                customer_id=customer_id,
+                operations=operations,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -134,9 +137,12 @@ def add_campaign_language_targets(
         operations.append(op)
     with _common.google_ads_errors():
         response = service.mutate_campaign_criteria(
-            customer_id=customer_id,
-            operations=operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignCriteriaRequest",
+                customer_id=customer_id,
+                operations=operations,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

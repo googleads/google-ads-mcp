@@ -55,9 +55,12 @@ def _create(customer_id: str, op, dry_run: bool) -> dict[str, Any]:
     service = client.get_service("BiddingStrategyService")
     with _common.google_ads_errors():
         response = service.mutate_bidding_strategies(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateBiddingStrategiesRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -186,9 +189,12 @@ def update_bidding_strategy(
 
     with _common.google_ads_errors():
         response = service.mutate_bidding_strategies(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateBiddingStrategiesRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -221,9 +227,12 @@ def set_campaign_bidding_strategy(
     _common.set_field_mask(op, "bidding_strategy")
     with _common.google_ads_errors():
         response = service.mutate_campaigns(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

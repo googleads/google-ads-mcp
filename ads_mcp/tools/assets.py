@@ -114,9 +114,12 @@ def create_sitelink_asset(
 
     with _common.google_ads_errors():
         response = service.mutate_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -144,9 +147,12 @@ def create_callout_asset(
 
     with _common.google_ads_errors():
         response = service.mutate_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -184,9 +190,12 @@ def create_structured_snippet_asset(
 
     with _common.google_ads_errors():
         response = service.mutate_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -230,9 +239,12 @@ def create_call_asset(
 
     with _common.google_ads_errors():
         response = service.mutate_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -295,9 +307,12 @@ def create_image_asset(
 
     with _common.google_ads_errors():
         response = service.mutate_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -335,9 +350,12 @@ def link_assets_to_customer(
         ops.append(op)
     with _common.google_ads_errors():
         response = service.mutate_customer_assets(
-            customer_id=customer_id,
-            operations=ops,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCustomerAssetsRequest",
+                customer_id=customer_id,
+                operations=ops,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -371,9 +389,12 @@ def link_assets_to_campaign(
         ops.append(op)
     with _common.google_ads_errors():
         response = service.mutate_campaign_assets(
-            customer_id=customer_id,
-            operations=ops,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignAssetsRequest",
+                customer_id=customer_id,
+                operations=ops,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -407,9 +428,12 @@ def link_assets_to_ad_group(
         ops.append(op)
     with _common.google_ads_errors():
         response = service.mutate_ad_group_assets(
-            customer_id=customer_id,
-            operations=ops,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupAssetsRequest",
+                customer_id=customer_id,
+                operations=ops,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -432,9 +456,12 @@ def unlink_customer_asset(
     op.remove = customer_asset_resource_name
     with _common.google_ads_errors():
         response = service.mutate_customer_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCustomerAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -457,9 +484,12 @@ def unlink_campaign_asset(
     op.remove = campaign_asset_resource_name
     with _common.google_ads_errors():
         response = service.mutate_campaign_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -482,9 +512,12 @@ def unlink_ad_group_asset(
     op.remove = ad_group_asset_resource_name
     with _common.google_ads_errors():
         response = service.mutate_ad_group_assets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupAssetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

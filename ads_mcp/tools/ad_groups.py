@@ -100,9 +100,12 @@ def create_ad_group(
 
     with _common.google_ads_errors():
         response = service.mutate_ad_groups(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -142,9 +145,12 @@ def update_ad_group(
 
     with _common.google_ads_errors():
         response = service.mutate_ad_groups(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -163,9 +169,12 @@ def _set_status(
     _common.set_field_mask(op, "status")
     with _common.google_ads_errors():
         response = service.mutate_ad_groups(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -207,9 +216,12 @@ def remove_ad_group(
     op.remove = _common.ad_group_path(customer_id, ad_group_id)
     with _common.google_ads_errors():
         response = service.mutate_ad_groups(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

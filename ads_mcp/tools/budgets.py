@@ -76,9 +76,12 @@ def create_campaign_budget(
 
     with _common.google_ads_errors():
         response = service.mutate_campaign_budgets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignBudgetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -131,9 +134,12 @@ def update_campaign_budget(
 
     with _common.google_ads_errors():
         response = service.mutate_campaign_budgets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignBudgetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -156,9 +162,12 @@ def remove_campaign_budget(
     op.remove = _common.campaign_budget_path(customer_id, budget_id)
     with _common.google_ads_errors():
         response = service.mutate_campaign_budgets(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignBudgetsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

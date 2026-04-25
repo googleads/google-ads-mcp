@@ -133,9 +133,12 @@ def add_keywords(
 
     with _common.google_ads_errors():
         response = service.mutate_ad_group_criteria(
-            customer_id=customer_id,
-            operations=operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupCriteriaRequest",
+                customer_id=customer_id,
+                operations=operations,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -173,9 +176,12 @@ def update_keyword(
 
     with _common.google_ads_errors():
         response = service.mutate_ad_group_criteria(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupCriteriaRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -201,9 +207,12 @@ def remove_keyword(
     )
     with _common.google_ads_errors():
         response = service.mutate_ad_group_criteria(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupCriteriaRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -238,9 +247,12 @@ def add_ad_group_negative_keywords(
         operations.append(op)
     with _common.google_ads_errors():
         response = service.mutate_ad_group_criteria(
-            customer_id=customer_id,
-            operations=operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateAdGroupCriteriaRequest",
+                customer_id=customer_id,
+                operations=operations,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -275,9 +287,12 @@ def add_campaign_negative_keywords(
         operations.append(op)
     with _common.google_ads_errors():
         response = service.mutate_campaign_criteria(
-            customer_id=customer_id,
-            operations=operations,
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignCriteriaRequest",
+                customer_id=customer_id,
+                operations=operations,
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -303,9 +318,12 @@ def remove_campaign_criterion(
     )
     with _common.google_ads_errors():
         response = service.mutate_campaign_criteria(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateCampaignCriteriaRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,

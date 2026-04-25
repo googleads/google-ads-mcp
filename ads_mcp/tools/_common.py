@@ -266,5 +266,40 @@ def mutate_summary(response, op_kind: str) -> list[dict]:
     return [{"operation": op_kind, "results": results}]
 
 
+def build_request(client, request_type_name: str, **fields):
+    """Construct any google-ads Request proto, setting fields universally.
+
+    Why this exists: for every Mutate*/Upload*/Add* service in google-ads
+    Python, fields like `validate_only`, `partial_failure`, and
+    `enable_partial_failure` are NOT exposed as flat kwargs on the service
+    method — they only live on the Request proto. Calling
+    `service.mutate_x(customer_id=..., operations=..., validate_only=True)`
+    raises `unexpected keyword argument 'validate_only'`. The fix is to
+    construct the Request proto and pass it via `request=`. This helper
+    builds that request from kwargs:
+
+      req = build_request(
+          client, "MutateCampaignBudgetsRequest",
+          customer_id=customer_id,
+          operations=[op],
+          validate_only=dry_run,
+      )
+      service.mutate_campaign_budgets(request=req)
+
+    Repeated fields (like `operations`) are .extend()ed; scalars are set.
+    None values are skipped so callers can pass optionals freely.
+    """
+    request = client.get_type(request_type_name)
+    for key, value in fields.items():
+        if value is None:
+            continue
+        attr = getattr(request, key)
+        if isinstance(value, (list, tuple)) and hasattr(attr, "extend"):
+            attr.extend(value)
+        else:
+            setattr(request, key, value)
+    return request
+
+
 def comma_join(items: Iterable[str]) -> str:
     return ", ".join(f"'{i}'" for i in items)

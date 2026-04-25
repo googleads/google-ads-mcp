@@ -88,9 +88,12 @@ def create_experiment(
 
     with _common.google_ads_errors():
         response = service.mutate_experiments(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateExperimentsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
@@ -135,9 +138,12 @@ def create_experiment_arm(
 
     with _common.google_ads_errors():
         response = service.mutate_experiment_arms(
-            customer_id=customer_id,
-            operations=[op],
-            validate_only=dry_run,
+            request=_common.build_request(
+                client, "MutateExperimentArmsRequest",
+                customer_id=customer_id,
+                operations=[op],
+                validate_only=dry_run,
+            )
         )
     return {
         "dry_run": dry_run,
