@@ -36,12 +36,14 @@ _GAQL_FILENAME = "gaql_resources.txt"
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Read-only scope for Analytics Admin API and Analytics Data API.
-_READ_ONLY_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
+# OAuth scope for the Google Ads API. Google Ads does not publish a separate
+# read-only scope; access is restricted to read methods by the tools this
+# server exposes (see ads_mcp/tools/).
+_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
 def _create_credentials() -> google.auth.credentials.Credentials:
-    """Returns Application Default Credentials with read-only scope or FastMCP token if found."""
+    """Returns Application Default Credentials with the Google Ads scope, or the FastMCP token if found."""
     from fastmcp.server.dependencies import get_access_token
     from google.oauth2.credentials import Credentials
 
@@ -50,7 +52,7 @@ def _create_credentials() -> google.auth.credentials.Credentials:
         # Create credentials using the access token provided by FastMCP
         return Credentials(token=token_obj.token)
 
-    credentials, _ = google.auth.default(scopes=[_READ_ONLY_ADS_SCOPE])
+    credentials, _ = google.auth.default(scopes=[_ADS_SCOPE])
     return credentials
 
 
