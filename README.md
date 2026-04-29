@@ -39,7 +39,7 @@ Setup involves the following steps:
 1.  Configure Developer Token.
 1.  Enable APIs in your project
 1.  Configure Credentials.
-1.  Configure your AI agent.
+1.  Configure your MCP client.
 
 ### Configure Python
 
@@ -49,9 +49,12 @@ Setup involves the following steps:
 
 Follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).
 
-Make sure your developer token has at least [Explorer access](https://developers.google.com/google-ads/api/docs/api-policy/access-levels).
+Your developer token must have at least [Explorer access](https://developers.google.com/google-ads/api/docs/get-started/dev-token#access-levels) to query production accounts. New tokens may be automatically upgraded to Explorer access; if not, you can apply through the API Center. See the [access levels documentation](https://developers.google.com/google-ads/api/docs/get-started/dev-token#access-levels) for details.
 
-Record your developer token, you will need this for the the 'Configure your AI agent' step below
+If you see the error *"The developer token is only approved for use with test
+accounts"*, your token does not yet have access to production accounts. See the
+[access levels documentation](https://developers.google.com/google-ads/api/docs/access-levels)
+for how to request the access level you need.
 
 ### Enable APIs in your project
 
@@ -131,12 +134,19 @@ If you have already done this and have a working `google-ads.yaml` , you can reu
 
 In the utils.py file, change get_googleads_client() to use the load_from_storage() method.
 
-### Configure your AI agent
+### Configure your MCP client
 
-These instructions describe the process to configure the MCP server on either 
-[Gemini CLI](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/index.md) or [Gemini Code Assist](https://marketplace.visualstudio.com/items?itemName=Google.geminicodeassist).
+Add the server to your MCP client's configuration. Below are examples for
+popular clients.
 
-Create or edit the file at `~/.gemini/settings.json`, adding your server
+#### Gemini CLI / Gemini Code Assist
+
+1.  Install [Gemini
+    CLI](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/index.md)
+    or [Gemini Code
+    Assist](https://marketplace.visualstudio.com/items?itemName=Google.geminicodeassist).
+
+1.  Create or edit the file at `~/.gemini/settings.json`, adding your server
     to the `mcpServers` list.
 
 - Option 1: Using FastMCP OAuth Proxy (Streamable HTTP)
@@ -244,6 +254,10 @@ The final file will look like this:
   }
   ```
 
+#### Other MCP clients (Claude Code, Cursor, VS Code, etc.)
+
+The `mcpServers` block format is the same across all MCP clients. Add the configuration shown above to the appropriate settings file for your client (e.g., `~/.claude/settings.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for VS Code with Copilot).
+
 ## Deployment to Google Cloud Platform
 
 Instead of hosting this MCP server locally, you can host it on Google Cloud Run or on any other cloud-based infrastructure. This is useful if you want to share the server across different agents or run it as a web service.
@@ -308,8 +322,8 @@ Once deployed, update your MCP client configuration (e.g., `~/.gemini/settings.j
 
 ## Try it out
 
-Launch Gemini Code Assist or Gemini CLI and type `/mcp`. You should see
-`google-ads-mcp` listed in the results.
+Launch your MCP client. You should see `google-ads-mcp` listed in the
+available servers.
 
 Here are some sample prompts to get you started:
 
