@@ -1,0 +1,14 @@
+services:
+  google-ads-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.docker
+    volumes:
+      # Mount the credentials file from outside the repo so it is never baked into the image
+      - /Users/varunbhayana/Desktop/projects/google-ads-mcp/.gcloud/application_default_credentials.json:/secrets/adc.json:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/adc.json

@@ -37,3 +37,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
+.venv
+
+# Local credentials and config — never commit
+.env.local
+.env.docker
+.gcloud/
+.mcp.json
+pyvenv.cfg

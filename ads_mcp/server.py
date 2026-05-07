@@ -20,7 +20,7 @@ from ads_mcp.coordinator import mcp
 # object, even though they are not directly used in this file.
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
-from ads_mcp.tools import search, core, get_resource_metadata  # noqa: F401
+from ads_mcp.tools import search, core, get_resource_metadata, search_term_report  # noqa: F401
 from ads_mcp.resources import (
     discovery,
     metrics,
@@ -35,9 +35,13 @@ import os
 def run_server() -> None:
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
+    _LOCAL_HTTP = os.environ.get("MCP_LOCAL_HTTP", "").lower() == "true"
     port = int(os.environ.get("PORT", "8080"))
 
     if _CLIENT_ID and _CLIENT_SECRET:
+        mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
+    elif _LOCAL_HTTP:
+        # HTTP mode without OAuth — for local development and Postman testing only
         mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
     else:
         mcp.run()
