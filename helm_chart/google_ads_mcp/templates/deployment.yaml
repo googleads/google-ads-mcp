@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "google-ads-mcp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "google-ads-mcp.labels" . | nindent 4 }}
 spec:

@@ -66,19 +66,13 @@ kubectl create namespace "$TO_NAMESPACE" --dry-run=client -o yaml | kubectl appl
 echo "==> Copying secret '$SECRET_NAME' from '$FROM_NAMESPACE' to '$TO_NAMESPACE'"
 
 kubectl get secret "$SECRET_NAME" -n "$FROM_NAMESPACE" -o yaml \
-    | python3 - <<'PYEOF'
-import sys
-import yaml
-
-raw = sys.stdin.read()
-d = yaml.safe_load(raw)
-
-# Remove fields that would conflict when re-applying in a different namespace
+    | python3 -c '
+import sys, yaml
+d = yaml.safe_load(sys.stdin.read())
 for key in ("namespace", "uid", "resourceVersion", "creationTimestamp", "ownerReferences"):
     d.get("metadata", {}).pop(key, None)
-
 print(yaml.dump(d, default_flow_style=False))
-PYEOF \
+' \
     | kubectl apply -n "$TO_NAMESPACE" -f -
 
 echo "==> Done. Secret '$SECRET_NAME' is now available in namespace '$TO_NAMESPACE'."
