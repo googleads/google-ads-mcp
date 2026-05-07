@@ -1,0 +1,17 @@
+# Infrastructure Configuration Starter
+# TODO: Customize for your infrastructure setup
+#
+# Usage: Copy this file and modify for your environment
+
+# --- Environment Configuration ---
+environment: production
+region: us-east-1
+
+# --- Resource Definitions ---
+# TODO: Add resource definitions specific to this skill's domain
+
+# --- Security Settings ---
+# TODO: Add security configuration
+
+# --- Monitoring ---
+# TODO: Add monitoring/alerting configuration
