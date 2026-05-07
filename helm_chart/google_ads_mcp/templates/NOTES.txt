@@ -1,0 +1,13 @@
+Application URL:
+  https://{{ .Values.ingress.host }}
+
+Verify the deployment:
+  1. kubectl rollout status deployment/{{ include "google-ads-mcp.fullname" . }} -n {{ .Release.Namespace }}
+  2. kubectl get certificate {{ .Values.ingress.tls.secretName }} -n {{ .Release.Namespace }}
+  3. curl -sI https://{{ .Values.ingress.host }}/mcp
+{{- if ne .Values.app.baseUrl (printf "https://%s" .Values.ingress.host) }}
+
+WARNING: app.baseUrl ({{ .Values.app.baseUrl }}) does not match ingress host (https://{{ .Values.ingress.host }}).
+  OAuth callbacks will be sent to {{ .Values.app.baseUrl }} but ingress routes {{ .Values.ingress.host }}.
+  Set app.baseUrl=https://{{ .Values.ingress.host }} or update ingress.host to match.
+{{- end }}
