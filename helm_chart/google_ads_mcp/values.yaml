@@ -1,0 +1,96 @@
+# Image
+image:
+  repository: registry.quindim.com.br/google-ads-mcp
+  tag: ""  # required — must be overridden; deliberately empty to force pin
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: quindim-registry
+
+# Application / OAuth
+app:
+  baseUrl: https://google-ads-mcp.qndm.cc
+  redirectPath: /auth/callback
+  loginCustomerId: ""
+  extraEnv: []
+
+# Secrets referenced via envFrom (created by scripts, never by this chart)
+secrets:
+  developerToken:
+    name: google-ads-developer-token
+  oauthClient:
+    name: google-ads-oauth-client
+  loginCustomer:
+    name: google-ads-login-customer
+    enabled: false  # set true when using a Manager (MCC) account
+
+# Workload
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  liveness:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+# Upstream Dockerfile runs as root — do not set runAsNonRoot here (see M2)
+podSecurityContext: {}
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  name: ""  # defaults to chart fullname
+  automountServiceAccountToken: false
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: google-ads-mcp.qndm.cc
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    secretName: google-ads-mcp-tls
+    clusterIssuer: letsencrypt-cloudflare
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+
+nameOverride: ""
+fullnameOverride: ""
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

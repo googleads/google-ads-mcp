@@ -1,0 +1,146 @@
+# values.example.yaml — reference for operators
+#
+# Copy the relevant sections to your local values override file and fill in
+# the required fields. Do NOT commit real secrets here.
+#
+# Minimal install:
+#   helm upgrade --install google-ads-mcp ./helm_chart/google_ads_mcp \
+#     -n google-ads-mcp --create-namespace \
+#     --set image.tag=<SHA_OR_SEMVER>
+
+# ---------------------------------------------------------------------------
+# Image
+# ---------------------------------------------------------------------------
+image:
+  repository: registry.quindim.com.br/google-ads-mcp
+  # REQUIRED: pin to a specific git-sha tag (e.g. sha-a1b2c3d) or semver tag
+  # (e.g. v1.2.3).  Never leave empty in production.
+  tag: "sha-a1b2c3d"
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: quindim-registry  # created by copy-pull-secret.sh
+
+# ---------------------------------------------------------------------------
+# Application / OAuth
+# ---------------------------------------------------------------------------
+app:
+  # Must match the base URL registered in Google Cloud Console
+  # (Authorized JavaScript origins + the origin part of the redirect URI).
+  baseUrl: https://google-ads-mcp.qndm.cc
+
+  # Must match the redirect URI registered in Google Cloud Console:
+  # https://google-ads-mcp.qndm.cc/auth/callback
+  redirectPath: /auth/callback
+
+  # Optional: numeric Manager Account ID (no dashes) for MCC access.
+  # If set, also enable secrets.loginCustomer.enabled below.
+  loginCustomerId: ""
+
+  # Optional extra env vars injected into the container.
+  # Example:
+  # extraEnv:
+  #   - name: LOG_LEVEL
+  #     value: DEBUG
+  extraEnv: []
+
+# ---------------------------------------------------------------------------
+# Secrets (created by scripts/create-secrets.sh — never by this chart)
+# ---------------------------------------------------------------------------
+secrets:
+  developerToken:
+    # Secret must contain key: GOOGLE_ADS_DEVELOPER_TOKEN
+    name: google-ads-developer-token
+  oauthClient:
+    # Secret must contain keys:
+    #   GOOGLE_ADS_MCP_OAUTH_CLIENT_ID
+    #   GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET
+    name: google-ads-oauth-client
+  loginCustomer:
+    # Secret must contain key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
+    name: google-ads-login-customer
+    # Set to true when using a Manager (MCC) account.
+    # The secret must already exist (run create-secrets.sh with a login customer value).
+    enabled: false
+
+# ---------------------------------------------------------------------------
+# Workload
+# ---------------------------------------------------------------------------
+replicaCount: 1  # single-node cluster — do not increase
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Probes (tcpSocket on :8080 — no HTTP health endpoint in FastMCP 3.2.x)
+# ---------------------------------------------------------------------------
+probes:
+  liveness:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Security contexts
+# Upstream Dockerfile runs as root; runAsNonRoot hardening is deferred to M2.
+# ---------------------------------------------------------------------------
+podSecurityContext: {}
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# ---------------------------------------------------------------------------
+# ServiceAccount
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""  # defaults to release fullname
+  automountServiceAccountToken: false  # app does not talk to the k8s API
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 8080
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  host: google-ads-mcp.qndm.cc  # change if deploying to a different hostname
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    secretName: google-ads-mcp-tls  # cert-manager populates this automatically
+    clusterIssuer: letsencrypt-cloudflare
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+    # The next 5 annotations are MANDATORY for streamable-http (SSE/chunked).
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
