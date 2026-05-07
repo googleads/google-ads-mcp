@@ -20,7 +20,20 @@ from ads_mcp.coordinator import mcp
 # object, even though they are not directly used in this file.
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
-from ads_mcp.tools import search, core, get_resource_metadata, search_term_report  # noqa: F401
+from ads_mcp.tools import (  # noqa: F401
+    search,
+    core,
+    get_resource_metadata,
+    search_term_report,
+    impression_share_report,
+    keyword_quality_report,
+    auction_insights_report,
+    audience_analysis_report,
+    change_history_report,
+    reach_frequency_report,
+    keyword_report,
+    product_catalog_report,
+)
 from ads_mcp.resources import (
     discovery,
     metrics,
@@ -41,8 +54,9 @@ def run_server() -> None:
     if _CLIENT_ID and _CLIENT_SECRET:
         mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
     elif _LOCAL_HTTP:
-        # HTTP mode without OAuth — for local development and Postman testing only
-        mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
+        # Stateless HTTP — no session ID required, each request is independent.
+        # For local development and Postman testing only. Do not use in production.
+        mcp.run(transport="streamable-http", port=port, host="0.0.0.0", stateless_http=True)
     else:
         mcp.run()
 
