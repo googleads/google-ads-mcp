@@ -296,6 +296,7 @@ Make sure to set the required environment variables:
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: The OAuth Client secret you want the MCP server to use.
 - `GOOGLE_ADS_MCP_BASE_URL`: The base URL where your MCP server is accessible: this will be automatically assigned by Google Cloud Run after your first deployment. You can update the environment variables after deployment. 
 - `FASTMCP_HOST`: Set this to `0.0.0.0` to allow FastMCP to accept connections from all IP addresses.
+- `GOOGLE_ADS_LOGIN_CUSTOMER_ID` *(MCC accounts only)*: The customer ID of your manager account. Required when accessing client accounts through a Google Ads Manager (MCC) account.
 
 ```shell
 gcloud run deploy google-ads-mcp \
