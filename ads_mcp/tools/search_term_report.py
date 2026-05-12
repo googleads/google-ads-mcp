@@ -9,7 +9,7 @@ from fastmcp.exceptions import ToolError
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_search_term_report(
+def get_google_search_term_report(
     customer_id: str,
     start_date: str,
     end_date: str,
@@ -83,7 +83,7 @@ def get_search_term_report(
         f" PARAMETERS omit_unselected_resource_names=true"
     )
 
-    utils.logger.info(f"get_search_term_report query: {query}")
+    utils.logger.info(f"get_google_search_term_report query: {query}")
 
     try:
         response = ga_service.search_stream(customer_id=customer_id, query=query)

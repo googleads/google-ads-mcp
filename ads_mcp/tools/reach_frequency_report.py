@@ -9,7 +9,7 @@ from fastmcp.exceptions import ToolError
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_reach_frequency_report(
+def get_google_reach_frequency_report(
     customer_id: str,
     start_date: str,
     end_date: str,
@@ -70,7 +70,7 @@ def get_reach_frequency_report(
         f" PARAMETERS omit_unselected_resource_names=true"
     )
 
-    utils.logger.info(f"get_reach_frequency_report query: {query}")
+    utils.logger.info(f"get_google_reach_frequency_report query: {query}")
     ga_service = utils.get_googleads_service("GoogleAdsService")
 
     try:
@@ -99,7 +99,7 @@ def get_reach_frequency_report(
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_audience_overlap_estimate(
+def get_google_audience_overlap_estimate(
     customer_id: str,
     audience_ids: List[str],
 ) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ def get_audience_overlap_estimate(
         f" PARAMETERS omit_unselected_resource_names=true"
     )
 
-    utils.logger.info(f"get_audience_overlap_estimate query: {query}")
+    utils.logger.info(f"get_google_audience_overlap_estimate query: {query}")
     ga_service = utils.get_googleads_service("GoogleAdsService")
 
     try:

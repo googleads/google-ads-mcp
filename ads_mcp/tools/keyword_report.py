@@ -9,7 +9,7 @@ from fastmcp.exceptions import ToolError
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_keyword_report(
+def get_google_keyword_report(
     customer_id: str,
     start_date: str,
     end_date: str,
@@ -80,7 +80,7 @@ def get_keyword_report(
         f" PARAMETERS omit_unselected_resource_names=true"
     )
 
-    utils.logger.info(f"get_keyword_report query: {query}")
+    utils.logger.info(f"get_google_keyword_report query: {query}")
     ga_service = utils.get_googleads_service("GoogleAdsService")
 
     try:
