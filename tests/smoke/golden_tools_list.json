@@ -202,6 +202,12 @@
           },
           "association_type": {
             "description": "The type of resource being associated.\n              Must be 'CAMPAIGN', 'CUSTOMER', 'AD_GROUP', or 'AD_GROUP_CRITERION'.",
+            "enum": [
+              "CAMPAIGN",
+              "CUSTOMER",
+              "AD_GROUP",
+              "AD_GROUP_CRITERION"
+            ],
             "type": "string"
           },
           "customer_id": {
@@ -222,6 +228,11 @@
           },
           "operation": {
             "description": "The operation to perform. Must be 'CREATE' or 'REMOVE'.",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "REMOVE"
+            ],
             "type": "string"
           },
           "resource_name": {
@@ -310,6 +321,11 @@
           },
           "operation": {
             "description": "The operation to perform. Must be 'CREATE', 'UPDATE', or 'REMOVE'.",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "REMOVE"
+            ],
             "type": "string"
           },
           "resource_name": {

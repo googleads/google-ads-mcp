@@ -16,11 +16,21 @@
 
 """Common utilities used by the MCP server."""
 
+from enum import Enum
 from typing import Any
 import proto
 from google.protobuf.message import Message as PbMessage
 from google.protobuf.json_format import MessageToDict
 import logging
+
+
+class MutateOperation(str, Enum):
+    """Enum representing common mutate operations in Google Ads."""
+
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    REMOVE = "REMOVE"
+
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v25.services.services.google_ads_service import (
     GoogleAdsServiceClient,
