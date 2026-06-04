@@ -18,6 +18,26 @@ to provide several
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
 
+### Optional write tools (opt-in, off by default)
+
+Set environment variables before starting the server (for example in your MCP
+client `env` block). Write tools are registered when the server process starts.
+
+| Variable | Effect |
+|----------|--------|
+| `GOOGLE_ADS_MCP_ENABLE_MUTATE=1` | Enables `create` and `update` |
+| `GOOGLE_ADS_MCP_ENABLE_REMOVE=1` | Enables `remove` (requires mutate enabled) |
+| `GOOGLE_ADS_MCP_MUTATE_CHUNK_SIZE` | Operations per mutate request (default `500`) |
+
+- `create` / `update` / `remove`: call `GoogleAdsService.mutate` with
+  [MutateOperation](https://developers.google.com/google-ads/api/rest/reference/rest/latest/MutateOperation)
+  objects (API JSON, camelCase). Supports `validate_only` and server-side chunking.
+- **Warning:** write tools can change your Google Ads account. Use test accounts
+  and `validate_only=true` first.
+
+See [issue #84](https://github.com/googleads/google-ads-mcp/issues/84) for the
+upstream proposal discussion.
+
 ### Resources available
 
 - `discovery-document`: Retrieve the Google Ads API discovery document. Provides the discovery document for the latest version of the Google Ads API, which describes the API surface, including resources, methods, and schemas. Host LLMs should access this resource to understand the structure of the Google Ads API and discover available features.

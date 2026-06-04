@@ -21,6 +21,7 @@ from ads_mcp.coordinator import mcp
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
 from ads_mcp.tools import search, core, get_resource_metadata  # noqa: F401
+from ads_mcp.tools import write_registration  # noqa: F401
 from ads_mcp.resources import (
     discovery,
     metrics,
@@ -33,6 +34,7 @@ import os
 
 
 def run_server() -> None:
+    write_registration.register_write_tools()
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))
