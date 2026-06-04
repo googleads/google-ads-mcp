@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "google-ads-mcp": {
+      "command": "/Users/varunbhayana/Desktop/projects/mcpforked/google-ads-mcp/.venv/bin/google-ads-mcp",
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/Users/varunbhayana/Desktop/projects/google-ads-mcp/.gcloud/application_default_credentials.json",
+        "GOOGLE_ADS_DEVELOPER_TOKEN": "mM23ZIOAiOldJD-oEItRGw",
+        "GOOGLE_ADS_LOGIN_CUSTOMER_ID": "5061122756"
+      }
+    }
+  }
+}
