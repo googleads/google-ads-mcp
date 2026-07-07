@@ -67,7 +67,9 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         self.mock_ad_group_label_op.create = self.mock_ad_group_label
 
         self.mock_ad_group_criterion_label = MagicMock()
-        self.mock_ad_group_criterion_label_op.create = self.mock_ad_group_criterion_label
+        self.mock_ad_group_criterion_label_op.create = (
+            self.mock_ad_group_criterion_label
+        )
 
         def get_type_mock(type_name):
             if type_name == "LabelOperation":
@@ -91,19 +93,25 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         mock_result = MagicMock()
         mock_result.resource_name = "customers/123/labels/456"
         self.mock_mutate_response.results = [mock_result]
-        self.mock_label_service.mutate_labels.return_value = self.mock_mutate_response
+        self.mock_label_service.mutate_labels.return_value = (
+            self.mock_mutate_response
+        )
 
         self.mock_campaign_response = MagicMock()
         mock_c_result = MagicMock()
         mock_c_result.resource_name = "customers/123/campaignLabels/456~789"
         self.mock_campaign_response.results = [mock_c_result]
-        self.mock_campaign_label_service.mutate_campaign_labels.return_value = self.mock_campaign_response
+        self.mock_campaign_label_service.mutate_campaign_labels.return_value = (
+            self.mock_campaign_response
+        )
 
         self.mock_customer_response = MagicMock()
         mock_cust_result = MagicMock()
         mock_cust_result.resource_name = "customers/123/customerLabels/123~789"
         self.mock_customer_response.results = [mock_cust_result]
-        self.mock_customer_label_service.mutate_customer_labels.return_value = self.mock_customer_response
+        self.mock_customer_label_service.mutate_customer_labels.return_value = (
+            self.mock_customer_response
+        )
 
     @patch("ads_mcp.utils.get_googleads_client")
     async def test_create_label(self, mock_get_client):
@@ -120,7 +128,10 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(self.mock_label.name, "Black Friday")
         self.assertEqual(self.mock_label.text_label.background_color, "#000000")
-        self.assertEqual(self.mock_label.text_label.description, "Campaigns for Black Friday promotions")
+        self.assertEqual(
+            self.mock_label.text_label.description,
+            "Campaigns for Black Friday promotions",
+        )
         self.mock_label_service.mutate_labels.assert_called_once()
         self.assertIn("Successfully created label", result)
         self.assertIn("ID: 456", result)
@@ -133,13 +144,14 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         # Mock temp Label and copy_from / copy_to behaviour
         temp_label = MagicMock()
         temp_label._pb = MagicMock()
-        
+
         def get_type_mock(type_name):
             if type_name == "LabelOperation":
                 return self.mock_label_op
             elif type_name == "Label":
                 return temp_label
             return MagicMock()
+
         self.mock_client.get_type.side_effect = get_type_mock
 
         result = await labels.manage_labels(
@@ -149,7 +161,9 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             name="Updated Name",
         )
 
-        self.assertEqual(self.mock_label.resource_name, "customers/1234567890/labels/456")
+        self.assertEqual(
+            self.mock_label.resource_name, "customers/1234567890/labels/456"
+        )
         self.assertEqual(self.mock_label.name, "Updated Name")
         self.mock_client.copy_from.assert_called_once()
         self.mock_label_service.mutate_labels.assert_called_once()
@@ -166,7 +180,9 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             label_id="456",
         )
 
-        self.assertEqual(self.mock_label_op.remove, "customers/1234567890/labels/456")
+        self.assertEqual(
+            self.mock_label_op.remove, "customers/1234567890/labels/456"
+        )
         self.mock_label_service.mutate_labels.assert_called_once()
         self.assertIn("Successfully removed label", result)
 
@@ -183,13 +199,20 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             label_id="789",
         )
 
-        self.assertEqual(self.mock_campaign_label.campaign, "customers/1234567890/campaigns/456")
-        self.assertEqual(self.mock_campaign_label.label, "customers/1234567890/labels/789")
+        self.assertEqual(
+            self.mock_campaign_label.campaign,
+            "customers/1234567890/campaigns/456",
+        )
+        self.assertEqual(
+            self.mock_campaign_label.label, "customers/1234567890/labels/789"
+        )
         self.mock_campaign_label_service.mutate_campaign_labels.assert_called_once()
         self.assertIn("Successfully created CAMPAIGN label association", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_campaign_label_association_by_name(self, mock_get_client):
+    async def test_remove_campaign_label_association_by_name(
+        self, mock_get_client
+    ):
         """Tests disassociation when passing direct association resource name."""
         mock_get_client.return_value = self.mock_client
 
@@ -200,12 +223,17 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             association_resource_name="customers/1234567890/campaignLabels/456~789",
         )
 
-        self.assertEqual(self.mock_campaign_label_op.remove, "customers/1234567890/campaignLabels/456~789")
+        self.assertEqual(
+            self.mock_campaign_label_op.remove,
+            "customers/1234567890/campaignLabels/456~789",
+        )
         self.mock_campaign_label_service.mutate_campaign_labels.assert_called_once()
         self.assertIn("Successfully removed CAMPAIGN label association", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_campaign_label_association_by_ids(self, mock_get_client):
+    async def test_remove_campaign_label_association_by_ids(
+        self, mock_get_client
+    ):
         """Tests disassociation when passing resource_id and label_id for auto-construction."""
         mock_get_client.return_value = self.mock_client
 
@@ -217,7 +245,10 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             label_id="789",
         )
 
-        self.assertEqual(self.mock_campaign_label_op.remove, "customers/1234567890/campaignLabels/456~789")
+        self.assertEqual(
+            self.mock_campaign_label_op.remove,
+            "customers/1234567890/campaignLabels/456~789",
+        )
         self.mock_campaign_label_service.mutate_campaign_labels.assert_called_once()
         self.assertIn("Successfully removed CAMPAIGN label association", result)
 
@@ -234,8 +265,12 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             label_id="789",
         )
 
-        self.assertEqual(self.mock_customer_label.customer, "customers/1234567890")
-        self.assertEqual(self.mock_customer_label.label, "customers/1234567890/labels/789")
+        self.assertEqual(
+            self.mock_customer_label.customer, "customers/1234567890"
+        )
+        self.assertEqual(
+            self.mock_customer_label.label, "customers/1234567890/labels/789"
+        )
         self.mock_customer_label_service.mutate_customer_labels.assert_called_once()
         self.assertIn("Successfully created CUSTOMER label association", result)
 

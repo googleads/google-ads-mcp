@@ -7,3 +7,5 @@ namespaces:
   customers: true
   search: true
   metadata: true
+  labels: true
+  assets: true

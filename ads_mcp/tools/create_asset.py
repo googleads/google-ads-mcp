@@ -16,9 +16,11 @@
 
 import base64
 import os
+from fastmcp import FastMCP
 from typing import List, Dict, Any, Optional
-from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
+
+assets_mcp = FastMCP("assets")
 
 
 def _populate_message(msg, data: Dict[str, Any]) -> None:
@@ -139,35 +141,35 @@ def _populate_sub_asset(
     return None
 
 
-@mcp.tool
+@assets_mcp.tool
 async def create_asset(
     customer_id: str,
     asset_type: str,
-    name: str = None,
-    final_urls: List[str] = None,
-    final_mobile_urls: List[str] = None,
-    tracking_url_template: str = None,
-    final_url_suffix: str = None,
-    url_custom_parameters: List[Dict[str, str]] = None,
+    name: Optional[str] = None,
+    final_urls: Optional[List[str]] = None,
+    final_mobile_urls: Optional[List[str]] = None,
+    tracking_url_template: Optional[str] = None,
+    final_url_suffix: Optional[str] = None,
+    url_custom_parameters: Optional[List[Dict[str, str]]] = None,
     # Text Asset
-    text_asset_text: str = None,
+    text_asset_text: Optional[str] = None,
     # Image Asset
-    image_asset_path: str = None,
-    image_asset_data: str = None,
-    image_asset_mime_type: str = None,
+    image_asset_path: Optional[str] = None,
+    image_asset_data: Optional[str] = None,
+    image_asset_mime_type: Optional[str] = None,
     # YouTube Video Asset
-    youtube_video_id: str = None,
+    youtube_video_id: Optional[str] = None,
     # Sitelink Asset
-    sitelink_link_text: str = None,
-    sitelink_description1: str = None,
-    sitelink_description2: str = None,
+    sitelink_link_text: Optional[str] = None,
+    sitelink_description1: Optional[str] = None,
+    sitelink_description2: Optional[str] = None,
     # Callout Asset
-    callout_text: str = None,
+    callout_text: Optional[str] = None,
     # Structured Snippet Asset
-    structured_snippet_header: str = None,
-    structured_snippet_values: List[str] = None,
+    structured_snippet_header: Optional[str] = None,
+    structured_snippet_values: Optional[List[str]] = None,
     # Fallback/Custom Parameters
-    extra_params: Dict[str, Any] = None,
+    extra_params: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Creates a new Google Ads asset under the specified customer account.
 
@@ -252,7 +254,11 @@ async def create_asset(
     if hasattr(asset_type_enum, type_upper):
         asset.type_ = getattr(asset_type_enum, type_upper)
     else:
-        valid_types = [t.name for t in asset_type_enum if t.name not in ["UNSPECIFIED", "UNKNOWN"]]
+        valid_types = [
+            t.name
+            for t in asset_type_enum
+            if t.name not in ["UNSPECIFIED", "UNKNOWN"]
+        ]
         return f"Error: Invalid 'asset_type' value '{asset_type}'. Must be one of: {', '.join(valid_types)}."
 
     # 2. Populate Sub-Asset details

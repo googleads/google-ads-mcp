@@ -15,10 +15,12 @@
 """Tools for managing Labels and Label Associations in Google Ads."""
 
 from enum import Enum
+from fastmcp import FastMCP
 from typing import Optional
-from ads_mcp.coordinator import mcp
 import ads_mcp.utils as utils
 from google.api_core import protobuf_helpers
+
+labels_mcp = FastMCP("labels")
 
 
 class AssociationType(str, Enum):
@@ -28,10 +30,6 @@ class AssociationType(str, Enum):
     CUSTOMER = "CUSTOMER"
     AD_GROUP = "AD_GROUP"
     AD_GROUP_CRITERION = "AD_GROUP_CRITERION"
-
-
-
-
 
 
 def _get_label_resource_name(customer_id: str, label: str) -> str:
@@ -96,7 +94,7 @@ def _construct_association_resource_name(
     return f"customers/{customer_id}/{prefix}/{resource_id}~{label_id}"
 
 
-@mcp.tool
+@labels_mcp.tool
 async def manage_labels(
     customer_id: str,
     operation: utils.MutateOperation,
@@ -185,14 +183,18 @@ async def manage_labels(
         )
         res_name = response.results[0].resource_name
         res_id = utils.extract_id(res_name)
-        action_past = "created" if op_upper == "CREATE" else "updated" if op_upper == "UPDATE" else "removed"
+        action_past = (
+            "created"
+            if op_upper == "CREATE"
+            else "updated" if op_upper == "UPDATE" else "removed"
+        )
         return f"Successfully {action_past} label. ID: {res_id}"
     except Exception as e:
         utils.logger.error(f"Failed to {op_upper.lower()} label: {e}")
         return f"Failed to {op_upper.lower()} label: {e}"
 
 
-@mcp.tool
+@labels_mcp.tool
 async def manage_label_associations(
     customer_id: str,
     operation: utils.MutateOperation,
@@ -225,7 +227,9 @@ async def manage_label_associations(
     type_upper = association_type.upper()
 
     if op_upper not in ["CREATE", "REMOVE"]:
-        return f"Error: Invalid operation '{operation}'. Must be CREATE or REMOVE."
+        return (
+            f"Error: Invalid operation '{operation}'. Must be CREATE or REMOVE."
+        )
 
     config = ASSOCIATION_CONFIGS.get(type_upper)
     if not config:
@@ -240,16 +244,20 @@ async def manage_label_associations(
         if not resource_id:
             return f"Error: 'resource_id' is required to CREATE a {type_upper} label association."
         if not label_id:
-            return "Error: 'label_id' is required to CREATE a label association."
+            return (
+                "Error: 'label_id' is required to CREATE a label association."
+            )
 
         entity_prefix = config["entity_prefix"]
-        
+
         if type_upper == "CUSTOMER":
             # Customer resource name is just customers/{resource_id}
             resource_name = f"customers/{resource_id}"
         else:
-            resource_name = f"customers/{customer_id}/{entity_prefix}/{resource_id}"
-            
+            resource_name = (
+                f"customers/{customer_id}/{entity_prefix}/{resource_id}"
+            )
+
         label_resource_name = f"customers/{customer_id}/labels/{label_id}"
 
         association = op.create
@@ -282,5 +290,9 @@ async def manage_label_associations(
         action_past = "created" if op_upper == "CREATE" else "removed"
         return f"Successfully {action_past} {type_upper} label association. ID: {res_id}"
     except Exception as e:
-        utils.logger.error(f"Failed to {op_upper.lower()} {type_upper} label association: {e}")
-        return f"Failed to {op_upper.lower()} {type_upper} label association: {e}"
+        utils.logger.error(
+            f"Failed to {op_upper.lower()} {type_upper} label association: {e}"
+        )
+        return (
+            f"Failed to {op_upper.lower()} {type_upper} label association: {e}"
+        )

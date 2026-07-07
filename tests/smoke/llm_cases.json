@@ -11,11 +11,11 @@
   {
     "prompt": "Find campaigns matching 'Test Campaign' for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 659,
+    "prompt_tokens": 2651,
     "output_tokens": 66,
-    "model": "gemini-3.5-flash-lite",
+    "model": "gemini-3.1-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 37
   },
   {
     "prompt": "Show me all my accounts.",
@@ -34,15 +34,6 @@
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
     "tool_tokens": 138
-  },
-  {
-    "prompt": "Which customers do I have access to?",
-    "expected_tool": "list_accessible_customers",
-    "prompt_tokens": 2490,
-    "output_tokens": 12,
-    "model": "gemini-flash-latest",
-    "thought_tokens": 53,
-    "tool_tokens": 170
   },
   {
     "prompt": "Find enabled ad groups for customer {customer_id}.",
@@ -101,10 +92,64 @@
   {
     "prompt": "What segments can I select with the customer resource?",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 648,
+    "prompt_tokens": 2640,
     "output_tokens": 22,
     "thought_tokens": null,
-    "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 22705
+  },
+  {
+    "prompt": "Create a label 'High Priority' with color #FF0000 for customer {customer_id}.",
+    "expected_tool": "labels_manage_labels",
+    "prompt_tokens": 2641,
+    "output_tokens": 64,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 68
+  },
+  {
+    "prompt": "Remove label with ID 12345 for customer {customer_id}.",
+    "expected_tool": "labels_manage_labels",
+    "prompt_tokens": 2638,
+    "output_tokens": 42,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 68
+  },
+  {
+    "prompt": "Associate label 12345 with campaign 67890 for customer {customer_id}.",
+    "expected_tool": "labels_manage_label_associations",
+    "prompt_tokens": 2643,
+    "output_tokens": 53,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 41
+  },
+  {
+    "prompt": "Upload video '/tmp/test.mp4' titled 'Test Video' with description 'A test video' for customer {customer_id}.",
+    "expected_tool": "assets_upload_video_asset",
+    "prompt_tokens": 2659,
+    "output_tokens": 77,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 414
+  },
+  {
+    "prompt": "Create a text asset with text 'Buy now!' for customer {customer_id}.",
+    "expected_tool": "assets_create_asset",
+    "prompt_tokens": 2641,
+    "output_tokens": 61,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 175
+  },
+  {
+    "prompt": "Create a sitelink asset with text 'About Us' and final URL 'https://example.com/about' for customer {customer_id}.",
+    "expected_tool": "assets_create_asset",
+    "prompt_tokens": 2659,
+    "output_tokens": 113,
+    "thought_tokens": null,
+    "model": "gemini-3.1-flash-lite",
+    "tool_tokens": 399
   }
 ]

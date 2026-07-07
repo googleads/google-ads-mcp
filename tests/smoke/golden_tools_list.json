@@ -15,114 +15,240 @@
             "type": "string"
           },
           "callout_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Optional callout text (required for CALLOUT type).",
-            "type": "string"
+            "description": "Optional callout text (required for CALLOUT type)."
           },
           "customer_id": {
             "description": "Google Ads Customer ID (without hyphens).",
             "type": "string"
           },
           "extra_params": {
-            "additionalProperties": true,
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Optional dict representing nested parameters for less common asset types.",
-            "type": "object"
+            "description": "Optional dict representing nested parameters for less common asset types."
           },
           "final_mobile_urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Optional list of final mobile URLs.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
+            "description": "Optional list of final mobile URLs."
           },
           "final_url_suffix": {
-            "default": null,
-            "description": "Optional final URL suffix.",
-            "type": "string"
-          },
-          "final_urls": {
-            "default": null,
-            "description": "Optional list of final URLs (required for SITELINK).",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "image_asset_data": {
-            "default": null,
-            "description": "Optional base64 encoded image data (supported for IMAGE type).",
-            "type": "string"
-          },
-          "image_asset_mime_type": {
-            "default": null,
-            "description": "Optional MIME type (e.g., 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF'; required if image_asset_data is used).",
-            "type": "string"
-          },
-          "image_asset_path": {
-            "default": null,
-            "description": "Optional absolute file path to a local image (supported for IMAGE type).",
-            "type": "string"
-          },
-          "name": {
-            "default": null,
-            "description": "Optional name of the asset.",
-            "type": "string"
-          },
-          "sitelink_description1": {
-            "default": null,
-            "description": "Optional sitelink line 1 description.",
-            "type": "string"
-          },
-          "sitelink_description2": {
-            "default": null,
-            "description": "Optional sitelink line 2 description.",
-            "type": "string"
-          },
-          "sitelink_link_text": {
-            "default": null,
-            "description": "Optional link text (required for SITELINK type).",
-            "type": "string"
-          },
-          "structured_snippet_header": {
-            "default": null,
-            "description": "Optional structured snippet header category (required for STRUCTURED_SNIPPET type).",
-            "type": "string"
-          },
-          "structured_snippet_values": {
-            "default": null,
-            "description": "Optional structured snippet list of values (required for STRUCTURED_SNIPPET type).",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "text_asset_text": {
-            "default": null,
-            "description": "Optional text content (required for TEXT type).",
-            "type": "string"
-          },
-          "tracking_url_template": {
-            "default": null,
-            "description": "Optional tracking URL template.",
-            "type": "string"
-          },
-          "url_custom_parameters": {
-            "default": null,
-            "description": "Optional custom parameters for tracking (list of key-value dicts).",
-            "items": {
-              "additionalProperties": {
+            "anyOf": [
+              {
                 "type": "string"
               },
-              "type": "object"
-            },
-            "type": "array"
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional final URL suffix."
+          },
+          "final_urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of final URLs (required for SITELINK)."
+          },
+          "image_asset_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional base64 encoded image data (supported for IMAGE type)."
+          },
+          "image_asset_mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional MIME type (e.g., 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF'; required if image_asset_data is used)."
+          },
+          "image_asset_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional absolute file path to a local image (supported for IMAGE type)."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional name of the asset."
+          },
+          "sitelink_description1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sitelink line 1 description."
+          },
+          "sitelink_description2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sitelink line 2 description."
+          },
+          "sitelink_link_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional link text (required for SITELINK type)."
+          },
+          "structured_snippet_header": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional structured snippet header category (required for STRUCTURED_SNIPPET type)."
+          },
+          "structured_snippet_values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional structured snippet list of values (required for STRUCTURED_SNIPPET type)."
+          },
+          "text_asset_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional text content (required for TEXT type)."
+          },
+          "tracking_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional tracking URL template."
+          },
+          "url_custom_parameters": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional custom parameters for tracking (list of key-value dicts)."
           },
           "youtube_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Optional YouTube 11-character video ID (required for YOUTUBE_VIDEO type).",
-            "type": "string"
+            "description": "Optional YouTube 11-character video ID (required for YOUTUBE_VIDEO type)."
           }
         },
         "required": [
@@ -545,9 +671,16 @@
             "type": "string"
           },
           "youtube_channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": null,
-            "description": "Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account.",
-            "type": "string"
+            "description": "Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account."
           }
         },
         "required": [

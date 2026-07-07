@@ -31,6 +31,7 @@ class MutateOperation(str, Enum):
     UPDATE = "UPDATE"
     REMOVE = "REMOVE"
 
+
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v25.services.services.google_ads_service import (
     GoogleAdsServiceClient,

@@ -39,7 +39,9 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         self.mock_asset_type_enum.AssetType.YOUTUBE_VIDEO = "YOUTUBE_VIDEO"
         self.mock_asset_type_enum.AssetType.SITELINK = "SITELINK"
         self.mock_asset_type_enum.AssetType.CALLOUT = "CALLOUT"
-        self.mock_asset_type_enum.AssetType.STRUCTURED_SNIPPET = "STRUCTURED_SNIPPET"
+        self.mock_asset_type_enum.AssetType.STRUCTURED_SNIPPET = (
+            "STRUCTURED_SNIPPET"
+        )
 
         self.mock_mime_enum = MagicMock()
         self.mock_mime_enum.MimeType.IMAGE_PNG = "IMAGE_PNG"
@@ -136,9 +138,16 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(self.mock_asset.sitelink_asset.link_text, "Contact Us")
-        self.assertEqual(self.mock_asset.sitelink_asset.description1, "Get in touch with our support")
-        self.assertEqual(self.mock_asset.sitelink_asset.description2, "Available 24/7")
-        self.mock_asset.final_urls.extend.assert_called_with(["https://example.com/contact"])
+        self.assertEqual(
+            self.mock_asset.sitelink_asset.description1,
+            "Get in touch with our support",
+        )
+        self.assertEqual(
+            self.mock_asset.sitelink_asset.description2, "Available 24/7"
+        )
+        self.mock_asset.final_urls.extend.assert_called_with(
+            ["https://example.com/contact"]
+        )
         self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
@@ -153,8 +162,12 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
             structured_snippet_values=["Google", "DeepMind", "Android"],
         )
 
-        self.assertEqual(self.mock_asset.structured_snippet_asset.header, "Brands")
-        self.mock_asset.structured_snippet_asset.values.extend.assert_called_with(["Google", "DeepMind", "Android"])
+        self.assertEqual(
+            self.mock_asset.structured_snippet_asset.header, "Brands"
+        )
+        self.mock_asset.structured_snippet_asset.values.extend.assert_called_with(
+            ["Google", "DeepMind", "Android"]
+        )
         self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")

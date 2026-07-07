@@ -15,18 +15,19 @@
 """Tool for uploading video assets natively through the Google Ads API."""
 
 import os
-from ads_mcp.coordinator import mcp
+from typing import Optional
+from ads_mcp.tools.create_asset import assets_mcp
 import ads_mcp.utils as utils
 
 
-@mcp.tool(task=True)
+@assets_mcp.tool(task=True)
 async def upload_video_asset(
     customer_id: str,
     video_title: str,
     video_description: str,
     video_path: str,
     video_privacy: str = "UNLISTED",
-    youtube_channel_id: str = None,
+    youtube_channel_id: Optional[str] = None,
 ) -> str:
     """Uploads a video to YouTube natively via the Google Ads API.
     Once a video has been uploaded, it can be used to create a video asset.
