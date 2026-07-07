@@ -123,7 +123,7 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mock_label.text_label.description, "Campaigns for Black Friday promotions")
         self.mock_label_service.mutate_labels.assert_called_once()
         self.assertIn("Successfully created label", result)
-        self.assertIn("customers/123/labels/456", result)
+        self.assertIn("ID: 456", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
     async def test_update_label(self, mock_get_client):
@@ -145,7 +145,7 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         result = await labels.manage_labels(
             customer_id="1234567890",
             operation="UPDATE",
-            resource_name="customers/1234567890/labels/456",
+            label_id="456",
             name="Updated Name",
         )
 
@@ -163,7 +163,7 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         result = await labels.manage_labels(
             customer_id="1234567890",
             operation="REMOVE",
-            resource_name="customers/1234567890/labels/456",
+            label_id="456",
         )
 
         self.assertEqual(self.mock_label_op.remove, "customers/1234567890/labels/456")
@@ -179,8 +179,8 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             customer_id="1234567890",
             operation="CREATE",
             association_type="CAMPAIGN",
-            resource_name="customers/1234567890/campaigns/456",
-            label_resource_name="customers/1234567890/labels/789",
+            resource_id="456",
+            label_id="789",
         )
 
         self.assertEqual(self.mock_campaign_label.campaign, "customers/1234567890/campaigns/456")
@@ -205,16 +205,16 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Successfully removed CAMPAIGN label association", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_campaign_label_association_by_resource_names(self, mock_get_client):
-        """Tests disassociation when passing resource names for auto-construction."""
+    async def test_remove_campaign_label_association_by_ids(self, mock_get_client):
+        """Tests disassociation when passing resource_id and label_id for auto-construction."""
         mock_get_client.return_value = self.mock_client
 
         result = await labels.manage_label_associations(
             customer_id="1234567890",
             operation="REMOVE",
             association_type="CAMPAIGN",
-            resource_name="customers/1234567890/campaigns/456",
-            label_resource_name="customers/1234567890/labels/789",
+            resource_id="456",
+            label_id="789",
         )
 
         self.assertEqual(self.mock_campaign_label_op.remove, "customers/1234567890/campaignLabels/456~789")
@@ -230,8 +230,8 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             customer_id="1234567890",
             operation="CREATE",
             association_type="CUSTOMER",
-            resource_name="customers/1234567890",
-            label_resource_name="customers/1234567890/labels/789",
+            resource_id="1234567890",
+            label_id="789",
         )
 
         self.assertEqual(self.mock_customer_label.customer, "customers/1234567890")
@@ -258,13 +258,13 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("Error: 'name' is required", res)
 
-        # Test missing resource_name for Label UPDATE
+        # Test missing label_id for Label UPDATE
         res = await labels.manage_labels(
             customer_id="123",
             operation="UPDATE",
             name="Some Name",
         )
-        self.assertIn("Error: 'resource_name' is required", res)
+        self.assertIn("Error: 'label_id' is required", res)
 
         # Test invalid association_type for manage_label_associations
         res = await labels.manage_label_associations(

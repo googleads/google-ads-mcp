@@ -214,7 +214,7 @@ async def create_asset(
         extra_params: Optional dict representing nested parameters for less common asset types.
 
     Returns:
-        A string indicating successful asset creation and its resource name, or an error message.
+        A string indicating successful asset creation and its ID, or an error message.
     """
     ga_client = utils.get_googleads_client()
     asset_service = ga_client.get_service("AssetService")
@@ -294,7 +294,8 @@ async def create_asset(
             customer_id=customer_id, operations=[asset_op]
         )
         created_rn = response.results[0].resource_name
-        return f"Successfully created asset. Resource Name: {created_rn}"
+        created_id = utils.extract_id(created_rn)
+        return f"Successfully created asset. ID: {created_id}"
     except Exception as e:
         utils.logger.error(f"Failed to create asset: {e}")
         return f"Failed to create asset: {e}"

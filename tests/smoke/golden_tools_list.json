@@ -198,7 +198,7 @@
               }
             ],
             "default": null,
-            "description": "The full resource name of the association itself\n                       (e.g., 'customers/123/campaignLabels/456~789').\n                       Required for REMOVE if resource_name and label_resource_name are not provided."
+            "description": "The full resource name of the association itself\n                       (e.g., 'customers/123/campaignLabels/456~789').\n                       Required for REMOVE if resource_id and label_id are not provided."
           },
           "association_type": {
             "description": "The type of resource being associated.\n              Must be 'CAMPAIGN', 'CUSTOMER', 'AD_GROUP', or 'AD_GROUP_CRITERION'.",
@@ -214,7 +214,7 @@
             "description": "Google Ads Customer ID (without hyphens).",
             "type": "string"
           },
-          "label_resource_name": {
+          "label_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -224,7 +224,7 @@
               }
             ],
             "default": null,
-            "description": "The full resource name of the Label (e.g., 'customers/123/labels/789').\n                 Required for CREATE."
+            "description": "The flat ID of the Label (e.g., '789').\n      Required for CREATE."
           },
           "operation": {
             "description": "The operation to perform. Must be 'CREATE' or 'REMOVE'.",
@@ -235,7 +235,7 @@
             ],
             "type": "string"
           },
-          "resource_name": {
+          "resource_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -245,7 +245,7 @@
               }
             ],
             "default": null,
-            "description": "The full resource name of the entity to associate (e.g., 'customers/123/campaigns/456').\n           Required for CREATE."
+            "description": "The flat ID of the entity to associate (e.g., '456' for campaign).\n         Required for CREATE."
           }
         },
         "required": [
@@ -307,6 +307,18 @@
             "default": null,
             "description": "Description of the label. Optional."
           },
+          "label_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ID of the label (e.g., '456').\n      Required for UPDATE and REMOVE."
+          },
           "name": {
             "anyOf": [
               {
@@ -327,18 +339,6 @@
               "REMOVE"
             ],
             "type": "string"
-          },
-          "resource_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The resource name of the label (e.g., 'customers/123/labels/456').\n           Required for UPDATE and REMOVE."
           }
         },
         "required": [
@@ -516,7 +516,7 @@
           "tags": []
         }
       },
-      "description": "Uploads a video to YouTube natively via the Google Ads API.\nOnce a video has been uploaded, it can be used to create a video asset.\nThis operation executes via a FastMCP background task to gracefully handle large file uploads.\nOnce the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`\nresource matching the returned resource_name allows you to retrieve the YouTube Video ID and processing status.",
+      "description": "Uploads a video to YouTube natively via the Google Ads API.\nOnce a video has been uploaded, it can be used to create a video asset.\nThis operation executes via a FastMCP background task to gracefully handle large file uploads.\nOnce the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`\nresource matching the returned ID allows you to retrieve the YouTube Video ID and processing status.",
       "execution": {
         "taskSupport": "optional"
       },

@@ -32,7 +32,7 @@ async def upload_video_asset(
     Once a video has been uploaded, it can be used to create a video asset.
     This operation executes via a FastMCP background task to gracefully handle large file uploads.
     Once the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`
-    resource matching the returned resource_name allows you to retrieve the YouTube Video ID and processing status.
+    resource matching the returned ID allows you to retrieve the YouTube Video ID and processing status.
 
     Args:
         customer_id: The ID of the customer (without hyphens).
@@ -43,7 +43,7 @@ async def upload_video_asset(
         youtube_channel_id: Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account.
 
     Returns:
-        A string indicating the successful resource name.
+        A string indicating the successful upload ID.
     """
 
     # 1. Verify existence of the file
@@ -83,7 +83,7 @@ async def upload_video_asset(
                 request=req, stream=video_stream
             )
 
-        return f"Successfully uploaded video to Google Ads. Resource Name: {response.resource_name}"
+        return f"Successfully uploaded video to Google Ads. ID: {utils.extract_id(response.resource_name)}"
     except Exception as e:
         utils.logger.error(f"Failed to upload video: {e}")
         return f"Failed to upload video: {e}"

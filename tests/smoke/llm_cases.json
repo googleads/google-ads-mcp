@@ -38,10 +38,10 @@
   {
     "prompt": "Which customers do I have access to?",
     "expected_tool": "list_accessible_customers",
-    "prompt_tokens": 2521,
+    "prompt_tokens": 2490,
     "output_tokens": 12,
     "model": "gemini-flash-latest",
-    "thought_tokens": 52,
+    "thought_tokens": 53,
     "tool_tokens": 170
   },
   {

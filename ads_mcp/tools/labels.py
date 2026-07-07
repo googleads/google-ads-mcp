@@ -31,11 +31,7 @@ class AssociationType(str, Enum):
 
 
 
-def _extract_id(resource_name_or_id: str) -> str:
-    """Extracts the last component (the ID) from a resource name or returns the ID as-is."""
-    if "/" in resource_name_or_id:
-        return resource_name_or_id.split("/")[-1]
-    return resource_name_or_id
+
 
 
 def _get_label_resource_name(customer_id: str, label: str) -> str:
@@ -53,6 +49,7 @@ ASSOCIATION_CONFIGS = {
         "resource_field": "campaign",
         "label_field": "label",
         "resource_prefix": "campaignLabels",
+        "entity_prefix": "campaigns",
     },
     "CUSTOMER": {
         "service": "CustomerLabelService",
@@ -61,6 +58,7 @@ ASSOCIATION_CONFIGS = {
         "resource_field": "customer",
         "label_field": "label",
         "resource_prefix": "customerLabels",
+        "entity_prefix": "customers",
     },
     "AD_GROUP": {
         "service": "AdGroupLabelService",
@@ -69,6 +67,7 @@ ASSOCIATION_CONFIGS = {
         "resource_field": "ad_group",
         "label_field": "label",
         "resource_prefix": "adGroupLabels",
+        "entity_prefix": "adGroups",
     },
     "AD_GROUP_CRITERION": {
         "service": "AdGroupCriterionLabelService",
@@ -77,6 +76,7 @@ ASSOCIATION_CONFIGS = {
         "resource_field": "ad_group_criterion",
         "label_field": "label",
         "resource_prefix": "adGroupCriterionLabels",
+        "entity_prefix": "adGroupCriteria",
     },
 }
 
@@ -84,15 +84,13 @@ ASSOCIATION_CONFIGS = {
 def _construct_association_resource_name(
     customer_id: str,
     association_type: AssociationType,
-    resource_name: str,
-    label_resource_name: str,
+    resource_id: str,
+    label_id: str,
 ) -> str:
     config = ASSOCIATION_CONFIGS.get(association_type.upper())
     if not config:
         raise ValueError(f"Invalid association type: {association_type}")
 
-    resource_id = _extract_id(resource_name)
-    label_id = _extract_id(label_resource_name)
     prefix = config["resource_prefix"]
 
     return f"customers/{customer_id}/{prefix}/{resource_id}~{label_id}"
@@ -105,7 +103,7 @@ async def manage_labels(
     name: Optional[str] = None,
     background_color: Optional[str] = None,
     description: Optional[str] = None,
-    resource_name: Optional[str] = None,
+    label_id: Optional[str] = None,
 ) -> str:
     """Manages Label resources. Supports CREATE, UPDATE, and REMOVE operations.
 
@@ -115,11 +113,11 @@ async def manage_labels(
         name: The name of the label. Required for CREATE, optional for UPDATE.
         background_color: Background color in HTML hex format (e.g., '#FF0000'). Optional.
         description: Description of the label. Optional.
-        resource_name: The resource name of the label (e.g., 'customers/123/labels/456').
-                       Required for UPDATE and REMOVE.
+        label_id: The ID of the label (e.g., '456').
+                  Required for UPDATE and REMOVE.
 
     Returns:
-        A string indicating the success and the mutated label's resource name, or an error message.
+        A string indicating the success and the mutated label's ID, or an error message.
     """
     ga_client = utils.get_googleads_client()
     label_service = ga_client.get_service("LabelService")
@@ -141,8 +139,10 @@ async def manage_labels(
             label.text_label.description = description
 
     elif op_upper == "UPDATE":
-        if not resource_name:
-            return "Error: 'resource_name' is required for UPDATE operation."
+        if not label_id:
+            return "Error: 'label_id' is required for UPDATE operation."
+
+        resource_name = f"customers/{customer_id}/labels/{label_id}"
 
         # Use temp object to cleanly build the update mask
         temp_label = ga_client.get_type("Label")
@@ -174,8 +174,9 @@ async def manage_labels(
         ga_client.copy_from(label_op.update_mask, mask)
 
     elif op_upper == "REMOVE":
-        if not resource_name:
-            return "Error: 'resource_name' is required for REMOVE operation."
+        if not label_id:
+            return "Error: 'label_id' is required for REMOVE operation."
+        resource_name = f"customers/{customer_id}/labels/{label_id}"
         label_op.remove = resource_name
 
     try:
@@ -183,8 +184,9 @@ async def manage_labels(
             customer_id=customer_id, operations=[label_op]
         )
         res_name = response.results[0].resource_name
+        res_id = utils.extract_id(res_name)
         action_past = "created" if op_upper == "CREATE" else "updated" if op_upper == "UPDATE" else "removed"
-        return f"Successfully {action_past} label. Resource Name: {res_name}"
+        return f"Successfully {action_past} label. ID: {res_id}"
     except Exception as e:
         utils.logger.error(f"Failed to {op_upper.lower()} label: {e}")
         return f"Failed to {op_upper.lower()} label: {e}"
@@ -195,8 +197,8 @@ async def manage_label_associations(
     customer_id: str,
     operation: utils.MutateOperation,
     association_type: AssociationType,
-    resource_name: Optional[str] = None,
-    label_resource_name: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    label_id: Optional[str] = None,
     association_resource_name: Optional[str] = None,
 ) -> str:
     """Manages associations between labels and Campaign, Customer, Ad Group, or Ad Group Criterion.
@@ -208,16 +210,16 @@ async def manage_label_associations(
         operation: The operation to perform. Must be 'CREATE' or 'REMOVE'.
         association_type: The type of resource being associated.
                           Must be 'CAMPAIGN', 'CUSTOMER', 'AD_GROUP', or 'AD_GROUP_CRITERION'.
-        resource_name: The full resource name of the entity to associate (e.g., 'customers/123/campaigns/456').
-                       Required for CREATE.
-        label_resource_name: The full resource name of the Label (e.g., 'customers/123/labels/789').
-                             Required for CREATE.
+        resource_id: The flat ID of the entity to associate (e.g., '456' for campaign).
+                     Required for CREATE.
+        label_id: The flat ID of the Label (e.g., '789').
+                  Required for CREATE.
         association_resource_name: The full resource name of the association itself
                                    (e.g., 'customers/123/campaignLabels/456~789').
-                                   Required for REMOVE if resource_name and label_resource_name are not provided.
+                                   Required for REMOVE if resource_id and label_id are not provided.
 
     Returns:
-        A string indicating success and the resource name of the association, or an error message.
+        A string indicating success and the ID of the association, or an error message.
     """
     op_upper = operation.upper()
     type_upper = association_type.upper()
@@ -235,10 +237,20 @@ async def manage_label_associations(
     op = ga_client.get_type(config["operation"])
 
     if op_upper == "CREATE":
-        if not resource_name:
-            return f"Error: 'resource_name' is required to CREATE a {type_upper} label association."
-        if not label_resource_name:
-            return "Error: 'label_resource_name' is required to CREATE a label association."
+        if not resource_id:
+            return f"Error: 'resource_id' is required to CREATE a {type_upper} label association."
+        if not label_id:
+            return "Error: 'label_id' is required to CREATE a label association."
+
+        entity_prefix = config["entity_prefix"]
+        
+        if type_upper == "CUSTOMER":
+            # Customer resource name is just customers/{resource_id}
+            resource_name = f"customers/{resource_id}"
+        else:
+            resource_name = f"customers/{customer_id}/{entity_prefix}/{resource_id}"
+            
+        label_resource_name = f"customers/{customer_id}/labels/{label_id}"
 
         association = op.create
         setattr(association, config["resource_field"], resource_name)
@@ -247,14 +259,14 @@ async def manage_label_associations(
     elif op_upper == "REMOVE":
         target_rn = association_resource_name
         if not target_rn:
-            if not resource_name or not label_resource_name:
+            if not resource_id or not label_id:
                 return (
                     "Error: For REMOVE operation, you must provide either "
-                    "'association_resource_name' OR both 'resource_name' and 'label_resource_name'."
+                    "'association_resource_name' OR both 'resource_id' and 'label_id'."
                 )
             try:
                 target_rn = _construct_association_resource_name(
-                    customer_id, type_upper, resource_name, label_resource_name
+                    customer_id, type_upper, resource_id, label_id
                 )
             except Exception as e:
                 return f"Error constructing association resource name: {e}"
@@ -266,8 +278,9 @@ async def manage_label_associations(
     try:
         response = mutate_method(customer_id=customer_id, operations=[op])
         res_name = response.results[0].resource_name
+        res_id = utils.extract_id(res_name)
         action_past = "created" if op_upper == "CREATE" else "removed"
-        return f"Successfully {action_past} {type_upper} label association. Resource Name: {res_name}"
+        return f"Successfully {action_past} {type_upper} label association. ID: {res_id}"
     except Exception as e:
         utils.logger.error(f"Failed to {op_upper.lower()} {type_upper} label association: {e}")
         return f"Failed to {op_upper.lower()} {type_upper} label association: {e}"

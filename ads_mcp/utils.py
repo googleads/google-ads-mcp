@@ -180,6 +180,13 @@ def format_output_row(row: proto.Message, attributes):
     }
 
 
+def extract_id(resource_name_or_id: str) -> str:
+    """Extracts the last component (the ID) from a resource name or returns the ID as-is."""
+    if "/" in resource_name_or_id:
+        return resource_name_or_id.split("/")[-1]
+    return resource_name_or_id
+
+
 def get_gaql_resources_filepath():
     package_root = importlib.resources.files("ads_mcp")
     file_path = package_root.joinpath(_GAQL_FILENAME)

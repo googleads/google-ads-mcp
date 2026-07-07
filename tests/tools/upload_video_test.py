@@ -81,7 +81,7 @@ class TestUploadVideo(unittest.IsolatedAsyncioTestCase):
             mock_youtube_service.create_you_tube_video_upload.assert_called_once()
 
             self.assertIn("Successfully uploaded video", result)
-            self.assertIn("customers/123/youtubeVideoAssets/456", result)
+            self.assertIn("ID: 456", result)
 
     @patch("os.path.isfile")
     async def test_upload_video_asset_file_not_found(self, mock_isfile):

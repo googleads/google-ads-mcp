@@ -80,7 +80,7 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mock_asset.text_asset.text, "Sign up today!")
         self.mock_asset_service.mutate_assets.assert_called_once()
         self.assertIn("Successfully created asset", result)
-        self.assertIn("customers/123/assets/456", result)
+        self.assertIn("ID: 456", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
     @patch("os.path.isfile")
