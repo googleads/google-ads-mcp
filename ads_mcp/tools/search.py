@@ -14,6 +14,7 @@
 
 """Tools for exposing the API Search method to the MCP server."""
 
+import textwrap
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
@@ -86,6 +87,18 @@ def search(
         )
 
 
+def _dedent_docstring(docstring: str) -> str:
+    """Removes the body indentation of a docstring, keeping its summary line.
+
+    The generated description below appends unindented sections to this
+    docstring. Leaving the original `Args:` block indented would mix
+    indentation levels within one docstring, which stops the argument
+    descriptions being parsed out into the tool schema at all.
+    """
+    summary, separator, body = docstring.partition("\n")
+    return summary + separator + textwrap.dedent(body)
+
+
 def _search_tool_description() -> str:
     """Returns the description for the `search` tool."""
     # Add a warning that will be part of the description
@@ -101,7 +114,7 @@ def _search_tool_description() -> str:
         utils.logger.error("The specified file was not found.")
 
     return f"""
-{search.__doc__}
+{_dedent_docstring(search.__doc__)}
 
 ### Hints
     Language Grammar can be found at https://developers.google.com/google-ads/api/docs/query/grammar
