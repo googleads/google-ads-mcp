@@ -9,10 +9,16 @@
       "annotations": {
         "readOnlyHint": true
       },
-      "description": "Returns ids of customers directly accessible by the user authenticating the call.\n\nUse this tool first to discover available customer IDs if the user hasn't\nprovided one. Most other tools require a valid customer ID as input.\n\nReturns:\n    List[str]: A list of customer IDs.",
+      "description": "Returns the Google Ads accounts the authenticating user can work in.\n\nUse this tool first to discover available customer IDs if the user hasn't\nprovided one. Most other tools require a valid customer ID as input.\n\nAccess granted on a manager account (MCC) cascades to every account beneath\nit, so this expands each manager the user was granted and returns the\naccounts underneath, not just the manager itself.",
       "inputSchema": {
         "additionalProperties": false,
-        "properties": {},
+        "properties": {
+          "include_inactive": {
+            "default": false,
+            "description": "Also return accounts that are not enabled (for\nexample cancelled or suspended ones). Defaults to False.",
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "name": "customers_list_accessible_customers",
@@ -20,7 +26,8 @@
         "properties": {
           "result": {
             "items": {
-              "type": "string"
+              "additionalProperties": true,
+              "type": "object"
             },
             "type": "array"
           }

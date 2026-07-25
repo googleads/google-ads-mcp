@@ -97,7 +97,42 @@ def _get_login_customer_id() -> str | None:
     return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
 
 
-def _get_googleads_client() -> GoogleAdsClient:
+def _resolve_login_customer_id(customer_id: str | None) -> str | None:
+    """Returns the manager account to act through for `customer_id`.
+
+    `GOOGLE_ADS_LOGIN_CUSTOMER_ID` is a single server-wide value, so it can
+    only describe one manager for every user. When it is set it still wins, to
+    preserve existing deployments and to provide an escape hatch. When it is
+    unset -- the default -- the manager is resolved per user from their own
+    Google Ads access, which is what lets each person work in the accounts
+    under the sub-MCCs they were granted.
+    """
+    configured = _get_login_customer_id()
+    if configured:
+        return configured
+
+    if not customer_id:
+        return None
+
+    # Imported lazily: the resolver builds clients through this module.
+    from ads_mcp import customer_resolver
+
+    try:
+        return customer_resolver.resolve_login_customer_id(customer_id)
+    except Exception as error:
+        # Falling back to no manager context keeps direct-access accounts
+        # working even if the hierarchy lookup fails.
+        logger.warning(
+            "ads_mcp: could not resolve login-customer-id for %s: %s",
+            customer_id,
+            error,
+        )
+        return None
+
+
+def _get_googleads_client(
+    login_customer_id: str | None = None,
+) -> GoogleAdsClient:
     args = {
         "credentials": _create_credentials(),
         "developer_token": _get_developer_token(),
@@ -105,8 +140,6 @@ def _get_googleads_client() -> GoogleAdsClient:
     }
 
     # If the login-customer-id is not set, avoid setting None.
-    login_customer_id = _get_login_customer_id()
-
     if login_customer_id:
         args["login_customer_id"] = login_customer_id
 
@@ -115,9 +148,29 @@ def _get_googleads_client() -> GoogleAdsClient:
     return client
 
 
-def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
-    return _get_googleads_client().get_service(
+def build_googleads_service(
+    serviceName: str, login_customer_id: str | None = None
+) -> GoogleAdsServiceClient:
+    """Returns a service using an explicit manager account, skipping resolution.
+
+    Used by `customer_resolver`, which must reach the API to work out what the
+    resolved manager should be.
+    """
+    return _get_googleads_client(login_customer_id).get_service(
         serviceName, interceptors=[MCPHeaderInterceptor()]
+    )
+
+
+def get_googleads_service(
+    serviceName: str, customer_id: str | None = None
+) -> GoogleAdsServiceClient:
+    """Returns a service authorized to reach `customer_id`.
+
+    Pass `customer_id` whenever the call targets a specific account, so the
+    right manager account is sent as `login-customer-id`.
+    """
+    return build_googleads_service(
+        serviceName, _resolve_login_customer_id(customer_id)
     )
 
 
@@ -125,8 +178,8 @@ def get_googleads_type(typeName: str):
     return _get_googleads_client().get_type(typeName)
 
 
-def get_googleads_client():
-    return _get_googleads_client()
+def get_googleads_client(login_customer_id: str | None = None):
+    return _get_googleads_client(login_customer_id)
 
 
 def format_output_value(value: Any) -> Any:
