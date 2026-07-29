@@ -17,6 +17,14 @@ to provide several
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
+- `create_search_campaign_draft`: Creates a complete Search campaign, but keeps
+  its campaign, ad group, and ad paused. It is intended for reviewed draft setup,
+  not ad serving.
+- `create_search_experiment_draft`: Creates an unscheduled Search control and
+  treatment experiment from an existing campaign.
+- `schedule_experiment` and `end_experiment`: Lifecycle actions that require
+  `confirm: true`. Scheduling can begin spend and must only be called after the
+  user has explicitly approved the experiment.
 
 ### Configuring and Namespacing Tools
 
@@ -45,6 +53,11 @@ namespaces:
     prefix: "metadata"
     enabled_tools:
       - get_resource_metadata: true
+
+  # Campaign and experiment writes are separate namespaces so an operator can
+  # turn them off independently of read-only reporting.
+  campaigns: true
+  experiments: true
 ```
 
 
