@@ -7,3 +7,4 @@ namespaces:
   customers: true
   search: true
   metadata: true
+  keyword_planner: true

@@ -18,6 +18,17 @@ to provide several
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
 
+#### Keyword Planner tools
+
+Read-only Keyword Planner tools (namespace `keyword_planner`) that generate or list data without persisting anything in the account.
+
+- `generate_keyword_ideas`: Generates keyword ideas with historical metrics (search volume, competition, CPC bid ranges) from seed keywords and/or a landing page URL.
+- `generate_keyword_historical_metrics`: Returns historical metrics for a specific list of keywords.
+- `list_plannable_locations`: Lists locations that can be used for reach forecasting.
+- `list_plannable_products`: Lists ad products available for reach forecasting in a given location.
+- `list_audience_insights_attributes`: Searches for audience attributes (interests, demographics, entities, locations) by free text.
+- `list_insights_eligible_dates`: Returns the date ranges for which audience insights data is available.
+
 ### Configuring and Namespacing Tools
 
 The Google Ads MCP server uses the `tools_config.yaml` to let you selectively enable or disable individual tools or tool categories (namespaces) and customize their namespace prefixes.
