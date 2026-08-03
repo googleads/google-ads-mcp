@@ -241,6 +241,7 @@ def list_audience_insights_attributes(
     customer_id: str,
     dimensions: List[str],
     query_text: str,
+    customer_insights_group: str = "google-ads-mcp",
 ) -> List[Dict[str, Any]]:
     """Searches for audience attributes (interests, demographics, entities, locations) by free text.
 
@@ -256,11 +257,14 @@ def list_audience_insights_attributes(
         customer_id: The id of the customer (digits only, no punctuation).
         dimensions: Which attribute dimensions to search within.
         query_text: The free-text term to search for (e.g. 'running shoes').
+        customer_insights_group: A label used to group insights requests. This is
+            a required API field; a default is provided.
     """
     service = utils.get_googleads_service("AudienceInsightsService")
     request = utils.get_googleads_type("ListAudienceInsightsAttributesRequest")
 
     request.customer_id = customer_id
+    request.customer_insights_group = customer_insights_group
     request.dimensions = dimensions
     request.query_text = query_text
 

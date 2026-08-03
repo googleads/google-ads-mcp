@@ -241,6 +241,8 @@ class TestAudienceInsightsTools(unittest.TestCase):
 
         mock_get_service.assert_called_once_with("AudienceInsightsService")
         self.assertEqual(request.customer_id, "1234567890")
+        # customer_insights_group is a required API field; must be set.
+        self.assertEqual(request.customer_insights_group, "google-ads-mcp")
         self.assertEqual(request.dimensions, ["AFFINITY_USER_INTEREST"])
         self.assertEqual(request.query_text, "running")
         self.assertEqual(results, [{"display_name": "Running"}])
