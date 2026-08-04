@@ -29,10 +29,16 @@ from ads_mcp.resources import (
 )  # noqa: F401
 
 
+import logging
 import os
+
+_LOGGERS_THAT_PRINT_ACCESS_TOKENS = ("httpx", "httpx2")
 
 
 def run_server() -> None:
+    for logger_name in _LOGGERS_THAT_PRINT_ACCESS_TOKENS:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))
