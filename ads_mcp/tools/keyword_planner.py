@@ -38,11 +38,8 @@ import ads_mcp.utils as utils
 
 keyword_planner_mcp = FastMCP("keyword_planner")
 
-# The API serves search volume for the past 4 years; a wider range is truncated
-# to the months that are actually available rather than rejected.
 _MAX_HISTORY_MONTHS = 48
 
-# What the API returns when no year_month_range is set on the request.
 _API_DEFAULT_HISTORY_MONTHS = 12
 
 # MonthOfYear is offset (JANUARY = 2 ... DECEMBER = 13), so calendar month
