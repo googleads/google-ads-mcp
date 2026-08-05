@@ -159,6 +159,57 @@ class TestYearMonthRangeResolution(unittest.TestCase):
         )
 
 
+class TestNormalizeMonthlyVolumes(unittest.TestCase):
+    """Tests decoding the offset MonthOfYear enum in monthly search volumes."""
+
+    def test_offset_enum_becomes_name_and_year_month(self):
+        # int64 fields are serialized as strings by proto-plus to_dict.
+        metrics = {
+            "monthly_search_volumes": [
+                {"year": "2024", "month": 2, "monthly_searches": "100"},
+                {"year": "2024", "month": 13, "monthly_searches": "300"},
+            ]
+        }
+
+        keyword_planner._normalize_monthly_volumes(metrics)
+
+        volumes = metrics["monthly_search_volumes"]
+        self.assertEqual(volumes[0]["month"], "JANUARY")
+        self.assertEqual(volumes[0]["year_month"], "2024-01")
+        self.assertEqual(volumes[1]["month"], "DECEMBER")
+        self.assertEqual(volumes[1]["year_month"], "2024-12")
+
+    def test_entry_without_year_gets_no_year_month(self):
+        metrics = {"monthly_search_volumes": [{"month": 5}]}
+
+        keyword_planner._normalize_monthly_volumes(metrics)
+
+        self.assertEqual(metrics["monthly_search_volumes"][0]["month"], "APRIL")
+        self.assertNotIn("year_month", metrics["monthly_search_volumes"][0])
+
+    def test_out_of_range_and_missing_month_are_left_alone(self):
+        metrics = {
+            "monthly_search_volumes": [
+                {"month": 0},
+                {"month": 99},
+                {"month": "JUNE"},
+                {"year": "2024"},
+            ]
+        }
+
+        keyword_planner._normalize_monthly_volumes(metrics)
+
+        self.assertEqual(
+            metrics["monthly_search_volumes"],
+            [{"month": 0}, {"month": 99}, {"month": "JUNE"}, {"year": "2024"}],
+        )
+
+    def test_non_dict_metrics_are_ignored(self):
+        # Results without metrics format to a dict lacking the metrics key.
+        keyword_planner._normalize_monthly_volumes(None)
+        keyword_planner._normalize_monthly_volumes({})
+
+
 class TestGenerateKeywordIdeas(unittest.TestCase):
     """Test cases for generate_keyword_ideas."""
 
@@ -286,6 +337,35 @@ class TestGenerateKeywordIdeas(unittest.TestCase):
         self.assertEqual(year_month_range.end.year, 2026)
         self.assertEqual(year_month_range.end.month, "JULY")
 
+    @patch("ads_mcp.utils.get_googleads_type")
+    @patch("ads_mcp.utils.get_googleads_service")
+    def test_monthly_volumes_are_normalized(
+        self, mock_get_service, mock_get_type
+    ):
+        mock_get_type.return_value = MagicMock()
+        mock_get_service.return_value.generate_keyword_ideas.return_value = [
+            MagicMock()
+        ]
+
+        with patch(
+            "ads_mcp.utils.format_output_value",
+            return_value={
+                "text": "shoes",
+                "keyword_idea_metrics": {
+                    "monthly_search_volumes": [{"year": "2024", "month": 2}]
+                },
+            },
+        ):
+            results = keyword_planner.generate_keyword_ideas(
+                customer_id="1234567890",
+                geo_target_constants=["2276"],
+                language="1001",
+                keywords=["shoes"],
+            )
+
+        volume = results[0]["keyword_idea_metrics"]["monthly_search_volumes"][0]
+        self.assertEqual(volume["year_month"], "2024-01")
+
     def test_missing_seed_raises_tool_error(self):
         with self.assertRaises(ToolError):
             keyword_planner.generate_keyword_ideas(
@@ -350,6 +430,40 @@ class TestGenerateKeywordHistoricalMetrics(unittest.TestCase):
         self.assertEqual(year_month_range.start.month, "AUGUST")
         self.assertEqual(year_month_range.end.year, 2026)
         self.assertEqual(year_month_range.end.month, "JULY")
+
+    @patch("ads_mcp.utils.get_googleads_type")
+    @patch("ads_mcp.utils.get_googleads_service")
+    def test_monthly_volumes_are_normalized(
+        self, mock_get_service, mock_get_type
+    ):
+        mock_get_type.return_value = MagicMock()
+        response = MagicMock()
+        response.results = [MagicMock()]
+        mock_get_service.return_value.generate_keyword_historical_metrics.return_value = (
+            response
+        )
+
+        with patch(
+            "ads_mcp.utils.format_output_value",
+            return_value={
+                "text": "shoes",
+                "keyword_metrics": {
+                    "monthly_search_volumes": [
+                        {"year": "2022", "month": 9, "monthly_searches": "40"}
+                    ]
+                },
+            },
+        ):
+            results = keyword_planner.generate_keyword_historical_metrics(
+                customer_id="1234567890",
+                keywords=["shoes"],
+                geo_target_constants=["2276"],
+                language="1001",
+            )
+
+        volume = results[0]["keyword_metrics"]["monthly_search_volumes"][0]
+        self.assertEqual(volume["month"], "AUGUST")
+        self.assertEqual(volume["year_month"], "2022-08")
 
 
 class TestReachPlanTools(unittest.TestCase):

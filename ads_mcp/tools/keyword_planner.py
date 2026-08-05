@@ -206,6 +206,36 @@ def _apply_year_month_range(
     year_month_range.end.month = _MONTH_NAMES[end_month - 1]
 
 
+def _normalize_monthly_volumes(metrics: Any) -> None:
+    """Makes the monthly search volumes of a formatted metrics dict readable.
+
+    `format_output_value` serializes enums as integers and MonthOfYear starts at
+    JANUARY = 2, so a raw month of 4 actually means March. Each entry gets the
+    month name plus a sortable 'YYYY-MM' `year_month` key for trend analysis.
+    """
+    if not isinstance(metrics, dict):
+        return
+
+    for volume in metrics.get("monthly_search_volumes") or []:
+        month = volume.get("month")
+        if not isinstance(month, int) or not 2 <= month <= 13:
+            continue
+
+        calendar_month = month - 1
+        volume["month"] = _MONTH_NAMES[calendar_month - 1]
+        year = volume.get("year")
+        if year:
+            volume["year_month"] = f"{int(year):04d}-{calendar_month:02d}"
+
+
+def _format_result_with_metrics(result: Any, metrics_key: str) -> Any:
+    """Formats one result and normalizes its monthly search volumes."""
+    formatted = utils.format_output_value(result)
+    if isinstance(formatted, dict):
+        _normalize_monthly_volumes(formatted.get(metrics_key))
+    return formatted
+
+
 def _format_results(results: Any) -> List[Dict[str, Any]]:
     """Converts an iterable of proto messages into a list of plain dicts."""
     return [utils.format_output_value(result) for result in results]
@@ -299,7 +329,9 @@ def generate_keyword_ideas(
     for index, result in enumerate(response):
         if limit is not None and index >= limit:
             break
-        ideas.append(utils.format_output_value(result))
+        ideas.append(
+            _format_result_with_metrics(result, "keyword_idea_metrics")
+        )
     return ideas
 
 
@@ -364,7 +396,10 @@ def generate_keyword_historical_metrics(
     )
 
     response = service.generate_keyword_historical_metrics(request=request)
-    return _format_results(response.results)
+    return [
+        _format_result_with_metrics(result, "keyword_metrics")
+        for result in response.results
+    ]
 
 
 @keyword_planner_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
