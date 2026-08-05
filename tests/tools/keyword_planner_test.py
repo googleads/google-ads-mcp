@@ -14,6 +14,7 @@
 
 """Test cases for the keyword_planner tools."""
 
+import datetime
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -47,6 +48,114 @@ class TestNormalizationHelpers(unittest.TestCase):
         self.assertEqual(
             keyword_planner._to_language_resource("languageConstants/1001"),
             "languageConstants/1001",
+        )
+
+
+class TestYearMonthRangeResolution(unittest.TestCase):
+    """Tests for resolving the requested history window."""
+
+    def test_no_window_requested_returns_none(self):
+        # None means "leave the request alone" so the API default of 12 applies.
+        self.assertIsNone(
+            keyword_planner._resolve_year_month_range(None, None, None)
+        )
+
+    @patch("ads_mcp.tools.keyword_planner.datetime")
+    def test_months_back_ends_at_last_complete_month(self, mock_datetime):
+        mock_datetime.date.today.return_value = datetime.date(2026, 8, 5)
+
+        start, end = keyword_planner._resolve_year_month_range(48, None, None)
+
+        # August 2026 is still running, so the window ends in July 2026.
+        self.assertEqual(end, (2026, 7))
+        self.assertEqual(start, (2022, 8))
+
+    @patch("ads_mcp.tools.keyword_planner.datetime")
+    def test_months_back_of_one_is_a_single_month(self, mock_datetime):
+        mock_datetime.date.today.return_value = datetime.date(2026, 1, 20)
+
+        start, end = keyword_planner._resolve_year_month_range(1, None, None)
+
+        self.assertEqual(start, (2025, 12))
+        self.assertEqual(end, (2025, 12))
+
+    def test_explicit_window_overrides_months_back(self):
+        start, end = keyword_planner._resolve_year_month_range(
+            48, "2022-09", "2023-09"
+        )
+
+        self.assertEqual(start, (2022, 9))
+        self.assertEqual(end, (2023, 9))
+
+    def test_start_only_ends_at_last_complete_month(self):
+        with patch(
+            "ads_mcp.tools.keyword_planner._last_complete_month",
+            return_value=(2026, 7),
+        ):
+            start, end = keyword_planner._resolve_year_month_range(
+                48, "2024-01", None
+            )
+
+        self.assertEqual(start, (2024, 1))
+        self.assertEqual(end, (2026, 7))
+
+    def test_end_only_counts_months_back_from_end(self):
+        start, end = keyword_planner._resolve_year_month_range(
+            12, None, "2024-06"
+        )
+
+        self.assertEqual(start, (2023, 7))
+        self.assertEqual(end, (2024, 6))
+
+    def test_months_back_above_limit_raises(self):
+        with self.assertRaises(ToolError) as context:
+            keyword_planner._resolve_year_month_range(49, None, None)
+
+        self.assertIn("48", str(context.exception))
+
+    def test_months_back_below_one_raises(self):
+        with self.assertRaises(ToolError):
+            keyword_planner._resolve_year_month_range(0, None, None)
+
+    def test_inverted_window_raises(self):
+        with self.assertRaises(ToolError) as context:
+            keyword_planner._resolve_year_month_range(
+                None, "2025-01", "2024-01"
+            )
+
+        self.assertIn("must not be after", str(context.exception))
+
+    def test_malformed_year_month_raises(self):
+        for value in ["2022/09", "2022", "sept-2022", "2022-13", "2022-00"]:
+            with self.subTest(value=value):
+                with self.assertRaises(ToolError):
+                    keyword_planner._resolve_year_month_range(None, value, None)
+
+    def test_apply_sets_offset_month_enum_names(self):
+        request = MagicMock()
+
+        keyword_planner._apply_year_month_range(
+            request, None, "2022-01", "2023-12"
+        )
+
+        year_month_range = request.historical_metrics_options.year_month_range
+        # MonthOfYear is offset (JANUARY = 2), so names are set, never numbers.
+        self.assertEqual(year_month_range.start.year, 2022)
+        self.assertEqual(year_month_range.start.month, "JANUARY")
+        self.assertEqual(year_month_range.end.year, 2023)
+        self.assertEqual(year_month_range.end.month, "DECEMBER")
+
+    def test_apply_leaves_request_untouched_without_window(self):
+        class StrictRequest:
+            """Fails on any attribute access, unlike a permissive MagicMock."""
+
+            def __getattr__(self, name):
+                raise AssertionError(f"unexpected access to '{name}'")
+
+        # Touching historical_metrics_options would mark the field as present
+        # and override the API default of 12 months with an empty range.
+        keyword_planner._apply_year_month_range(
+            StrictRequest(), None, None, None
         )
 
 
@@ -131,6 +240,52 @@ class TestGenerateKeywordIdeas(unittest.TestCase):
 
         self.assertEqual(len(results), 2)
 
+    @patch("ads_mcp.utils.get_googleads_type")
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_value")
+    @patch("ads_mcp.tools.keyword_planner._apply_year_month_range")
+    def test_history_window_defaults_to_api_default(
+        self, mock_apply, mock_format, mock_get_service, mock_get_type
+    ):
+        mock_get_type.return_value = MagicMock()
+        mock_get_service.return_value.generate_keyword_ideas.return_value = []
+
+        keyword_planner.generate_keyword_ideas(
+            customer_id="1234567890",
+            geo_target_constants=["2276"],
+            language="1001",
+            keywords=["shoes"],
+        )
+
+        # months_back stays None here: a long window multiplies the response by
+        # one monthly volume entry per idea per month.
+        self.assertEqual(mock_apply.call_args[0][1:], (None, None, None))
+
+    @patch("ads_mcp.utils.get_googleads_type")
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_value")
+    def test_history_window_is_forwarded(
+        self, mock_format, mock_get_service, mock_get_type
+    ):
+        request = MagicMock()
+        mock_get_type.return_value = request
+        mock_get_service.return_value.generate_keyword_ideas.return_value = []
+
+        keyword_planner.generate_keyword_ideas(
+            customer_id="1234567890",
+            geo_target_constants=["2276"],
+            language="1001",
+            keywords=["shoes"],
+            start_year_month="2022-09",
+            end_year_month="2026-07",
+        )
+
+        year_month_range = request.historical_metrics_options.year_month_range
+        self.assertEqual(year_month_range.start.year, 2022)
+        self.assertEqual(year_month_range.start.month, "SEPTEMBER")
+        self.assertEqual(year_month_range.end.year, 2026)
+        self.assertEqual(year_month_range.end.month, "JULY")
+
     def test_missing_seed_raises_tool_error(self):
         with self.assertRaises(ToolError):
             keyword_planner.generate_keyword_ideas(
@@ -168,6 +323,33 @@ class TestGenerateKeywordHistoricalMetrics(unittest.TestCase):
         mock_get_service.assert_called_once_with("KeywordPlanIdeaService")
         request.keywords.extend.assert_called_once_with(["shoes"])
         self.assertEqual(results, [{"text": "shoes"}])
+
+    @patch("ads_mcp.utils.get_googleads_type")
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_value")
+    @patch("ads_mcp.tools.keyword_planner._last_complete_month")
+    def test_defaults_to_full_four_year_window(
+        self, mock_last_month, mock_format, mock_get_service, mock_get_type
+    ):
+        mock_last_month.return_value = (2026, 7)
+        request = MagicMock()
+        mock_get_type.return_value = request
+        mock_get_service.return_value.generate_keyword_historical_metrics.return_value.results = (
+            []
+        )
+
+        keyword_planner.generate_keyword_historical_metrics(
+            customer_id="1234567890",
+            keywords=["shoes"],
+            geo_target_constants=["2276"],
+            language="1001",
+        )
+
+        year_month_range = request.historical_metrics_options.year_month_range
+        self.assertEqual(year_month_range.start.year, 2022)
+        self.assertEqual(year_month_range.start.month, "AUGUST")
+        self.assertEqual(year_month_range.end.year, 2026)
+        self.assertEqual(year_month_range.end.month, "JULY")
 
 
 class TestReachPlanTools(unittest.TestCase):

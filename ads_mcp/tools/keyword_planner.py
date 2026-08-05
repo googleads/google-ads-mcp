@@ -25,8 +25,9 @@ persist anything in the account, keeping this server read-only:
   * AudienceInsightsService.ListInsightsEligibleDates
 """
 
+import datetime
 import functools
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -36,6 +37,32 @@ from google.ads.googleads.errors import GoogleAdsException
 import ads_mcp.utils as utils
 
 keyword_planner_mcp = FastMCP("keyword_planner")
+
+# The API serves search volume for the past 4 years; a wider range is truncated
+# to the months that are actually available rather than rejected.
+_MAX_HISTORY_MONTHS = 48
+
+# What the API returns when no year_month_range is set on the request.
+_API_DEFAULT_HISTORY_MONTHS = 12
+
+# MonthOfYear is offset (JANUARY = 2 ... DECEMBER = 13), so calendar month
+# numbers must never be assigned to the enum directly.
+_MONTH_NAMES = (
+    "JANUARY",
+    "FEBRUARY",
+    "MARCH",
+    "APRIL",
+    "MAY",
+    "JUNE",
+    "JULY",
+    "AUGUST",
+    "SEPTEMBER",
+    "OCTOBER",
+    "NOVEMBER",
+    "DECEMBER",
+)
+
+_YearMonth = Tuple[int, int]
 
 
 def _translate_google_ads_errors(func: Callable) -> Callable:
@@ -81,6 +108,104 @@ def _to_language_resource(value: str) -> str:
     return f"languageConstants/{trimmed}" if trimmed.isdigit() else trimmed
 
 
+def _month_index(year: int, month: int) -> int:
+    """Converts a (year, calendar month) pair into a monotonic month counter."""
+    return year * 12 + (month - 1)
+
+
+def _from_month_index(index: int) -> _YearMonth:
+    """Inverse of `_month_index`."""
+    return index // 12, index % 12 + 1
+
+
+def _last_complete_month() -> _YearMonth:
+    """Returns the most recent month that lies fully in the past.
+
+    Search volume for the running month is still incomplete, so it is never a
+    sensible end of a trend window.
+    """
+    today = datetime.date.today()
+    return _from_month_index(_month_index(today.year, today.month) - 1)
+
+
+def _parse_year_month(value: str, field: str) -> _YearMonth:
+    """Parses a 'YYYY-MM' string into a (year, calendar month) pair."""
+    parts = value.strip().split("-")
+    is_numeric_pair = len(parts) == 2 and all(part.isdigit() for part in parts)
+    if not is_numeric_pair:
+        raise ToolError(
+            f"{field} must be in 'YYYY-MM' format (e.g. '2022-09'), "
+            f"got '{value}'."
+        )
+
+    year, month = int(parts[0]), int(parts[1])
+    if not 1 <= month <= 12:
+        raise ToolError(f"{field} has an invalid month: '{value}'.")
+    return year, month
+
+
+def _resolve_year_month_range(
+    months_back: int | None,
+    start_year_month: str | None,
+    end_year_month: str | None,
+) -> Tuple[_YearMonth, _YearMonth] | None:
+    """Resolves the requested history window into inclusive start/end months.
+
+    An explicit `start_year_month` or `end_year_month` wins over `months_back`.
+    Returns None when nothing was requested, which leaves the request without a
+    year_month_range so the API default of the past 12 months applies.
+    """
+    if months_back is not None and not 1 <= months_back <= _MAX_HISTORY_MONTHS:
+        raise ToolError(
+            f"months_back must be between 1 and {_MAX_HISTORY_MONTHS}; the API "
+            "only serves search volume for the past 4 years."
+        )
+
+    has_explicit_bound = bool(start_year_month or end_year_month)
+    if not has_explicit_bound and months_back is None:
+        return None
+
+    end = (
+        _parse_year_month(end_year_month, "end_year_month")
+        if end_year_month
+        else _last_complete_month()
+    )
+
+    if start_year_month:
+        start = _parse_year_month(start_year_month, "start_year_month")
+    else:
+        span = months_back or _API_DEFAULT_HISTORY_MONTHS
+        start = _from_month_index(_month_index(*end) - (span - 1))
+
+    if _month_index(*start) > _month_index(*end):
+        raise ToolError(
+            "start_year_month must not be after end_year_month "
+            f"(got '{start[0]}-{start[1]:02d}' to '{end[0]}-{end[1]:02d}')."
+        )
+    return start, end
+
+
+def _apply_year_month_range(
+    request: Any,
+    months_back: int | None,
+    start_year_month: str | None,
+    end_year_month: str | None,
+) -> None:
+    """Sets `historical_metrics_options.year_month_range` on a request."""
+    window = _resolve_year_month_range(
+        months_back, start_year_month, end_year_month
+    )
+    if window is None:
+        return
+
+    (start_year, start_month), (end_year, end_month) = window
+    year_month_range = request.historical_metrics_options.year_month_range
+    year_month_range.start.year = start_year
+    year_month_range.start.month = _MONTH_NAMES[start_month - 1]
+    year_month_range.end.year = end_year
+    year_month_range.end.month = _MONTH_NAMES[end_month - 1]
+
+
 def _format_results(results: Any) -> List[Dict[str, Any]]:
     """Converts an iterable of proto messages into a list of plain dicts."""
     return [utils.format_output_value(result) for result in results]
@@ -97,6 +222,9 @@ def generate_keyword_ideas(
     keyword_plan_network: str = "GOOGLE_SEARCH",
     include_adult_keywords: bool = False,
     limit: int | None = None,
+    months_back: int | None = None,
+    start_year_month: str | None = None,
+    end_year_month: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Generates keyword ideas with historical metrics (search volume, competition, CPC bid ranges).
 
@@ -114,6 +242,14 @@ def generate_keyword_ideas(
     ### keyword_plan_network
         One of 'GOOGLE_SEARCH' or 'GOOGLE_SEARCH_AND_PARTNERS'.
 
+    ### history window
+        Defaults to the API default of the past 12 months. For trend analysis
+        request more via `months_back` (up to 48) or pin an exact window with
+        `start_year_month`/`end_year_month`. Note that every extra month adds a
+        `monthly_search_volumes` entry to *every* idea, so combine a long window
+        with a `limit`. For a long history on a known keyword set, prefer
+        `generate_keyword_historical_metrics`, which defaults to 48 months.
+
     Args:
         customer_id: The id of the customer.
         geo_target_constants: One or more geo targets to scope metrics to.
@@ -123,6 +259,12 @@ def generate_keyword_ideas(
         keyword_plan_network: Which network the metrics apply to.
         include_adult_keywords: Whether to include adult keywords in the results.
         limit: Maximum number of ideas to return (client-side cap).
+        months_back: How many months of history to request, ending with the last
+            complete month. Max 48. Omit for the API default of 12.
+        start_year_month: Inclusive start of an exact window, as 'YYYY-MM'.
+            Overrides `months_back`.
+        end_year_month: Inclusive end of an exact window, as 'YYYY-MM'. Defaults
+            to the last complete month.
     """
     if not keywords and not page_url:
         raise ToolError(
@@ -139,6 +281,9 @@ def generate_keyword_ideas(
     )
     request.keyword_plan_network = keyword_plan_network
     request.include_adult_keywords = include_adult_keywords
+    _apply_year_month_range(
+        request, months_back, start_year_month, end_year_month
+    )
 
     if keywords and page_url:
         request.keyword_and_url_seed.url = page_url
@@ -167,6 +312,9 @@ def generate_keyword_historical_metrics(
     language: str,
     keyword_plan_network: str = "GOOGLE_SEARCH",
     include_adult_keywords: bool = False,
+    months_back: int | None = _MAX_HISTORY_MONTHS,
+    start_year_month: str | None = None,
+    end_year_month: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Returns historical metrics (search volume, competition, CPC bid ranges) for specific keywords.
 
@@ -176,6 +324,14 @@ def generate_keyword_historical_metrics(
     See `generate_keyword_ideas` for the accepted `customer_id`,
     `geo_target_constants`, `language`, and `keyword_plan_network` formats.
 
+    ### history window
+        Defaults to the full 48 months the API offers, so `monthly_search_volumes`
+        can be read as a multi-year demand trend including seasonality. Pass a
+        smaller `months_back`, or pin an exact window with
+        `start_year_month`/`end_year_month`, e.g. to compare like-for-like
+        periods across years. The API caps search volume at 4 years and silently
+        returns only the months it has, so an over-wide window is not an error.
+
     Args:
         customer_id: The id of the customer.
         keywords: The exact keywords to fetch metrics for.
@@ -183,6 +339,12 @@ def generate_keyword_historical_metrics(
         language: The language to scope metrics to.
         keyword_plan_network: Which network the metrics apply to.
         include_adult_keywords: Whether to include adult keywords in the results.
+        months_back: How many months of history to request, ending with the last
+            complete month. Max 48.
+        start_year_month: Inclusive start of an exact window, as 'YYYY-MM'.
+            Overrides `months_back`.
+        end_year_month: Inclusive end of an exact window, as 'YYYY-MM'. Defaults
+            to the last complete month.
     """
     service = utils.get_googleads_service("KeywordPlanIdeaService")
     request = utils.get_googleads_type(
@@ -197,6 +359,9 @@ def generate_keyword_historical_metrics(
     )
     request.keyword_plan_network = keyword_plan_network
     request.include_adult_keywords = include_adult_keywords
+    _apply_year_month_range(
+        request, months_back, start_year_month, end_year_month
+    )
 
     response = service.generate_keyword_historical_metrics(request=request)
     return _format_results(response.results)
