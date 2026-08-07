@@ -17,23 +17,28 @@ import sys
 
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
 
+# Run the suite with pytest rather than `unittest discover`: the usage_log
+# tests are written as plain functions, which unittest does not collect at all
+# — it reported "Ran 0 tests ... OK" for that whole directory. pytest collects
+# both those and the unittest.TestCase suites. tests/smoke is excluded because
+# it has its own sessions below.
 TEST_COMMAND = [
     "coverage",
     "run",
     "--append",
     "-m",
-    "unittest",
-    "discover",
-    "--buffer",
-    "-s=tests",
-    "-p",
-    "*_test.py",
+    "pytest",
+    "tests",
+    "--ignore=tests/smoke",
 ]
 
 FREEZE_COMMAND = [sys.executable, "-m", "pip", "freeze"]
 TEST_DEPENDENCIES = [
     "pyfakefs>=5.0.0,<6.0",
     "coverage==6.5.0",
+    "pytest>=8.0,<9.0",
+    # asyncio_mode = "auto" in pyproject.toml needs this to run async tests.
+    "pytest-asyncio>=0.24,<2.0",
 ]
 
 
