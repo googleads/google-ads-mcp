@@ -114,12 +114,31 @@ To enable it, set the following environment variables:
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: Your Google Cloud OAuth 2.0 Client ID.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: Your Google Cloud OAuth 2.0 Client Secret.
 - `GOOGLE_ADS_MCP_BASE_URL`: (Optional) The base URL where the server is accessible (defaults to `http://localhost:8080`).
+- `FASTMCP_HOME`: (Optional) Directory where FastMCP stores the OAuth proxy state — client registrations and encrypted upstream Google tokens — under `$FASTMCP_HOME/oauth-proxy/`. Defaults to a per-user data directory (e.g. `~/.local/share/fastmcp`). See [Persisting OAuth state](#persisting-oauth-state) when deploying in a container.
 
 Once this is enabled, you can authenticate to the API through your MCP client.
 
 When these variables are set, the server automatically switches to the `streamable-http` transport (SSE/HTTP) instead of `stdio`.
 
 You will need to run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
+
+##### Persisting OAuth state
+
+FastMCP's OAuth proxy keeps its state on disk: the dynamic client registrations
+made by MCP clients, plus the encrypted Google access and refresh tokens. By
+default this lives in a per-user data directory inside the container, which is
+discarded on every redeploy — forcing all users to re-authenticate.
+
+The provided `Dockerfile` sets `FASTMCP_HOME=/data`, so mounting a persistent
+volume at `/data` is enough to keep users signed in across redeploys. The state
+is encrypted with a key derived from `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`, so
+keep that value stable — rotating it invalidates the stored state and triggers
+re-authentication (it does not break the server).
+
+`/data` is owned by the container's unprivileged `appuser`. A Docker named
+volume inherits that ownership, but a bind mount to a host path does not — run
+`chown -R 1000:1000 <host-path>` for bind mounts, otherwise the server cannot
+create its storage directory and fails to start.
 
 #### Option 2: Configure credentials using Application Default Credentials
 
