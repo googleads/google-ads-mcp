@@ -44,7 +44,12 @@ def run_server() -> None:
     port = int(os.environ.get("PORT", "8080"))
 
     if _CLIENT_ID and _CLIENT_SECRET:
-        mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
+        mcp.run(
+            transport="streamable-http",
+            port=port,
+            host="0.0.0.0",
+            uvicorn_config={"access_log": False},
+        )
     else:
         mcp.run()
 

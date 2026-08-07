@@ -20,27 +20,37 @@ of the server.
 """
 
 import os
+from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
+from ads_mcp.auth_storage import create_client_storage
 
 from ads_mcp.usage_log import UsageLogMiddleware
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
 _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
+_JWT_SIGNING_KEY = os.environ.get("GOOGLE_ADS_MCP_JWT_SIGNING_KEY")
 
 if _CLIENT_ID and _CLIENT_SECRET:
-    auth = GoogleProvider(
-        client_id=_CLIENT_ID,
-        client_secret=_CLIENT_SECRET,
-        base_url=_BASE_URL,
-        required_scopes=[
+    client_storage = create_client_storage()
+    provider_kwargs: dict[str, Any] = {
+        "client_id": _CLIENT_ID,
+        "client_secret": _CLIENT_SECRET,
+        "base_url": _BASE_URL,
+        "required_scopes": [
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/adwords",
         ],
-    )
+    }
+    if _JWT_SIGNING_KEY:
+        provider_kwargs["jwt_signing_key"] = _JWT_SIGNING_KEY
+    if client_storage is not None:
+        provider_kwargs["client_storage"] = client_storage
+
+    auth = GoogleProvider(**provider_kwargs)
     mcp = FastMCP("Google Ads Server", auth=auth)
     mcp.add_middleware(UsageLogMiddleware.from_env(server="google-ads"))
 else:

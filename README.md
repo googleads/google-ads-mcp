@@ -114,7 +114,13 @@ To enable it, set the following environment variables:
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: Your Google Cloud OAuth 2.0 Client ID.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: Your Google Cloud OAuth 2.0 Client Secret.
 - `GOOGLE_ADS_MCP_BASE_URL`: (Optional) The base URL where the server is accessible (defaults to `http://localhost:8080`).
-- `FASTMCP_HOME`: (Optional) Directory where FastMCP stores the OAuth proxy state — client registrations and encrypted upstream Google tokens — under `$FASTMCP_HOME/oauth-proxy/`. Defaults to a per-user data directory (e.g. `~/.local/share/fastmcp`). See [Persisting OAuth state](#persisting-oauth-state) when deploying in a container.
+- `GOOGLE_ADS_MCP_JWT_SIGNING_KEY`: (Optional) Secret key used to sign FastMCP JWT tokens across multiple server instances or deployments.
+- `GOOGLE_ADS_MCP_STORAGE_TYPE`: (Optional) Storage backend for OAuth state (`filetree`, `redis`, or `memory`).
+- `GOOGLE_ADS_MCP_STORAGE_PATH`: (Optional) Directory path for `filetree` persistent storage.
+- `GOOGLE_ADS_MCP_STORAGE_REDIS_URL`: (Optional) Redis URL for `redis` persistent storage.
+- `GOOGLE_ADS_MCP_STORAGE_ENCRYPTION_KEY`: (Optional) Encryption key for stored OAuth tokens.
+- `GOOGLE_ADS_MCP_STORAGE_DISABLE_ENCRYPTION`: (Optional) Set to `true` to disable token encryption.
+- `FASTMCP_HOME`: (Optional) Directory where FastMCP stores the OAuth proxy state — client registrations and encrypted upstream Google tokens — under `$FASTMCP_HOME/oauth-proxy/`. Only used when no `GOOGLE_ADS_MCP_STORAGE_*` variable is set. Defaults to a per-user data directory (e.g. `~/.local/share/fastmcp`). See [Persisting OAuth state](#persisting-oauth-state) when deploying in a container.
 
 Once this is enabled, you can authenticate to the API through your MCP client.
 
@@ -349,6 +355,8 @@ Make sure to set the required environment variables:
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: The OAuth Client ID you want the MCP server to use.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: The OAuth Client secret you want the MCP server to use.
 - `GOOGLE_ADS_MCP_BASE_URL`: The base URL where your MCP server is accessible: this will be automatically assigned by Google Cloud Run after your first deployment. You can update the environment variables after deployment. 
+- `GOOGLE_ADS_MCP_JWT_SIGNING_KEY`: (Recommended for production) Persistent JWT signing key across Cloud Run instances.
+- `GOOGLE_ADS_MCP_STORAGE_TYPE` / `GOOGLE_ADS_MCP_STORAGE_REDIS_URL`: (Recommended for production) Storage backend (e.g. `redis`) to persist OAuth tokens across instances.
 - `FASTMCP_HOST`: Set this to `0.0.0.0` to allow FastMCP to accept connections from all IP addresses.
 
 ```shell
@@ -357,7 +365,7 @@ gcloud run deploy google-ads-mcp \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars="GOOGLE_PROJECT_ID=YOUR_PROJECT_ID,GOOGLE_ADS_DEVELOPER_TOKEN=YOUR_DEVELOPER_TOKEN,GOOGLE_ADS_MCP_OAUTH_CLIENT_ID=YOUR_CLIENT_ID,GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET=YOUR_CLIENT_SECRET,GOOGLE_ADS_MCP_BASE_URL=YOUR_BASE_URL,FASTMCP_HOST=0.0.0.0"
+  --set-env-vars="GOOGLE_PROJECT_ID=YOUR_PROJECT_ID,GOOGLE_ADS_DEVELOPER_TOKEN=YOUR_DEVELOPER_TOKEN,GOOGLE_ADS_MCP_OAUTH_CLIENT_ID=YOUR_CLIENT_ID,GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET=YOUR_CLIENT_SECRET,GOOGLE_ADS_MCP_BASE_URL=YOUR_BASE_URL,GOOGLE_ADS_MCP_JWT_SIGNING_KEY=YOUR_JWT_SIGNING_KEY,FASTMCP_HOST=0.0.0.0"
 ```
 
 ### Step 3: Configure MCP Client
@@ -412,23 +420,6 @@ be simpler.
 ```
 How many active campaigns do I have for customer id 1234567890
 ```
-
-## Skills
-
-This repository also provides [Agent Skills](https://agentskills.io/), which are specialized workflows and instructions that give AI agents specific expertise.
-
-### Skills available
-
-- `account-performance-diagnostics`: Diagnose account performance issues such as conversion loss, low lead flow, and lost opportunities. Located in `ads_mcp/skills/account-performance-diagnostics`.
-
-### How to install skills
-
-To use these skills, you need to point your skills-compatible AI agent to the skill directory.
-
-For example, if you are using [Antigravity CLI](https://antigravity.google/product/antigravity-cli), you can install the skill by copying the folder to your skills directory or referencing it. See the [Antigravity CLI documentation](https://antigravity.google/docs/skills) for detailed instructions.
-
-While that guide is specific to Antigravity CLI, Agent Skills are an open standard and can be loaded by any compatible agent or LLM tool that supports the format (e.g., Claude Code, Cursor).
-
 
 ## Contributing
 

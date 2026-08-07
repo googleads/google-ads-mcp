@@ -19,6 +19,7 @@ from google.ads.googleads.v24.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
 from google.ads.googleads.v24.common.types.metrics import Metrics
+from google.protobuf.field_mask_pb2 import FieldMask
 
 from ads_mcp import utils
 
@@ -65,6 +66,12 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(formatted), 2)
         self.assertEqual(formatted[0].get("clicks"), "10")
         self.assertEqual(formatted[1].get("clicks"), "20")
+
+    def test_format_output_value_bare_protobuf(self):
+        """Tests that bare protobuf messages are formatted correctly."""
+        fm = FieldMask(paths=["foo", "bar"])
+        formatted = utils.format_output_value(fm)
+        self.assertEqual(formatted, "foo,bar")
 
     def test_prevent_stdio_inheritance(self):
         """Tests that prevent_stdio_inheritance sets stdin to DEVNULL if not specified."""
