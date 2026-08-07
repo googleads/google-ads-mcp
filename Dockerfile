@@ -20,10 +20,11 @@ RUN useradd --create-home appuser \
     && chown -R appuser /app /data
 USER appuser
 
-# Persist FastMCP's OAuth proxy state (client registrations and encrypted
-# upstream tokens) outside the container layer, so users stay authenticated
-# across redeploys. Mount a volume at /data to make this effective.
-ENV FASTMCP_HOME=/data
+# Persist the OAuth proxy state (client registrations and encrypted upstream
+# tokens) outside the container layer, so users stay authenticated across
+# redeploys. Mount a volume at /data to make this effective.
+ENV GOOGLE_ADS_MCP_STORAGE_TYPE=filetree \
+    GOOGLE_ADS_MCP_STORAGE_PATH=/data
 
 # Expose port 8080 (default for Cloud Run)
 EXPOSE 8080

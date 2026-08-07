@@ -135,11 +135,17 @@ made by MCP clients, plus the encrypted Google access and refresh tokens. By
 default this lives in a per-user data directory inside the container, which is
 discarded on every redeploy — forcing all users to re-authenticate.
 
-The provided `Dockerfile` sets `FASTMCP_HOME=/data`, so mounting a persistent
-volume at `/data` is enough to keep users signed in across redeploys. The state
-is encrypted with a key derived from `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`, so
-keep that value stable — rotating it invalidates the stored state and triggers
-re-authentication (it does not break the server).
+The provided `Dockerfile` sets `GOOGLE_ADS_MCP_STORAGE_TYPE=filetree` and
+`GOOGLE_ADS_MCP_STORAGE_PATH=/data`, so mounting a persistent volume at `/data`
+is enough to keep users signed in across redeploys.
+
+The state is encrypted at rest. Without `GOOGLE_ADS_MCP_STORAGE_ENCRYPTION_KEY`,
+the key is derived from `GOOGLE_ADS_MCP_JWT_SIGNING_KEY` if set, otherwise from
+`GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET` — so keep whichever applies stable.
+Changing it invalidates the stored state and triggers re-authentication (it does
+not break the server). Setting `GOOGLE_ADS_MCP_JWT_SIGNING_KEY` decouples both
+the tokens and the encryption key from the client secret, which lets you rotate
+the secret without signing everyone out.
 
 `/data` is owned by the container's unprivileged `appuser`. A Docker named
 volume inherits that ownership, but a bind mount to a host path does not — run
