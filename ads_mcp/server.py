@@ -28,6 +28,8 @@ from ads_mcp.resources import (
     segments,
 )  # noqa: F401
 
+from ads_mcp.usage_log import UsageLogMiddleware
+
 
 import logging
 import os
@@ -44,6 +46,11 @@ def run_server() -> None:
     port = int(os.environ.get("PORT", "8080"))
 
     if _CLIENT_ID and _CLIENT_SECRET:
+        # Usage logging stays mandatory in hosted mode, but the middleware is
+        # attached here rather than in coordinator.py so that importing the
+        # coordinator does not require MCP_USAGE_DSN. A missing DSN still
+        # raises, before the server accepts any traffic.
+        mcp.add_middleware(UsageLogMiddleware.from_env(server="google-ads"))
         mcp.run(
             transport="streamable-http",
             port=port,
