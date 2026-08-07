@@ -38,13 +38,17 @@ class FakeResult:
 
 @pytest.fixture(autouse=True)
 def authenticated(monkeypatch):
-    monkeypatch.setattr(identity_module, "get_access_token", lambda: FakeToken())
+    monkeypatch.setattr(
+        identity_module, "get_access_token", lambda: FakeToken()
+    )
 
 
 def _context(tool: str = "list_products", arguments: dict | None = None):
     return SimpleNamespace(
         timestamp=TIMESTAMP,
-        message=SimpleNamespace(name=tool, arguments=arguments or {"merchant_id": 42}),
+        message=SimpleNamespace(
+            name=tool, arguments=arguments or {"merchant_id": 42}
+        ),
     )
 
 
@@ -53,7 +57,9 @@ async def test_successful_call_is_logged_as_ok():
     middleware = UsageLogMiddleware(server="google-merchant", sink=sink)
     result = FakeResult()
 
-    returned = await middleware.on_call_tool(_context(), lambda ctx: _returns(result))
+    returned = await middleware.on_call_tool(
+        _context(), lambda ctx: _returns(result)
+    )
 
     assert returned is result
     assert sink.calls == [
@@ -86,28 +92,38 @@ async def test_error_result_is_logged_as_error_and_returned_unchanged():
     middleware = UsageLogMiddleware(server="google-merchant", sink=sink)
     result = FakeResult(is_error=True)
 
-    returned = await middleware.on_call_tool(_context(), lambda ctx: _returns(result))
+    returned = await middleware.on_call_tool(
+        _context(), lambda ctx: _returns(result)
+    )
 
     assert returned is result
     assert [call.status for call in sink.calls] == ["error"]
 
 
 async def test_sink_failure_does_not_break_the_tool_call():
-    middleware = UsageLogMiddleware(server="google-merchant", sink=FailingSink())
+    middleware = UsageLogMiddleware(
+        server="google-merchant", sink=FailingSink()
+    )
     result = FakeResult()
 
-    returned = await middleware.on_call_tool(_context(), lambda ctx: _returns(result))
+    returned = await middleware.on_call_tool(
+        _context(), lambda ctx: _returns(result)
+    )
 
     assert returned is result
 
 
-async def test_missing_sub_writes_nothing_but_still_serves_the_call(monkeypatch):
+async def test_missing_sub_writes_nothing_but_still_serves_the_call(
+    monkeypatch,
+):
     monkeypatch.setattr(identity_module, "get_access_token", lambda: None)
     sink = RecordingSink()
     middleware = UsageLogMiddleware(server="google-merchant", sink=sink)
     result = FakeResult()
 
-    returned = await middleware.on_call_tool(_context(), lambda ctx: _returns(result))
+    returned = await middleware.on_call_tool(
+        _context(), lambda ctx: _returns(result)
+    )
 
     assert returned is result
     assert sink.calls == []
@@ -116,7 +132,9 @@ async def test_missing_sub_writes_nothing_but_still_serves_the_call(monkeypatch)
 async def test_unlisted_arguments_never_reach_the_row():
     sink = RecordingSink()
     middleware = UsageLogMiddleware(server="google-ads", sink=sink)
-    context = _context(arguments={"query": "SELECT campaign.name FROM campaign"})
+    context = _context(
+        arguments={"query": "SELECT campaign.name FROM campaign"}
+    )
 
     await middleware.on_call_tool(context, lambda ctx: _returns(FakeResult()))
 

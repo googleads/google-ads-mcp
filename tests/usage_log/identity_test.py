@@ -16,9 +16,14 @@ def _with_token(monkeypatch, token):
 
 
 def test_reads_sub_and_email(monkeypatch):
-    _with_token(monkeypatch, FakeToken({"sub": "1234", "email": "piotr@touchpoint.agency"}))
+    _with_token(
+        monkeypatch,
+        FakeToken({"sub": "1234", "email": "piotr@touchpoint.agency"}),
+    )
     identity = read_identity()
-    assert identity == identity_module.Identity(sub="1234", email="piotr@touchpoint.agency")
+    assert identity == identity_module.Identity(
+        sub="1234", email="piotr@touchpoint.agency"
+    )
 
 
 def test_missing_email_still_yields_identity(monkeypatch):

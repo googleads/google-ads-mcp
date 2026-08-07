@@ -33,7 +33,9 @@ class Sink(Protocol):
 
 class PostgresSink:
     def __init__(self, dsn: str, max_size: int = 3) -> None:
-        self._pool = AsyncConnectionPool(dsn, min_size=1, max_size=max_size, open=False)
+        self._pool = AsyncConnectionPool(
+            dsn, min_size=1, max_size=max_size, open=False
+        )
         self._opened = False
         self._open_lock = asyncio.Lock()
 

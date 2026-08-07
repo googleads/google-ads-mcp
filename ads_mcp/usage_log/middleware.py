@@ -40,7 +40,9 @@ class UsageLogMiddleware(Middleware):
                 )
                 return
             if identity.email is None:
-                logger.error("usage log has no email claim for sub %s", identity.sub)
+                logger.error(
+                    "usage log has no email claim for sub %s", identity.sub
+                )
             await self._sink.write(
                 ToolCall(
                     occurred_at=context.timestamp,

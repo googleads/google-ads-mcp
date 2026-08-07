@@ -13,7 +13,9 @@ from ads_mcp.usage_log.sink import PostgresSink, ToolCall
 
 TEST_DSN = os.environ.get("MCP_USAGE_TEST_DSN", "")
 
-pytestmark = pytest.mark.skipif(not TEST_DSN, reason="MCP_USAGE_TEST_DSN is not set")
+pytestmark = pytest.mark.skipif(
+    not TEST_DSN, reason="MCP_USAGE_TEST_DSN is not set"
+)
 
 
 def _call(server: str, **overrides) -> ToolCall:
@@ -81,7 +83,9 @@ async def test_writes_nullable_fields_as_null(marker, cleanup):
 
 
 async def test_unreachable_database_raises_within_the_timeout():
-    sink = PostgresSink("postgresql://nobody@127.0.0.1:1/nothing?connect_timeout=1")
+    sink = PostgresSink(
+        "postgresql://nobody@127.0.0.1:1/nothing?connect_timeout=1"
+    )
     with pytest.raises(Exception):
         await sink.write(_call("unreachable"))
     await sink.close()
