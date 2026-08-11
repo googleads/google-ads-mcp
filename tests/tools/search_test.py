@@ -97,6 +97,13 @@ class TestSearch(unittest.TestCase):
                     )
                     mock_log_error.assert_called_once()
 
+    def test_search_tool_description_omits_resources_removed_in_v25(self):
+        """Does not advertise resources absent from the v25 API contract."""
+        description = search._search_tool_description()
+
+        self.assertNotIn("\ncampaign_lifecycle_goal\n", description)
+        self.assertNotIn("\ncustomer_lifecycle_goal\n", description)
+
     @patch("ads_mcp.utils.get_googleads_service")
     def test_search_google_ads_exception(self, mock_get_service):
         """Tests that search handles GoogleAdsException and returns an error dict."""

@@ -17,6 +17,7 @@
 import urllib.request
 
 from ads_mcp.coordinator import mcp
+from ads_mcp.utils import GOOGLE_ADS_API_VERSION
 
 
 @mcp.resource(
@@ -38,7 +39,10 @@ def get_discovery_document() -> str:
     Returns:
         str: The discovery document in JSON format.
     """
-    url = "https://googleads.googleapis.com/$discovery/rest?version=v24"
+    url = (
+        "https://googleads.googleapis.com/$discovery/rest"
+        f"?version={GOOGLE_ADS_API_VERSION}"
+    )
     req = urllib.request.Request(
         url,
         headers={"User-Agent": "Mozilla/5.0"},

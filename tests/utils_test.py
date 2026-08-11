@@ -15,10 +15,10 @@
 """Test cases for the utils module."""
 
 import unittest
-from google.ads.googleads.v24.enums.types.campaign_status import (
+from google.ads.googleads.v25.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
-from google.ads.googleads.v24.common.types.metrics import Metrics
+from google.ads.googleads.v25.common.types.metrics import Metrics
 
 from ads_mcp import utils
 
@@ -34,6 +34,27 @@ class TestUtils(unittest.TestCase):
                 CampaignStatusEnum.CampaignStatus.ENABLED
             ),
             "ENABLED",
+        )
+
+    def test_get_googleads_service_uses_v25(self):
+        """Requests the reviewed v25 service contract explicitly."""
+        from unittest.mock import patch
+
+        with patch("ads_mcp.utils._get_googleads_client") as mock_client:
+            utils.get_googleads_service("CampaignService")
+
+        _, kwargs = mock_client.return_value.get_service.call_args
+        self.assertEqual(kwargs.get("version"), "v25")
+
+    def test_get_googleads_type_uses_v25(self):
+        """Requests the reviewed v25 message contract explicitly."""
+        from unittest.mock import patch
+
+        with patch("ads_mcp.utils._get_googleads_client") as mock_client:
+            utils.get_googleads_type("SearchGoogleAdsRequest")
+
+        mock_client.return_value.get_type.assert_called_once_with(
+            "SearchGoogleAdsRequest", version="v25"
         )
 
     def test_format_output_value_primitive(self):

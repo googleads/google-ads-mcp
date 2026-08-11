@@ -20,7 +20,7 @@ from typing import Any
 import proto
 import logging
 from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.v24.services.services.google_ads_service import (
+from google.ads.googleads.v25.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
 
@@ -35,6 +35,10 @@ from unittest.mock import patch
 
 # filename for generated field information used by search
 _GAQL_FILENAME = "gaql_resources.txt"
+
+# Keep every service, message, and public discovery request on the reviewed
+# Google Ads API contract instead of relying on the client library default.
+GOOGLE_ADS_API_VERSION = "v25"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -114,12 +118,16 @@ def _get_googleads_client() -> GoogleAdsClient:
 
 def get_googleads_service(serviceName: str) -> GoogleAdsServiceClient:
     return _get_googleads_client().get_service(
-        serviceName, interceptors=[MCPHeaderInterceptor()]
+        serviceName,
+        version=GOOGLE_ADS_API_VERSION,
+        interceptors=[MCPHeaderInterceptor()],
     )
 
 
 def get_googleads_type(typeName: str):
-    return _get_googleads_client().get_type(typeName)
+    return _get_googleads_client().get_type(
+        typeName, version=GOOGLE_ADS_API_VERSION
+    )
 
 
 def get_googleads_client():

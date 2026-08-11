@@ -44,6 +44,6 @@ class DiscoveryTest(unittest.TestCase):
         self.assertIsInstance(request_obj, urllib.request.Request)
         self.assertEqual(
             request_obj.full_url,
-            "https://googleads.googleapis.com/$discovery/rest?version=v24",
+            "https://googleads.googleapis.com/$discovery/rest?version=v25",
         )
         self.assertEqual(request_obj.headers.get("User-agent"), "Mozilla/5.0")

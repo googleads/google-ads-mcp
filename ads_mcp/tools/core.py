@@ -20,7 +20,7 @@ from mcp.types import ToolAnnotations
 
 import ads_mcp.utils as utils
 
-from google.ads.googleads.v24.services.types.customer_service import (
+from google.ads.googleads.v25.services.types.customer_service import (
     ListAccessibleCustomersResponse,
 )
 

@@ -60,7 +60,6 @@ campaign_draft
 campaign_goal_config
 campaign_group
 campaign_label
-campaign_lifecycle_goal
 campaign_search_term_insight
 campaign_search_term_view
 campaign_shared_set
@@ -89,7 +88,6 @@ customer_client_link
 customer_conversion_goal
 customer_customizer
 customer_label
-customer_lifecycle_goal
 customer_manager_link
 customer_negative_criterion
 customer_search_term_insight
