@@ -97,12 +97,33 @@ class TestSearch(unittest.TestCase):
                     )
                     mock_log_error.assert_called_once()
 
-    def test_search_tool_description_omits_resources_removed_in_v25(self):
-        """Does not advertise resources absent from the v25 API contract."""
+    def test_search_tool_description_matches_v25_resource_delta(self):
+        """Advertises additions and omits removals from the v25 API contract."""
         description = search._search_tool_description()
+
+        for resource in (
+            "app_top_combination_view",
+            "cart_data_sales_view",
+            "multi_party_auth_review",
+            "video_enhancement",
+        ):
+            self.assertIn(f"\n{resource}\n", description)
 
         self.assertNotIn("\ncampaign_lifecycle_goal\n", description)
         self.assertNotIn("\ncustomer_lifecycle_goal\n", description)
+
+    def test_search_tool_description_links_to_v25_reference(self):
+        """Keeps the advertised field catalog aligned with the SDK contract."""
+        description = search._search_tool_description()
+
+        self.assertIn(
+            "https://developers.google.com/google-ads/api/fields/v25/overview",
+            description,
+        )
+        self.assertNotIn(
+            "https://developers.google.com/google-ads/api/fields/latest/overview",
+            description,
+        )
 
     @patch("ads_mcp.utils.get_googleads_service")
     def test_search_google_ads_exception(self, mock_get_service):

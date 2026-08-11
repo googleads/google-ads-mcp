@@ -44,6 +44,6 @@ class MetricsTest(unittest.TestCase):
         self.assertIsInstance(request_obj, urllib.request.Request)
         self.assertEqual(
             request_obj.full_url,
-            "https://developers.google.com/google-ads/api/fields/latest/metrics",
+            "https://developers.google.com/google-ads/api/fields/v25/metrics",
         )
         self.assertEqual(request_obj.headers.get("User-agent"), "Mozilla/5.0")

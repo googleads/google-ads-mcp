@@ -26,6 +26,7 @@ ai_max_search_term_ad_combination_view
 android_privacy_shared_key_google_ad_group
 android_privacy_shared_key_google_campaign
 android_privacy_shared_key_google_network_type
+app_top_combination_view
 applied_incentive
 asset
 asset_field_type_view
@@ -65,6 +66,7 @@ campaign_search_term_view
 campaign_shared_set
 campaign_simulation
 carrier_constant
+cart_data_sales_view
 change_event
 change_status
 channel_aggregate_asset_view
@@ -139,6 +141,7 @@ matched_location_interest_view
 media_file
 mobile_app_category_constant
 mobile_device_constant
+multi_party_auth_review
 offline_conversion_upload_client_summary
 offline_conversion_upload_conversion_action_summary
 offline_user_data_job
@@ -173,5 +176,6 @@ user_list
 user_list_customer_type
 user_location_view
 video
+video_enhancement
 webpage_view
 you_tube_video_upload

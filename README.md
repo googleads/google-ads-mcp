@@ -7,7 +7,7 @@ This repo contains the source code for running an
 ## Tools
 
 The server uses the
-[Google Ads API](https://developers.google.com/google-ads/api/reference/rpc/latest/overview)
+[Google Ads API v25](https://developers.google.com/google-ads/api/reference/rpc/v25/overview)
 to provide several
 [Tools](https://modelcontextprotocol.io/docs/concepts/tools) and [Resources](https://modelcontextprotocol.io/docs/concepts/tools) for use with LLMs and AI agents.
 
@@ -50,7 +50,7 @@ namespaces:
 
 ### Resources available
 
-- `discovery-document`: Retrieve the Google Ads API discovery document. Provides the discovery document for the latest version of the Google Ads API, which describes the API surface, including resources, methods, and schemas. Host LLMs should access this resource to understand the structure of the Google Ads API and discover available features.
+- `discovery-document`: Retrieve the Google Ads API discovery document. Provides the discovery document for the configured v25 Google Ads API contract, which describes the API surface, including resources, methods, and schemas. Host LLMs should access this resource to understand the structure of the Google Ads API and discover available features.
 - `metrics`: Retrieve information about the metrics available for reporting in the Google Ads API.
 - `segments`: Retrieve information about the segments available for reporting in the Google Ads API.
 - `release-notes`: Retrieve the release notes for the latest version of the Google Ads API.
