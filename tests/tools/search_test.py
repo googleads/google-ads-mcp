@@ -17,6 +17,8 @@
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 
+from fastmcp import Client
+
 from ads_mcp.tools import search
 
 
@@ -43,7 +45,7 @@ class TestSearch(unittest.TestCase):
         ]
 
         # Call search
-        results = search.search(
+        response = search.search(
             customer_id="1234567890",
             fields=["campaign.id", "campaign.name"],
             resource="campaign",
@@ -65,9 +67,9 @@ class TestSearch(unittest.TestCase):
         )
 
         # Verify results
-        self.assertEqual(len(results), 2)
-        self.assertEqual(results[0]["id"], 1)
-        self.assertEqual(results[1]["name"], "C2")
+        self.assertEqual(len(response["result"]), 2)
+        self.assertEqual(response["result"][0]["id"], 1)
+        self.assertEqual(response["result"][1]["name"], "C2")
 
     def test_search_tool_description(self):
         """Tests that the tool description is generated correctly."""
@@ -163,3 +165,38 @@ class TestSearch(unittest.TestCase):
             "Google Ads API Error: Invalid field name", str(context.exception)
         )
         self.assertIn("Request ID: req-123", str(context.exception))
+
+
+class TestSearchToolOutput(unittest.IsolatedAsyncioTestCase):
+    """Tests the MCP-visible search result contract."""
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    async def test_empty_search_returns_content_and_structured_result(
+        self, mock_get_service
+    ):
+        """Keeps a zero-row success consumable by strict MCP clients."""
+        mock_service = MagicMock()
+        mock_service.search_stream.return_value = []
+        mock_get_service.return_value = mock_service
+
+        async with Client(search.search_mcp) as client:
+            result = await client.call_tool(
+                "search",
+                {
+                    "customer_id": "1234567890",
+                    "fields": ["change_event.resource_name"],
+                    "resource": "change_event",
+                    "conditions": [
+                        "change_event.change_date_time >= "
+                        "'2026-08-01 00:00:00'",
+                        "change_event.change_date_time <= "
+                        "'2026-08-12 15:36:51'",
+                    ],
+                    "orderings": ["change_event.change_date_time ASC"],
+                    "limit": 25,
+                },
+            )
+
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content, {"result": []})
+        self.assertEqual(len(result.content), 1)

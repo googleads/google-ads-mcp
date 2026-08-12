@@ -14,7 +14,7 @@
 
 """Tools for exposing the API Search method to the MCP server."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TypedDict
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
@@ -26,6 +26,10 @@ from google.ads.googleads.errors import GoogleAdsException
 from fastmcp.exceptions import ToolError
 
 
+class SearchResult(TypedDict):
+    result: List[Dict[str, Any]]
+
+
 def search(
     customer_id: str,
     fields: List[str],
@@ -33,7 +37,7 @@ def search(
     conditions: List[str] = [],
     orderings: List[str] = [],
     limit: int | None = None,
-) -> List[Dict[str, Any]]:
+) -> SearchResult:
     """Fetches data from the Google Ads API using the search method
 
     Args:
@@ -69,13 +73,13 @@ def search(
             customer_id=customer_id, query=query
         )
 
-        final_output: List = []
+        final_output: List[Dict[str, Any]] = []
         for batch in query_result:
             for row in batch.results:
                 final_output.append(
                     utils.format_output_row(row, batch.field_mask.paths)
                 )
-        return final_output
+        return {"result": final_output}
     except GoogleAdsException as ex:
         error_msgs = [
             f"Google Ads API Error: {error.message}"
