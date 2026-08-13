@@ -344,6 +344,7 @@ Make sure to set the required environment variables:
   periodic cleanup job for long-running deployments. Redis expires entries on
   its own.
 - `FASTMCP_HOST`: Set this to `0.0.0.0` to allow FastMCP to accept connections from all IP addresses.
+- `GOOGLE_ADS_LOGIN_CUSTOMER_ID` *(MCC accounts only)*: The customer ID of your manager account. Required when accessing client accounts through a Google Ads Manager (MCC) account.
 
 ```shell
 gcloud run deploy google-ads-mcp \
