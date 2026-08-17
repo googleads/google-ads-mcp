@@ -138,13 +138,22 @@ Build the image from the repository inside WSL:
 podman build --tag localhost/google-ads-mcp:latest --file Dockerfile .
 ```
 
-Pass Google Ads and OAuth settings through a private environment file, Podman
-secrets, or a systemd Quadlet. Do not commit credentials. For local-only agents,
-publish port 8080 on the loopback interface and configure clients to use:
+The tested systemd Quadlet loads Google Ads and OAuth credentials from a private
+host-side file with `EnvironmentFile=`. A separate named Podman volume stores
+the OAuth proxy's persistent encrypted state; it does not store the `.env`
+file. Keep the environment file outside the repository with owner-only access.
+Do not duplicate its values in Antigravity or Codex MCP configuration.
+
+For local-only agents, publish port 8080 on the loopback interface and configure
+clients to use:
 
 ```text
 http://localhost:8080/mcp
 ```
+
+Antigravity 2.8.1 and Antigravity IDE 2.5.5 use the `serverUrl` key for this
+Streamable HTTP endpoint. Codex uses the equivalent `url` setting or
+`codex mcp add --url`; neither client needs the server-side credential values.
 
 The deployed service must start as Streamable HTTP without a `stateless`
 marker. Preserve the previously running image under a rollback tag before

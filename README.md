@@ -135,10 +135,29 @@ the repository inside WSL:
 podman build --tag localhost/google-ads-mcp:latest --file Dockerfile .
 ```
 
-Provide the OAuth and Google Ads settings through a private environment file,
-Podman secrets, or a systemd Quadlet. Do not commit credentials to this
-repository. Publish port 8080 only on the loopback interface when the server is
-intended for local agents.
+Keep server credentials out of MCP client configuration. The tested Quadlet
+loads Google Ads and OAuth settings from a private host-side file through
+`EnvironmentFile=` and uses a separate named volume for persistent encrypted
+OAuth state:
+
+```ini
+[Container]
+Image=localhost/google-ads-mcp:latest
+PublishPort=127.0.0.1:8080:8080
+EnvironmentFile=/absolute/host/path/google-ads-mcp.env
+Volume=google-ads-mcp-oauth.volume:/var/lib/google-ads-mcp:rw
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+```
+
+The environment file and the OAuth-state volume serve different purposes: the
+volume does not contain the `.env` file. Keep the environment file outside the
+repository, restrict it to the service owner, and never commit it. Antigravity
+and Codex then need only the MCP endpoint and their own OAuth authorization;
+they do not need the server's Google Ads developer token, OAuth client secret,
+or signing and storage keys. Publish port 8080 only on the loopback interface
+when the server is intended for local agents.
 
 The endpoint deliberately keeps stateful Streamable HTTP enabled. It supports
 legacy MCP 2025 clients that use `Mcp-Session-Id` and GET SSE as well as MCP
@@ -153,7 +172,8 @@ OAuth metadata workaround for Codex CLI 0.146. It stops advertising the RFC
 includes it in redirects. The build fails if the expected FastMCP version or
 patch location changes, so upgrades require explicit interoperability tests.
 
-For Codex, configure and authenticate the server with:
+For Codex, configure and authenticate the server as described in the
+[official Codex MCP documentation](https://developers.openai.com/codex/mcp/):
 
 ```shell
 codex mcp add google_ads --url http://localhost:8080/mcp
@@ -161,7 +181,9 @@ codex mcp login google_ads
 ```
 
 For Antigravity, configure the same URL as `serverUrl` in its MCP configuration.
-After authentication, both clients should list these namespaced tools:
+This key is required for Streamable HTTP in Antigravity 2.8.1 and Antigravity
+IDE 2.5.5; `httpUrl` is not accepted by those versions. After authentication,
+both clients should list these namespaced tools:
 
 - `customers_list_accessible_customers`
 - `metadata_get_resource_metadata`
@@ -229,9 +251,10 @@ In the utils.py file, change get_googleads_client() to use the load_from_storage
 Add the server to your MCP client's configuration. Below are examples for
 popular clients.
 
-#### Antigravity CLI / Antigravity Code Assist
+#### Antigravity / Antigravity IDE
 
-1.  Install [Antigravity CLI](https://antigravity.google/product/antigravity-cli) or Antigravity Code Assist.
+1.  Install [Antigravity](https://antigravity.google/product/antigravity-cli)
+    or Antigravity IDE.
 
 1.  Configure your server. Refer to the docs at [https://antigravity.google/docs/mcp](https://antigravity.google/docs/mcp) for details on setting up MCP servers.
 
@@ -242,21 +265,28 @@ popular clients.
   `http://localhost:8080/mcp`).
   This also allows using FastMCP's [OAuth proxy](https://gofastmcp.com/servers/auth/oauth-proxy) feature for dynamic user authentication.
 
+  Antigravity 2.8.1 and Antigravity IDE 2.5.5 require `serverUrl` for a
+  Streamable HTTP server. Do not use the older `httpUrl` key. Server-side
+  credentials belong in the server process, not in this client configuration.
+
     ```json
     {
       "mcpServers": {
         "google-ads-mcp": {
-          "httpUrl":"http://localhost:8080/mcp",
-          "env": {
-            "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
-            "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN"                        
-          }
+          "serverUrl": "http://localhost:8080/mcp"
         }
       }
     }
     ```
 
 - Option 2: the Application Default Credentials method
+
+    This remains a supported alternative, but it provides less credential
+    isolation than the server-managed Streamable HTTP deployment above. The MCP
+    client starts the server and its configuration contains the ADC file path
+    and Google Ads developer token. Prefer the Quadlet deployment when several
+    local clients share the same server or client configuration may be copied,
+    synchronized, or inspected by other tools.
 
     Replace `PATH_TO_CREDENTIALS_JSON` with the path you copied in the previous
     step.
