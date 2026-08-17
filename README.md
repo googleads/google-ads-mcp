@@ -17,6 +17,63 @@ to provide several
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
+- `mutate`: Creates, updates and removes resources such as campaigns, budgets,
+  ad groups, ads and criteria. **This tool writes to the account.** See
+  [Mutating resources](#mutating-resources) below.
+
+### Mutating resources
+
+The `mutate` tool wraps
+[GoogleAdsService.Mutate](https://developers.google.com/google-ads/api/reference/rpc/latest/GoogleAdsService#mutate),
+so one call can mix operations across resource types and they are applied
+atomically: either all of them succeed or none of them do.
+
+It takes a list of
+[MutateOperation](https://developers.google.com/google-ads/api/reference/rpc/latest/MutateOperation)
+objects, each setting exactly one operation field:
+
+```json
+[
+  {"campaign_budget_operation": {"create": {
+      "resource_name": "customers/1234567890/campaignBudgets/-1",
+      "name": "Example budget",
+      "amount_micros": 20000000,
+      "delivery_method": "STANDARD"}}},
+  {"campaign_operation": {"create": {
+      "name": "Example campaign",
+      "status": "PAUSED",
+      "advertising_channel_type": "SEARCH",
+      "campaign_budget": "customers/1234567890/campaignBudgets/-1",
+      "manual_cpc": {}}}}
+]
+```
+
+A few things worth knowing:
+
+- **It previews by default.** `validate_only` defaults to `true`, so the
+  request is validated by the API and then discarded without changing
+  anything. Pass `validate_only=false` to actually apply the changes. This is
+  the API's own dry run, so a request that validates is a request that would
+  have worked.
+- **Resources created in one call can reference each other** through temporary
+  resource names with a negative id, as in the example above.
+- **`update_mask` is derived automatically** from the fields you set on an
+  `update`, so you only need to send the fields you want changed. An explicit
+  `update_mask` is respected if you provide one.
+- **Monetary fields are in micros**: multiply by 1,000,000. A $20.00 daily
+  budget is `20000000`.
+
+To run a read-only deployment, disable the namespace in `tools_config.yaml`:
+
+```yaml
+namespaces:
+  mutate: false
+```
+
+Note that the Google Ads API has no read-only OAuth scope. The
+`https://www.googleapis.com/auth/adwords` scope this server requests permits
+writes regardless, so the namespace toggle above is what determines whether
+the server can change an account.
 
 ### Configuring and Namespacing Tools
 
