@@ -124,9 +124,7 @@ class TestAuthConfig(unittest.TestCase):
             collection = "mcp-oauth-proxy-clients"
             value = {"client_id": key}
             await store.put(key, value, collection=collection)
-            self.assertEqual(
-                await store.get(key, collection=collection), value
-            )
+            self.assertEqual(await store.get(key, collection=collection), value)
             self.assertTrue(pathlib.Path(path, collection).is_dir())
 
         asyncio.run(round_trip_url_key())
