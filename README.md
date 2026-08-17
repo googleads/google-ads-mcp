@@ -127,7 +127,7 @@ client to connect to the Streamable HTTP endpoint (for example,
 
 ### Local WSL and Podman deployment
 
-This fork is tested with rootless Podman in WSL and exposes a single
+This deployment has been tested with rootless Podman in WSL and exposes a single
 Streamable HTTP endpoint at `http://localhost:8080/mcp`. Build the image from
 the repository inside WSL:
 
@@ -167,8 +167,8 @@ After authentication, both clients should list these namespaced tools:
 - `metadata_get_resource_metadata`
 - `search_search`
 
-See [`diagnostico_protocolo_mcp.md`](diagnostico_protocolo_mcp.md) for the
-protocol diagnosis, verified client flows, image IDs, and rollback tags.
+See the [MCP HTTP interoperability diagnosis](docs/mcp-http-interoperability.md)
+for the root causes, compatibility changes, and verified client flows.
 
 #### Option 2: Configure credentials using Application Default Credentials
 
