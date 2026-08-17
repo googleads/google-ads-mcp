@@ -14,6 +14,7 @@
 
 """Unit tests for authentication configuration and storage setup."""
 
+import asyncio
 import os
 import pathlib
 import shutil
@@ -109,6 +110,26 @@ class TestAuthConfig(unittest.TestCase):
         store = create_client_storage()
         self.assertIsInstance(store, FernetEncryptionWrapper)
         self.assertIsInstance(store.key_value, FileTreeStore)
+
+    def test_create_client_storage_filetree_supports_url_keys(self):
+        """CIMD client IDs can be persisted when they are URL values."""
+        path = os.path.join(self.temp_dir, "filetree_url_keys")
+        os.environ["GOOGLE_ADS_MCP_STORAGE_TYPE"] = "filetree"
+        os.environ["GOOGLE_ADS_MCP_STORAGE_PATH"] = path
+        os.environ["GOOGLE_ADS_MCP_STORAGE_DISABLE_ENCRYPTION"] = "true"
+        store = create_client_storage()
+
+        async def round_trip_url_key():
+            key = "https://chatgpt.com/oauth/codex/test-client"
+            collection = "mcp-oauth-proxy-clients"
+            value = {"client_id": key}
+            await store.put(key, value, collection=collection)
+            self.assertEqual(
+                await store.get(key, collection=collection), value
+            )
+            self.assertTrue(pathlib.Path(path, collection).is_dir())
+
+        asyncio.run(round_trip_url_key())
 
     def test_create_client_storage_filetree_missing_path_raises(self):
         """Tests that filetree storage without a path raises ValueError."""

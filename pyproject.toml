@@ -5,8 +5,10 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
     "google-ads>=31.2.0",
-    "mcp[cli]>=1.2.0",
-    "fastmcp>=3.2.0"
+    # Pin the tested v2 pair while FastMCP 4 remains in beta. The local
+    # subscriptions/listen compatibility guard is scoped to this release.
+    "mcp[cli]==2.0.0",
+    "fastmcp==4.0.0b3"
 ]
 
 description = "MCP Server for Google Ads, depends on Google Ads API."

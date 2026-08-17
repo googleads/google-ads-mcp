@@ -23,6 +23,8 @@ import os
 from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
+from mcp import types as mcp_types
+from mcp.server.subscriptions import InMemorySubscriptionBus, ListenHandler
 from ads_mcp.auth_storage import create_client_storage
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
@@ -52,6 +54,35 @@ if _CLIENT_ID and _CLIENT_SECRET:
     mcp = FastMCP("Google Ads Server", auth=auth)
 else:
     mcp = FastMCP("Google Ads Server")
+
+
+def ensure_subscriptions_listen(server: FastMCP) -> bool:
+    """Register the MCP 2026 subscription stream when FastMCP omits it.
+
+    FastMCP 4.0.0b3 builds its low-level ``Server`` without the SDK's
+    ``on_subscriptions_listen`` handler. Some modern clients open that stream
+    while loading tools; without it, the SDK returns HTTP 404 / method not
+    found, which mcp-go reports misleadingly as a missing session.
+
+    The guard preserves a native FastMCP implementation once one is shipped.
+
+    Returns:
+        True when the compatibility handler was installed, otherwise False.
+    """
+    low_level_server = server._mcp_server
+    if "subscriptions/listen" in low_level_server._request_handlers:
+        return False
+
+    subscription_bus = InMemorySubscriptionBus()
+    low_level_server.add_request_handler(
+        "subscriptions/listen",
+        mcp_types.SubscriptionsListenRequestParams,
+        ListenHandler(subscription_bus),
+    )
+    return True
+
+
+ensure_subscriptions_listen(mcp)
 
 
 def initialize_and_mount_tools(parent_mcp: FastMCP) -> None:

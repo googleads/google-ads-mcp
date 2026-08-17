@@ -118,9 +118,57 @@ alongside the server: `pip install py-key-value-aio[redis]` and
 
 Once this is enabled, you can authenticate to the API through your MCP client.
 
-When these variables are set, the server automatically switches to the `streamable-http` transport (SSE/HTTP) instead of `stdio`.
+When these variables are set, the server automatically switches to the
+`streamable-http` transport instead of `stdio`.
 
-You will need to run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
+You will need to run the server as a separate process and configure your MCP
+client to connect to the Streamable HTTP endpoint (for example,
+`http://localhost:8080/mcp`).
+
+### Local WSL and Podman deployment
+
+This fork is tested with rootless Podman in WSL and exposes a single
+Streamable HTTP endpoint at `http://localhost:8080/mcp`. Build the image from
+the repository inside WSL:
+
+```shell
+podman build --tag localhost/google-ads-mcp:latest --file Dockerfile .
+```
+
+Provide the OAuth and Google Ads settings through a private environment file,
+Podman secrets, or a systemd Quadlet. Do not commit credentials to this
+repository. Publish port 8080 only on the loopback interface when the server is
+intended for local agents.
+
+The endpoint deliberately keeps stateful Streamable HTTP enabled. It supports
+legacy MCP 2025 clients that use `Mcp-Session-Id` and GET SSE as well as MCP
+2026 clients that use sessionless POST requests and `subscriptions/listen`.
+Do not enable FastMCP's `stateless_http` option on this shared endpoint; doing
+so removes the legacy GET channel.
+
+The dependency pair `mcp==2.0.0` and `fastmcp==4.0.0b3` is pinned because the
+FastMCP release is a beta. The Docker build also applies a version-guarded
+OAuth metadata workaround for Codex CLI 0.146. It stops advertising the RFC
+9207 authorization-response `iss` parameter as mandatory while FastMCP still
+includes it in redirects. The build fails if the expected FastMCP version or
+patch location changes, so upgrades require explicit interoperability tests.
+
+For Codex, configure and authenticate the server with:
+
+```shell
+codex mcp add google_ads --url http://localhost:8080/mcp
+codex mcp login google_ads
+```
+
+For Antigravity, configure the same URL as `serverUrl` in its MCP configuration.
+After authentication, both clients should list these namespaced tools:
+
+- `customers_list_accessible_customers`
+- `metadata_get_resource_metadata`
+- `search_search`
+
+See [`diagnostico_protocolo_mcp.md`](diagnostico_protocolo_mcp.md) for the
+protocol diagnosis, verified client flows, image IDs, and rollback tags.
 
 #### Option 2: Configure credentials using Application Default Credentials
 
@@ -189,7 +237,9 @@ popular clients.
 
 - Option 1: Using FastMCP OAuth Proxy (Streamable HTTP)
 
-  You can run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
+  You can run the server as a separate process and configure your MCP client
+  to connect to the Streamable HTTP endpoint (for example,
+  `http://localhost:8080/mcp`).
   This also allows using FastMCP's [OAuth proxy](https://gofastmcp.com/servers/auth/oauth-proxy) feature for dynamic user authentication.
 
     ```json
