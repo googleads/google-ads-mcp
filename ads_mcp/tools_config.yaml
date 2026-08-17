@@ -7,3 +7,7 @@ namespaces:
   customers: true
   search: true
   metadata: true
+  # The `mutate` namespace WRITES to the account: it can create, update and
+  # remove campaigns, budgets, ad groups, ads and criteria. Set to false for a
+  # read-only deployment.
+  mutate: true

@@ -68,6 +68,61 @@
         }
       },
       "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Creates, updates, or removes Google Ads resources.\n\nThis tool WRITES to the account. It wraps GoogleAdsService.Mutate, so a\nsingle call can mix operations across resource types and they are applied\natomically: either all of them succeed or none of them do.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "description": "The id of the customer to mutate. Digits only.",
+            "type": "string"
+          },
+          "operations": {
+            "description": "A list of MutateOperation objects. Each entry sets exactly\none operation field, which in turn sets one of create/update/remove.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "partial_failure": {
+            "default": false,
+            "description": "When true, valid operations are applied and failed\nones are reported in `partial_failure_error` instead of failing the\nwhole batch. Cannot be combined with validate_only.",
+            "type": "boolean"
+          },
+          "response_content_type": {
+            "default": "RESOURCE_NAME_ONLY",
+            "description": "\"RESOURCE_NAME_ONLY\" (default) or\n\"MUTABLE_RESOURCE\" to return the full resource after mutation.",
+            "type": "string"
+          },
+          "validate_only": {
+            "default": true,
+            "description": "When true (the default) the request is validated and\nthen discarded WITHOUT applying anything. Call again with\nvalidate_only=false to actually apply the changes.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "customer_id",
+          "operations"
+        ],
+        "type": "object"
+      },
+      "name": "mutate_mutate",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
         "readOnlyHint": true
       },
       "description": "Fetches data from the Google Ads API using the search method",
