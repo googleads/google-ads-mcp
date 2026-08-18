@@ -31,11 +31,56 @@ from ads_mcp.resources import (
 
 import os
 
+import ads_mcp.utils as utils
+
+
+def _log_startup_diagnostics() -> None:
+    """Logs what this process is actually running.
+
+    A deployment serving a stale image is otherwise near-impossible to spot:
+    the code in the repository and the code answering requests disagree with
+    no visible symptom. Printing the resolved dependency versions and the
+    mounted tool names makes that mismatch obvious in the deploy log.
+    """
+    import asyncio
+    from importlib.metadata import PackageNotFoundError, version
+
+    def _version(package: str) -> str:
+        try:
+            return version(package)
+        except PackageNotFoundError:
+            return "not installed"
+
+    utils.logger.info(
+        "ads_mcp startup: fastmcp=%s google-ads=%s",
+        _version("fastmcp"),
+        _version("google-ads"),
+    )
+
+    try:
+        tools = asyncio.run(mcp.list_tools())
+        names = sorted(tool.name for tool in tools)
+    except Exception as e:  # diagnostics must never block startup
+        utils.logger.warning(
+            "ads_mcp startup: could not enumerate tools (%s)", e
+        )
+        return
+
+    utils.logger.info(
+        "ads_mcp startup: %d tools mounted: %s", len(names), ", ".join(names)
+    )
+    utils.logger.info(
+        "ads_mcp startup: mutations %s",
+        "ENABLED" if any("mutate" in name for name in names) else "disabled",
+    )
+
 
 def run_server() -> None:
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))
+
+    _log_startup_diagnostics()
 
     if _CLIENT_ID and _CLIENT_SECRET:
         mcp.run(
