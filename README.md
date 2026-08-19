@@ -189,9 +189,6 @@ both clients should list these namespaced tools:
 - `metadata_get_resource_metadata`
 - `search_search`
 
-See the [MCP HTTP interoperability diagnosis](docs/mcp-http-interoperability.md)
-for the root causes, compatibility changes, and verified client flows.
-
 #### Option 2: Configure credentials using Application Default Credentials
 
 Configure your [Application Default Credentials
