@@ -14,6 +14,7 @@
 
 """Tools for exposing the API Search method to the MCP server."""
 
+import inspect
 from typing import Any, Dict, List
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
@@ -100,8 +101,12 @@ def _search_tool_description() -> str:
     except FileNotFoundError:
         utils.logger.error("The specified file was not found.")
 
+    # `inspect.getdoc` rather than `search.__doc__`: Python 3.13 dedents
+    # docstrings at compile time and earlier versions do not, so the raw
+    # attribute would put a different string in the published description
+    # depending on the interpreter running the server.
     return f"""
-{search.__doc__}
+{inspect.getdoc(search)}
 
 ### Hints
     Language Grammar can be found at https://developers.google.com/google-ads/api/docs/query/grammar
@@ -137,10 +142,17 @@ def _search_tool_description() -> str:
 
 
 # The `search` tool requires a more complex description that's generated at
-# runtime. Uses the `add_tool` method instead of an annnotation since `add_tool`
-# provides the flexibility needed to generate the description while also
-# including the `search` method's docstring.
-search.__doc__ = _search_tool_description()
+# runtime. Uses the `add_tool` method instead of an annotation since `add_tool`
+# accepts that description directly.
+#
+# The description is passed to `Tool.from_function` rather than written onto
+# `search.__doc__`. Overwriting the docstring leaves `Args:` indented inside a
+# larger block of text, where no docstring parser recognizes it as a section, so
+# every parameter reaches the published schema with no description of its own.
 search_mcp.add_tool(
-    Tool.from_function(search, annotations=ToolAnnotations(readOnlyHint=True))
+    Tool.from_function(
+        search,
+        description=_search_tool_description(),
+        annotations=ToolAnnotations(readOnlyHint=True),
+    )
 )
