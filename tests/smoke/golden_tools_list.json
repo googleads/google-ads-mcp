@@ -83,8 +83,15 @@
             "type": "array"
           },
           "customer_id": {
-            "description": "The id of the customer",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "description": "The id of the customer"
           },
           "fields": {
             "description": "The fields to fetch",

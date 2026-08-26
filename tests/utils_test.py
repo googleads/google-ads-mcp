@@ -100,3 +100,29 @@ class TestUtils(unittest.TestCase):
                 subprocess.Popen(["mock_cmd"], stdin=subprocess.PIPE)
 
         mock_popen.assert_called_once_with(["mock_cmd"], stdin=subprocess.PIPE)
+
+    def test_clean_customer_id(self):
+        """Tests that clean_customer_id strips non-digit characters from various inputs."""
+        self.assertEqual(utils.clean_customer_id("1234567890"), "1234567890")
+        self.assertEqual(utils.clean_customer_id(1234567890), "1234567890")
+        self.assertEqual(utils.clean_customer_id("123-456-7890"), "1234567890")
+        self.assertEqual(
+            utils.clean_customer_id(" 123-456-7890 "), "1234567890"
+        )
+        self.assertEqual(
+            utils.clean_customer_id("customers/1234567890"), "1234567890"
+        )
+        self.assertEqual(utils.clean_customer_id(""), "")
+
+    def test_get_login_customer_id(self):
+        """Tests that _get_login_customer_id sanitizes env variable or returns None if unset."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(utils._get_login_customer_id())
+
+        with patch.dict(
+            os.environ, {"GOOGLE_ADS_LOGIN_CUSTOMER_ID": "123-456-7890"}
+        ):
+            self.assertEqual(utils._get_login_customer_id(), "1234567890")

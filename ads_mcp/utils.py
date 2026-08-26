@@ -30,6 +30,7 @@ from google.ads.googleads.util import get_nested_attr
 import google.auth
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 import os
+import re
 import importlib.resources
 import contextlib
 import subprocess
@@ -92,9 +93,17 @@ def _get_developer_token() -> str:
     return dev_token
 
 
+def clean_customer_id(customer_id: str | int) -> str:
+    """Cleans a customer ID by stripping non-digit characters."""
+    return re.sub(r"\D", "", str(customer_id))
+
+
 def _get_login_customer_id() -> str | None:
     """Returns login customer id, if set, from the environment variable GOOGLE_ADS_LOGIN_CUSTOMER_ID."""
-    return os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+    login_customer_id = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+    if login_customer_id:
+        return clean_customer_id(login_customer_id)
+    return None
 
 
 def _get_googleads_client() -> GoogleAdsClient:
