@@ -1,0 +1,354 @@
+name: Release
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "ads_mcp/**"
+      - "MANIFEST.in"
+      - "pyproject.toml"
+      - "README.md"
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and validate distributions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate and prepare the package version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+          import tomllib
+
+          pyproject_path = pathlib.Path("pyproject.toml")
+          pyproject_text = pyproject_path.read_text(encoding="utf-8")
+          project = tomllib.loads(pyproject_text)["project"]
+          declared_version = project["version"]
+
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", declared_version):
+              raise SystemExit(
+                  "project.version must use the X.Y.Z form required by the "
+                  "release workflow"
+              )
+
+          event_name = os.environ["EVENT_NAME"]
+          package_version = declared_version
+
+          if event_name == "push":
+              expected_tag = f"v{declared_version}"
+              if os.environ["REF_NAME"] != expected_tag:
+                  raise SystemExit(
+                      f"tag {os.environ['REF_NAME']!r} does not match "
+                      f"project.version {declared_version!r}"
+                  )
+          elif event_name == "workflow_dispatch":
+              package_version = f"{declared_version}.dev{os.environ['RUN_ID']}"
+              updated_text, replacements = re.subn(
+                  r'(?m)^version = "[^"]+"$',
+                  f'version = "{package_version}"',
+                  pyproject_text,
+                  count=1,
+              )
+              if replacements != 1:
+                  raise SystemExit(
+                      "could not update exactly one project.version entry"
+                  )
+              pyproject_path.write_text(updated_text, encoding="utf-8")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(f"package-version={package_version}", file=output)
+          PY
+
+      - name: Validate the production tag
+        if: github.event_name == 'push'
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.package-version }}
+        run: |
+          if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Production tags must use the exact vX.Y.Z form." >&2
+            exit 1
+          fi
+
+          if [ "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "Production releases require an annotated tag." >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          tag_commit="$(git rev-list -n 1 "refs/tags/$GITHUB_REF_NAME")"
+          if ! git merge-base --is-ancestor "$tag_commit" refs/remotes/origin/main; then
+            echo "The tagged commit is not part of origin/main." >&2
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          version = os.environ["PACKAGE_VERSION"]
+          url = f"https://pypi.org/pypi/google-ads-mcp/{version}/json"
+          request = urllib.request.Request(
+              url,
+              headers={"Accept": "application/json"},
+          )
+
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  json.load(response)
+          except urllib.error.HTTPError as error:
+              if error.code == 404:
+                  raise SystemExit(0)
+              raise
+
+          raise SystemExit(
+              f"google-ads-mcp {version} already exists on PyPI; "
+              "published versions cannot be replaced"
+          )
+          PY
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distribution metadata
+        run: python -m twine check dist/*
+
+      - name: Inspect distribution contents
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.package-version }}
+        run: |
+          python - <<'PY'
+          import email
+          import os
+          import pathlib
+          import tarfile
+          import zipfile
+
+          dist = pathlib.Path("dist")
+          wheels = list(dist.glob("*.whl"))
+          source_distributions = list(dist.glob("*.tar.gz"))
+          if len(wheels) != 1 or len(source_distributions) != 1:
+              raise SystemExit("expected exactly one wheel and one sdist")
+
+          version = os.environ["PACKAGE_VERSION"]
+          required_package_data = {
+              "ads_mcp/gaql_resources.txt",
+              "ads_mcp/tools_config.yaml",
+          }
+
+          with zipfile.ZipFile(wheels[0]) as archive:
+              names = set(archive.namelist())
+              missing = required_package_data - names
+              if missing:
+                  raise SystemExit(f"wheel is missing package data: {sorted(missing)}")
+
+              metadata_names = [
+                  name for name in names if name.endswith(".dist-info/METADATA")
+              ]
+              license_names = [
+                  name
+                  for name in names
+                  if ".dist-info/" in name and name.endswith("/LICENSE")
+              ]
+              if len(metadata_names) != 1 or not license_names:
+                  raise SystemExit("wheel is missing metadata or the license")
+
+              metadata = email.message_from_bytes(
+                  archive.read(metadata_names[0])
+              )
+              if metadata["Version"] != version:
+                  raise SystemExit(
+                      f"wheel version {metadata['Version']!r} does not match "
+                      f"{version!r}"
+                  )
+              if not metadata.get_payload().strip():
+                  raise SystemExit("wheel metadata is missing the README content")
+
+          with tarfile.open(source_distributions[0], "r:gz") as archive:
+              names = set(archive.getnames())
+
+          def sdist_contains(relative_path):
+              return any(
+                  name.partition("/")[2] == relative_path for name in names
+              )
+
+          required_sdist_files = {
+              "LICENSE",
+              "README.md",
+              *required_package_data,
+          }
+          missing = {
+              path for path in required_sdist_files if not sdist_contains(path)
+          }
+          if missing:
+              raise SystemExit(f"sdist is missing files: {sorted(missing)}")
+          PY
+
+      - name: Install and inspect the wheel
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.package-version }}
+        run: |
+          python -m venv .release-venv
+          .release-venv/bin/python -m pip install --no-deps dist/*.whl
+          .release-venv/bin/python - <<'PY'
+          import importlib.metadata
+          import importlib.resources
+          import os
+
+          import ads_mcp
+
+          installed_version = importlib.metadata.version("google-ads-mcp")
+          if installed_version != os.environ["PACKAGE_VERSION"]:
+              raise SystemExit(
+                  f"installed version {installed_version!r} does not match "
+                  f"{os.environ['PACKAGE_VERSION']!r}"
+              )
+
+          package_files = importlib.resources.files(ads_mcp)
+          for filename in ("gaql_resources.txt", "tools_config.yaml"):
+              if not package_files.joinpath(filename).is_file():
+                  raise SystemExit(f"installed wheel is missing {filename}")
+          PY
+
+      - name: Generate checksums
+        run: |
+          mkdir -p release-assets
+          sha256sum dist/* > release-assets/SHA256SUMS
+
+      - name: Upload validated distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python-package-distributions-${{ github.run_id }}
+          path: |
+            dist/*
+            release-assets/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/google-ads-mcp
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download validated distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-package-distributions-${{ github.run_id }}
+          path: artifact
+
+      - name: Publish distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: artifact/dist/
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/google-ads-mcp
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download validated distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-package-distributions-${{ github.run_id }}
+          path: artifact
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: artifact/dist/
+
+  github-release:
+    name: Create GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build
+      - publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated release assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-package-distributions-${{ github.run_id }}
+          path: artifact
+
+      - name: Create or resume the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            is_draft="$(
+              gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft
+            )"
+            if [ "$is_draft" != "true" ]; then
+              for asset in artifact/dist/* artifact/release-assets/SHA256SUMS; do
+                asset_name="$(basename "$asset")"
+                if ! gh release view "$GITHUB_REF_NAME" --json assets \
+                  --jq '.assets[].name' | grep -Fxq "$asset_name"; then
+                  echo "Published release is missing asset $asset_name." >&2
+                  exit 1
+                fi
+              done
+              exit 0
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --generate-notes \
+              --title "$GITHUB_REF_NAME" \
+              --verify-tag
+          fi
+
+          gh release upload "$GITHUB_REF_NAME" \
+            artifact/dist/* \
+            artifact/release-assets/SHA256SUMS \
+            --clobber
+          gh release edit "$GITHUB_REF_NAME" --draft=false

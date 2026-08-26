@@ -75,6 +75,13 @@ Setup involves the following steps:
 
 [Install pipx](https://pipx.pypa.io/stable/#install-pipx).
 
+After a version has been published to PyPI, you can run that exact version
+instead of following the latest repository state:
+
+```shell
+pipx run --spec "google-ads-mcp==X.Y.Z" google-ads-mcp
+```
+
 ### Configure Developer Token
 
 Follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).
@@ -411,3 +418,5 @@ How many active campaigns do I have for customer id 1234567890
 ## Contributing
 
 Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).
+Project maintainers can find the Trusted Publishing and release procedure in
+the [release guide](docs/releasing.md).
