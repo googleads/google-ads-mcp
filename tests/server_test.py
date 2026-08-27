@@ -14,7 +14,9 @@
 
 """Test cases for the server module."""
 
+import logging
 import unittest
+from unittest.mock import patch
 
 
 class TestUtils(unittest.TestCase):
@@ -29,3 +31,46 @@ class TestUtils(unittest.TestCase):
         from ads_mcp import server
 
         self.assertIsNotNone(server.mcp, "MCP server instance not initialized")
+
+    def test_oauth_server_uses_stateful_streamable_http(self):
+        """OAuth mode supports modern and legacy Streamable HTTP clients."""
+        from ads_mcp import server
+
+        env = {
+            "GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "test-client",
+            "GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET": "test-secret",
+            "PORT": "18080",
+        }
+        with patch.dict(server.os.environ, env, clear=True):
+            with patch.object(server.mcp, "run") as run:
+                server.run_server()
+
+        run.assert_called_once_with(
+            transport="streamable-http",
+            port=18080,
+            host="0.0.0.0",
+            uvicorn_config={"access_log": False},
+        )
+
+    def test_http_client_info_logs_are_suppressed(self):
+        """OAuth tokeninfo URLs must not be emitted at INFO level."""
+        from ads_mcp import server
+
+        logger = logging.getLogger("httpx2")
+        previous_level = logger.level
+        try:
+            logger.setLevel(logging.NOTSET)
+            server.configure_safe_http_logging()
+            self.assertEqual(logging.WARNING, logger.level)
+        finally:
+            logger.setLevel(previous_level)
+
+    def test_server_without_oauth_uses_stdio(self):
+        """Local credential mode retains FastMCP's default stdio transport."""
+        from ads_mcp import server
+
+        with patch.dict(server.os.environ, {}, clear=True):
+            with patch.object(server.mcp, "run") as run:
+                server.run_server()
+
+        run.assert_called_once_with()
