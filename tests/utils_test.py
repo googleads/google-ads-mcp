@@ -14,7 +14,11 @@
 
 """Test cases for the utils module."""
 
+import json
+import os
+import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
 from google.ads.googleads.v25.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
@@ -100,3 +104,125 @@ class TestUtils(unittest.TestCase):
                 subprocess.Popen(["mock_cmd"], stdin=subprocess.PIPE)
 
         mock_popen.assert_called_once_with(["mock_cmd"], stdin=subprocess.PIPE)
+
+
+class TestSubjectDelegation(unittest.TestCase):
+    """Test cases for service account subject delegation."""
+
+    def _write_credentials_file(self, contents):
+        """Writes contents to a temporary file and returns its path."""
+        handle = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        )
+        self.addCleanup(os.unlink, handle.name)
+        with handle:
+            handle.write(contents)
+        return handle.name
+
+    def test_no_subject_returns_none(self):
+        """Tests that delegation is skipped when no subject is set."""
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(utils._create_delegated_credentials())
+
+    def test_no_credentials_file_returns_none(self):
+        """Tests that delegation is skipped without a credentials file."""
+        env = {"GOOGLE_ADS_SUBJECT": "user@example.com"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(utils._create_delegated_credentials())
+
+    def test_oauth_credentials_returns_none(self):
+        """Tests that delegation is skipped for non service account keys."""
+        path = self._write_credentials_file(
+            json.dumps({"type": "authorized_user"})
+        )
+        env = {
+            "GOOGLE_ADS_SUBJECT": "user@example.com",
+            "GOOGLE_APPLICATION_CREDENTIALS": path,
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(utils._create_delegated_credentials())
+
+    def test_unreadable_credentials_file_returns_none(self):
+        """Tests that an unreadable credentials file is not fatal."""
+        env = {
+            "GOOGLE_ADS_SUBJECT": "user@example.com",
+            "GOOGLE_APPLICATION_CREDENTIALS": "/does/not/exist.json",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(utils._create_delegated_credentials())
+
+    def test_malformed_credentials_file_returns_none(self):
+        """Tests that a credentials file with invalid JSON is not fatal."""
+        path = self._write_credentials_file("not json")
+        env = {
+            "GOOGLE_ADS_SUBJECT": "user@example.com",
+            "GOOGLE_APPLICATION_CREDENTIALS": path,
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(utils._create_delegated_credentials())
+
+    def test_service_account_applies_subject(self):
+        """Tests that the subject is applied to service account keys."""
+        credentials_info = {
+            "type": "service_account",
+            "client_email": "sa@example.iam.gserviceaccount.com",
+        }
+        path = self._write_credentials_file(json.dumps(credentials_info))
+        env = {
+            "GOOGLE_ADS_SUBJECT": "user@example.com",
+            "GOOGLE_APPLICATION_CREDENTIALS": path,
+        }
+        mock_credentials = MagicMock()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(
+                utils.service_account.Credentials,
+                "from_service_account_info",
+                return_value=mock_credentials,
+            ) as mock_from_info,
+        ):
+            delegated = utils._create_delegated_credentials()
+
+        mock_from_info.assert_called_once_with(
+            credentials_info, scopes=[utils._ADS_SCOPE]
+        )
+        mock_credentials.with_subject.assert_called_once_with(
+            "user@example.com"
+        )
+        self.assertEqual(delegated, mock_credentials.with_subject.return_value)
+
+    def test_create_credentials_prefers_delegation_over_adc(self):
+        """Tests that delegated credentials take precedence over ADC."""
+        mock_credentials = MagicMock()
+        with (
+            patch(
+                "fastmcp.server.dependencies.get_access_token",
+                return_value=None,
+            ),
+            patch.object(
+                utils,
+                "_create_delegated_credentials",
+                return_value=mock_credentials,
+            ),
+            patch.object(utils.google.auth, "default") as mock_default,
+        ):
+            self.assertEqual(utils._create_credentials(), mock_credentials)
+
+        mock_default.assert_not_called()
+
+    def test_create_credentials_prefers_token_over_delegation(self):
+        """Tests that the FastMCP token takes precedence over delegation."""
+        token = MagicMock(token="an-access-token")
+        with (
+            patch(
+                "fastmcp.server.dependencies.get_access_token",
+                return_value=token,
+            ),
+            patch.object(
+                utils, "_create_delegated_credentials"
+            ) as mock_delegated,
+        ):
+            credentials = utils._create_credentials()
+
+        self.assertEqual(credentials.token, "an-access-token")
+        mock_delegated.assert_not_called()

@@ -290,6 +290,46 @@ The final file will look like this:
   }
   ```
 
+#### Subject Delegation (service accounts only)
+
+If you authenticate with a service account key and need it to act on behalf of
+a specific user, add the `GOOGLE_ADS_SUBJECT` environment variable with the
+email address of the user to impersonate.
+
+This only applies when `GOOGLE_APPLICATION_CREDENTIALS` points to a service
+account key. With user credentials or with the OAuth proxy (Option 1), the
+variable is ignored and a warning is logged. The service account must have
+domain-wide delegation enabled, with the
+`https://www.googleapis.com/auth/adwords` scope granted by a Workspace
+administrator.
+
+See [Domain-wide delegation](https://developers.google.com/identity/protocols/oauth2/service-account#delegatingauthority)
+for details.
+
+The final file will look like this:
+
+  ```json
+  {
+    "mcpServers": {
+      "google-ads-mcp": {
+        "command": "pipx",
+        "args": [
+          "run",
+          "--spec",
+          "git+https://github.com/googleads/google-ads-mcp.git",
+          "google-ads-mcp"
+        ],
+        "env": {
+          "GOOGLE_APPLICATION_CREDENTIALS": "PATH_TO_SERVICE_ACCOUNT_JSON",
+          "GOOGLE_PROJECT_ID": "YOUR_PROJECT_ID",
+          "GOOGLE_ADS_DEVELOPER_TOKEN": "YOUR_DEVELOPER_TOKEN",
+          "GOOGLE_ADS_SUBJECT": "user@example.com"
+        }
+      }
+    }
+  }
+  ```
+
 #### Other MCP clients (Claude Code, Cursor, VS Code, etc.)
 
 The `mcpServers` block format is the same across all MCP clients. Add the configuration shown above to the appropriate settings file for your client (e.g., `~/.claude/settings.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for VS Code with Copilot).

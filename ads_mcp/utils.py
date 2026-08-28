@@ -20,6 +20,7 @@ from typing import Any
 import proto
 from google.protobuf.message import Message as PbMessage
 from google.protobuf.json_format import MessageToDict
+import json
 import logging
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v25.services.services.google_ads_service import (
@@ -28,6 +29,7 @@ from google.ads.googleads.v25.services.services.google_ads_service import (
 
 from google.ads.googleads.util import get_nested_attr
 import google.auth
+from google.oauth2 import service_account
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 import os
 import importlib.resources
@@ -67,8 +69,57 @@ def prevent_stdio_inheritance():
         yield
 
 
+def _get_subject() -> str | None:
+    """Returns the user to impersonate from the environment variable GOOGLE_ADS_SUBJECT."""
+    return os.environ.get("GOOGLE_ADS_SUBJECT")
+
+
+def _create_delegated_credentials() -> service_account.Credentials | None:
+    """Returns service account credentials impersonating GOOGLE_ADS_SUBJECT.
+
+    Returns None when subject delegation does not apply, either because
+    GOOGLE_ADS_SUBJECT is unset, because GOOGLE_APPLICATION_CREDENTIALS is
+    unset or does not point to a service account key, or because the key
+    file cannot be read. Callers fall back to Application Default
+    Credentials in that case.
+    """
+    subject = _get_subject()
+    credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not subject or not credentials_path:
+        return None
+
+    try:
+        with open(credentials_path, "r") as credentials_file:
+            credentials_info = json.load(credentials_file)
+    except (OSError, ValueError) as error:
+        logger.warning(
+            "Could not read GOOGLE_APPLICATION_CREDENTIALS for subject "
+            "delegation: %s. Falling back to Application Default "
+            "Credentials.",
+            error,
+        )
+        return None
+
+    if credentials_info.get("type") != "service_account":
+        logger.warning(
+            "GOOGLE_ADS_SUBJECT is set but GOOGLE_APPLICATION_CREDENTIALS "
+            "does not point to a service account key. Subject delegation "
+            "is ignored."
+        )
+        return None
+
+    credentials = service_account.Credentials.from_service_account_info(
+        credentials_info, scopes=[_ADS_SCOPE]
+    )
+    return credentials.with_subject(subject)
+
+
 def _create_credentials() -> google.auth.credentials.Credentials:
-    """Returns Application Default Credentials with the Google Ads scope, or the FastMCP token if found."""
+    """Returns credentials with the Google Ads scope.
+
+    Prefers the FastMCP token if found, then a service account impersonating
+    GOOGLE_ADS_SUBJECT, and falls back to Application Default Credentials.
+    """
     from fastmcp.server.dependencies import get_access_token
     from google.oauth2.credentials import Credentials
 
@@ -76,6 +127,10 @@ def _create_credentials() -> google.auth.credentials.Credentials:
     if token_obj and token_obj.token:
         # Create credentials using the access token provided by FastMCP
         return Credentials(token=token_obj.token)
+
+    delegated_credentials = _create_delegated_credentials()
+    if delegated_credentials:
+        return delegated_credentials
 
     with prevent_stdio_inheritance():
         credentials, _ = google.auth.default(scopes=[_ADS_SCOPE])
