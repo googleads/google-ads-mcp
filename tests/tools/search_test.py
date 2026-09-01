@@ -69,6 +69,47 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(results[0]["id"], 1)
         self.assertEqual(results[1]["name"], "C2")
 
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_row")
+    def test_search_with_login_customer_id(
+        self, mock_format_row, mock_get_service
+    ):
+        """Tests that the login customer id is forwarded to the service."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+        mock_service.search_stream.return_value = []
+
+        search.search(
+            customer_id="1234567890",
+            fields=["campaign.id"],
+            resource="campaign",
+            login_customer_id="1111111111",
+        )
+
+        mock_get_service.assert_called_once_with(
+            "GoogleAdsService", login_customer_id="1111111111"
+        )
+
+    @patch("ads_mcp.utils.get_googleads_service")
+    @patch("ads_mcp.utils.format_output_row")
+    def test_search_without_login_customer_id(
+        self, mock_format_row, mock_get_service
+    ):
+        """Tests that no login customer id is forwarded when it's omitted."""
+        mock_service = MagicMock()
+        mock_get_service.return_value = mock_service
+        mock_service.search_stream.return_value = []
+
+        search.search(
+            customer_id="1234567890",
+            fields=["campaign.id"],
+            resource="campaign",
+        )
+
+        mock_get_service.assert_called_once_with(
+            "GoogleAdsService", login_customer_id=None
+        )
+
     def test_search_tool_description(self):
         """Tests that the tool description is generated correctly."""
         # Mocking open as if the file exists

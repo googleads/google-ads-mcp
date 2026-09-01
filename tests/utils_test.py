@@ -14,7 +14,10 @@
 
 """Test cases for the utils module."""
 
+import os
 import unittest
+from unittest.mock import patch
+
 from google.ads.googleads.v25.enums.types.campaign_status import (
     CampaignStatusEnum,
 )
@@ -72,6 +75,71 @@ class TestUtils(unittest.TestCase):
         fm = FieldMask(paths=["foo", "bar"])
         formatted = utils.format_output_value(fm)
         self.assertEqual(formatted, "foo,bar")
+
+    def test_get_login_customer_id_prefers_argument(self):
+        """Tests that an explicit login customer id wins over the env var."""
+        with patch.dict(
+            os.environ, {"GOOGLE_ADS_LOGIN_CUSTOMER_ID": "1111111111"}
+        ):
+            self.assertEqual(
+                utils._get_login_customer_id("2222222222"), "2222222222"
+            )
+
+    def test_get_login_customer_id_falls_back_to_environment(self):
+        """Tests that the env var is used when no id is passed in."""
+        with patch.dict(
+            os.environ, {"GOOGLE_ADS_LOGIN_CUSTOMER_ID": "1111111111"}
+        ):
+            self.assertEqual(utils._get_login_customer_id(), "1111111111")
+
+    def test_get_login_customer_id_unset(self):
+        """Tests that None is returned when neither source is set."""
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(utils._get_login_customer_id())
+
+    @patch("ads_mcp.utils._get_developer_token", return_value="token")
+    @patch("ads_mcp.utils._create_credentials", return_value="credentials")
+    @patch("ads_mcp.utils.GoogleAdsClient")
+    def test_get_googleads_client_with_login_customer_id(
+        self, mock_client, mock_credentials, mock_token
+    ):
+        """Tests that the requested login customer id reaches the client."""
+        with patch.dict(os.environ, {}, clear=True):
+            utils._get_googleads_client("2222222222")
+
+        mock_client.assert_called_once_with(
+            credentials="credentials",
+            developer_token="token",
+            use_proto_plus=True,
+            login_customer_id="2222222222",
+        )
+
+    @patch("ads_mcp.utils._get_developer_token", return_value="token")
+    @patch("ads_mcp.utils._create_credentials", return_value="credentials")
+    @patch("ads_mcp.utils.GoogleAdsClient")
+    def test_get_googleads_client_without_login_customer_id(
+        self, mock_client, mock_credentials, mock_token
+    ):
+        """Tests that no login customer id is set when none is available."""
+        with patch.dict(os.environ, {}, clear=True):
+            utils._get_googleads_client()
+
+        mock_client.assert_called_once_with(
+            credentials="credentials",
+            developer_token="token",
+            use_proto_plus=True,
+        )
+
+    @patch("ads_mcp.utils._get_googleads_client")
+    def test_get_googleads_service_passes_login_customer_id(
+        self, mock_get_client
+    ):
+        """Tests that get_googleads_service forwards the login customer id."""
+        utils.get_googleads_service(
+            "GoogleAdsService", login_customer_id="2222222222"
+        )
+
+        mock_get_client.assert_called_once_with("2222222222")
 
     def test_prevent_stdio_inheritance(self):
         """Tests that prevent_stdio_inheritance sets stdin to DEVNULL if not specified."""

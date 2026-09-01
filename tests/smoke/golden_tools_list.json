@@ -105,6 +105,18 @@
             "default": null,
             "description": "The maximum number of rows to return"
           },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The manager account that grants access to the\ncustomer, as digits without punctuation. Only needed for customers\nreached through a manager account. Defaults to the\nGOOGLE_ADS_LOGIN_CUSTOMER_ID environment variable."
+          },
           "orderings": {
             "default": [],
             "description": "How the data is ordered",

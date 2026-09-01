@@ -290,6 +290,16 @@ The final file will look like this:
   }
   ```
 
+##### Accounts under several manager accounts
+
+`GOOGLE_ADS_LOGIN_CUSTOMER_ID` is fixed for the lifetime of the server process,
+so it can only name a single manager account. If you need to reach customers
+that are managed by different manager accounts from one server, for example a
+server shared by several agents or deployed to Cloud Run, pass the
+`login_customer_id` argument to the `search` tool instead. It takes precedence
+over the environment variable for that request only, and the environment
+variable is still used as the default when the argument is omitted.
+
 #### Other MCP clients (Claude Code, Cursor, VS Code, etc.)
 
 The `mcpServers` block format is the same across all MCP clients. Add the configuration shown above to the appropriate settings file for your client (e.g., `~/.claude/settings.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for VS Code with Copilot).
@@ -344,7 +354,7 @@ Make sure to set the required environment variables:
   periodic cleanup job for long-running deployments. Redis expires entries on
   its own.
 - `FASTMCP_HOST`: Set this to `0.0.0.0` to allow FastMCP to accept connections from all IP addresses.
-- `GOOGLE_ADS_LOGIN_CUSTOMER_ID`: Required if your access to the customer account is through a manager account. Set it to the customer ID of the manager account. See [Login Customer Id](#login-customer-id) above for details.
+- `GOOGLE_ADS_LOGIN_CUSTOMER_ID`: Required if your access to the customer account is through a manager account. Set it to the customer ID of the manager account. See [Login Customer Id](#login-customer-id) above for details. If the deployment serves customers under more than one manager account, leave it unset and pass `login_customer_id` per request to the `search` tool instead.
 
 ```shell
 gcloud run deploy google-ads-mcp \
