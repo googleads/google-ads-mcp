@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
     "google-ads>=28.0.0",
-    "mcp[cli]>=1.2.0"
+    "mcp[cli]>=2.2.0"
 ]
 
 description = "MCP Server for Google Ads, depends on Google Ads API."
