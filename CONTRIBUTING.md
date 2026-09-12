@@ -92,3 +92,9 @@ branch named `awesome-feature-42` in this repo:
   }
 }
 ```
+
+## Publishing releases
+
+Release publication is restricted to project maintainers. See the
+[release guide](docs/releasing.md) for the PyPI and TestPyPI Trusted Publisher
+setup, release procedure, verification steps, and failure recovery.

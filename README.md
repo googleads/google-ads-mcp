@@ -75,9 +75,16 @@ Setup involves the following steps:
 
 [Install pipx](https://pipx.pypa.io/stable/#install-pipx).
 
-### Configure Developer Token
+After a version has been published to PyPI, you can run that exact version
+instead of following the latest repository state:
 
-Follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).
+```shell
+pipx run --spec "google-ads-mcp==X.Y.Z" google-ads-mcp
+```
+
+### Configure Developer Token (Optional)
+
+If your setup requires a developer token, follow the instructions for [Obtaining a Developer Token](https://developers.google.com/google-ads/api/docs/get-started/dev-token).
 
 Your developer token must have at least [Explorer access](https://developers.google.com/google-ads/api/docs/get-started/dev-token#access-levels) to query production accounts. New tokens may be automatically upgraded to Explorer access; if not, you can apply through the API Center. See the [access levels documentation](https://developers.google.com/google-ads/api/docs/get-started/dev-token#access-levels) for details.
 
@@ -404,7 +411,7 @@ You can use Cloud Build to build and push the image to Artifact Registry without
 Make sure to set the required environment variables:
 
 - `GOOGLE_PROJECT_ID`: Your Google Cloud project ID.
-- `GOOGLE_ADS_DEVELOPER_TOKEN`: The developer token you want the MCP server to use (see above).
+- `GOOGLE_ADS_DEVELOPER_TOKEN`: (Optional) The developer token you want the MCP server to use (see above).
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: The OAuth Client ID you want the MCP server to use.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: The OAuth Client secret you want the MCP server to use.
 - `GOOGLE_ADS_MCP_BASE_URL`: The base URL where your MCP server is accessible: this will be automatically assigned by Google Cloud Run after your first deployment. You can update the environment variables after deployment. 
@@ -421,6 +428,7 @@ Make sure to set the required environment variables:
   periodic cleanup job for long-running deployments. Redis expires entries on
   its own.
 - `FASTMCP_HOST`: Set this to `0.0.0.0` to allow FastMCP to accept connections from all IP addresses.
+- `GOOGLE_ADS_LOGIN_CUSTOMER_ID`: Required if your access to the customer account is through a manager account. Set it to the customer ID of the manager account. See [Login Customer Id](#login-customer-id) above for details.
 
 ```shell
 gcloud run deploy google-ads-mcp \
@@ -487,3 +495,5 @@ How many active campaigns do I have for customer id 1234567890
 ## Contributing
 
 Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).
+Project maintainers can find the Trusted Publishing and release procedure in
+the [release guide](docs/releasing.md).

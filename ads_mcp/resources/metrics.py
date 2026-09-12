@@ -22,7 +22,6 @@ from ads_mcp.coordinator import mcp
 @mcp.resource(
     uri="resource://metrics",
     mime_type="text/html",
-    annotations={"readOnlyHint": True, "idempotentHint": True},
 )
 def get_metrics() -> str:
     """Retrieve the Google Ads API metrics documentation.

@@ -22,7 +22,6 @@ from ads_mcp.coordinator import mcp
 @mcp.resource(
     uri="resource://release-notes",
     mime_type="text/html",
-    annotations={"readOnlyHint": True, "idempotentHint": True},
 )
 def get_release_notes() -> str:
     """Retrieve the Google Ads API release notes.

@@ -22,7 +22,6 @@ from ads_mcp.coordinator import mcp
 @mcp.resource(
     uri="resource://discovery-document",
     mime_type="application/json",
-    annotations={"readOnlyHint": True, "idempotentHint": True},
 )
 def get_discovery_document() -> str:
     """Retrieve the Google Ads API discovery document.

@@ -1,19 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "google-ads-mcp"
-version = "0.0.1"
+version = "0.0.3"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
-    "google-ads>=31.2.0",
-    # Pin the tested v2 pair while FastMCP 4 remains in beta. The local
-    # subscriptions/listen compatibility guard is scoped to this release.
+    "google-ads>=32.0.0",
     "mcp[cli]==2.0.0",
-    "fastmcp==4.0.0b3"
+    "fastmcp>=4.0.3"
 ]
 
 description = "MCP Server for Google Ads, depends on Google Ads API."
 readme = "README.md"
-authors = [{ name = "Dean Lukies", email = "lukiesd@users.noreply.github.com" }]
+authors = [
+    { name = "Dean Lukies", email = "lukiesd@users.noreply.github.com" },
+    { name = "Mattia Tommasone", email = "Raibaz@users.noreply.github.com" },
+]
 keywords = ["Google Ads", "Google Ads API", "MCP"]
 classifiers = [
     "Intended Audience :: Developers",
