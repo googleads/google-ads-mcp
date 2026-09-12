@@ -14,6 +14,9 @@
 
 """Entry point for the MCP server."""
 
+import logging
+import os
+
 from ads_mcp.coordinator import mcp
 
 # The following imports are necessary to register the resources with the `mcp`
@@ -29,10 +32,13 @@ from ads_mcp.resources import (
 )  # noqa: F401
 
 
-import os
+def configure_safe_http_logging() -> None:
+    """Prevent OAuth access tokens in query strings from reaching INFO logs."""
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
 
 
 def run_server() -> None:
+    configure_safe_http_logging()
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))

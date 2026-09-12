@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
     "google-ads>=32.0.0",
-    "mcp[cli]>=1.2.0",
+    "mcp[cli]==2.0.0",
     "fastmcp>=4.0.3"
 ]
 

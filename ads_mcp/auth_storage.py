@@ -53,11 +53,19 @@ def create_client_storage() -> Any:
             raise ValueError(
                 "Storage path must be provided via GOOGLE_ADS_MCP_STORAGE_PATH environment variable."
             )
-        from key_value.aio.stores.filetree import FileTreeStore
+        from key_value.aio.stores.filetree import (
+            FileTreeStore,
+            FileTreeV1KeySanitizationStrategy,
+        )
 
         path_obj = pathlib.Path(st_path)
         path_obj.mkdir(parents=True, exist_ok=True)
-        store = FileTreeStore(data_directory=path_obj)
+        store = FileTreeStore(
+            data_directory=path_obj,
+            key_sanitization_strategy=(
+                FileTreeV1KeySanitizationStrategy(path_obj)
+            ),
+        )
     elif st_type == "redis":
         from key_value.aio.stores.redis import RedisStore
 
