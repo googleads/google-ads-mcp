@@ -172,8 +172,7 @@ legacy MCP 2025 clients that use `Mcp-Session-Id` and GET SSE as well as MCP
 Do not enable FastMCP's `stateless_http` option on this shared endpoint; doing
 so removes the legacy GET channel.
 
-The dependency pair `mcp==2.0.0` and `fastmcp==4.0.0b3` is pinned because the
-FastMCP release is a beta. The Docker build also applies a version-guarded
+The server runs on FastMCP 4 (`fastmcp>=4.0.3`) paired with `mcp[cli]==2.0.0`. The Docker build also applies a version-guarded
 OAuth metadata workaround for Codex CLI 0.146. It stops advertising the RFC
 9207 authorization-response `iss` parameter as mandatory while FastMCP still
 includes it in redirects. The build fails if the expected FastMCP version or

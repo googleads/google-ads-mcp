@@ -59,7 +59,7 @@ else:
 def ensure_subscriptions_listen(server: FastMCP) -> bool:
     """Register the MCP 2026 subscription stream when FastMCP omits it.
 
-    FastMCP 4.0.0b3 builds its low-level ``Server`` without the SDK's
+    FastMCP 4 (including 4.0.3) builds its low-level ``Server`` without the SDK's
     ``on_subscriptions_listen`` handler. Some modern clients open that stream
     while loading tools; without it, the SDK returns HTTP 404 / method not
     found, which mcp-go reports misleadingly as a missing session.
