@@ -41,7 +41,11 @@ _GAQL_FILENAME = "gaql_resources.txt"
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# Prevent fastmcp's HTTP client (httpx2) from logging the OAuth access token
+# fastmcp sends in the request URL to Google's tokeninfo endpoint:
+# https://github.com/PrefectHQ/fastmcp/blob/490049f0f9742922f4af16c937db0b898dc9802b/fastmcp_slim/fastmcp/server/auth/providers/google.py#L116-L120
+# https://github.com/pydantic/httpx2/blob/f2951854442e78cb8f6d2256b7c1d83bd2b77d0b/src/httpx2/httpx2/_client.py#L1923-L1930
+logging.getLogger("httpx2").setLevel(logging.WARNING)
 
 # OAuth scope for the Google Ads API. Google Ads does not publish a separate
 # read-only scope; access is restricted to read methods by the tools this
