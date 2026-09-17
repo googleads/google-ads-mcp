@@ -14,6 +14,7 @@
 
 """Test cases for the utils module."""
 
+import logging
 import unittest
 from google.ads.googleads.v25.enums.types.campaign_status import (
     CampaignStatusEnum,
@@ -72,6 +73,29 @@ class TestUtils(unittest.TestCase):
         fm = FieldMask(paths=["foo", "bar"])
         formatted = utils.format_output_value(fm)
         self.assertEqual(formatted, "foo,bar")
+
+    def test_oauth_access_token_not_logged(self):
+        """Tests that OAuth access token is not logged."""
+        import asyncio
+        import httpx2
+        from fastmcp.server.auth.providers.google import GoogleTokenVerifier
+
+        token = "secret-token"
+        # Include audience (aud) and subject (sub) claims in the mocked tokeninfo response
+        # since they're required by fastmcp's GoogleTokenVerifier's verify_token to make the userinfo request
+        # https://github.com/PrefectHQ/fastmcp/blob/490049f0f9742922f4af16c937db0b898dc9802b/fastmcp_slim/fastmcp/server/auth/providers/google.py#L132-L150
+        transport = httpx2.MockTransport(
+            lambda _: httpx2.Response(200, json={"aud": "aud", "sub": "sub"})
+        )
+        verifier = GoogleTokenVerifier(
+            http_client=httpx2.AsyncClient(transport=transport)
+        )
+
+        with self.assertLogs(level=logging.DEBUG) as logs:
+            asyncio.run(verifier.verify_token(token))
+
+        for line in logs.output:
+            self.assertNotIn(token, line)
 
     def test_prevent_stdio_inheritance(self):
         """Tests that prevent_stdio_inheritance sets stdin to DEVNULL if not specified."""
