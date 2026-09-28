@@ -11,3 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import os
+
+try:
+    from dotenv import load_dotenv
+
+    if os.environ.get("DISABLE_DOTENV") != "1":
+        load_dotenv()
+except ImportError:
+    pass
+

@@ -1,0 +1,23 @@
+services:
+  google-ads-mcp:
+    image: 953467367422.dkr.ecr.ap-south-1.amazonaws.com/qressy-google-ads-mcp:latest
+    container_name: google-ads-mcp
+    restart: always
+    env_file: ./.env
+    expose:
+      - "8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - VIRTUAL_PORT=8080
+      - MCP_TRANSPORT=streamable-http
+      - VIRTUAL_HOST=google-ads-mcp.comergent.ai
+      - GOOGLE_ADS_MCP_BASE_URL=https://google-ads-mcp.comergent.ai
+    volumes:
+      - ./service-account-key.json:/app/service-account-key.json:ro
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

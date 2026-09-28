@@ -1,0 +1,83 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE_TAG: latest
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: qressy-google-ads-mcp
+  PROJECT_FOLDER: qressy-google-ads-mcp
+  ECR_REGISTRY: 953467367422.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  build-and-push:
+    name: Build, push ECR, deploy via SSM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: "ap-south-1"
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_REGION" \
+            || aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region "$AWS_REGION"
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Deploy on EC2 via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy $ECR_REPOSITORY from GitHub Actions" \
+            --parameters "commands=[
+              \"set -e\",
+              \"cd /home/ubuntu/$PROJECT_FOLDER\",
+              \"chmod +x deploy.sh\",
+              \"./deploy.sh\"
+            ]" \
+            --timeout-seconds 600 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          # Wait until the command finishes
+          STATUS="Pending"
+          while [[ "$STATUS" == "Pending" || "$STATUS" == "InProgress" || "$STATUS" == "Delayed" ]]; do
+            sleep 10
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "$COMMAND_ID" \
+              --details \
+              --query "CommandInvocations[0].Status" \
+              --output text)
+            echo "SSM status: $STATUS"
+          done
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "{Status:Status,StdOut:StandardOutputContent,StdErr:StandardErrorContent}" \
+            --output json
+
+          if [[ "$STATUS" != "Success" ]]; then
+            echo "SSM deploy failed with status: $STATUS"
+            exit 1
+          fi

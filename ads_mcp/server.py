@@ -42,12 +42,21 @@ def run_server() -> None:
     _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
     _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
     port = int(os.environ.get("PORT", "8080"))
+    host = os.environ.get("HOST", "0.0.0.0")
+    transport = os.environ.get("MCP_TRANSPORT")
 
-    if _CLIENT_ID and _CLIENT_SECRET:
+    if transport:
+        mcp.run(
+            transport=transport,
+            port=port,
+            host=host,
+            uvicorn_config={"access_log": False},
+        )
+    elif _CLIENT_ID and _CLIENT_SECRET:
         mcp.run(
             transport="streamable-http",
             port=port,
-            host="0.0.0.0",
+            host=host,
             uvicorn_config={"access_log": False},
         )
     else:
@@ -56,3 +65,4 @@ def run_server() -> None:
 
 if __name__ == "__main__":
     run_server()
+

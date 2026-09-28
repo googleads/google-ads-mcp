@@ -74,3 +74,24 @@ class TestUtils(unittest.TestCase):
                 server.run_server()
 
         run.assert_called_once_with()
+
+    def test_server_with_explicit_transport(self):
+        """Explicit MCP_TRANSPORT configures transport, host, and port."""
+        from ads_mcp import server
+
+        env = {
+            "MCP_TRANSPORT": "streamable-http",
+            "HOST": "127.0.0.1",
+            "PORT": "9090",
+        }
+        with patch.dict(server.os.environ, env, clear=True):
+            with patch.object(server.mcp, "run") as run:
+                server.run_server()
+
+        run.assert_called_once_with(
+            transport="streamable-http",
+            port=9090,
+            host="127.0.0.1",
+            uvicorn_config={"access_log": False},
+        )
+

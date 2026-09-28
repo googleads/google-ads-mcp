@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "google-ads-mcp-remote": {
+      "url": "https://google-ads-mcp.comergent.ai/mcp"
+    },
+    "google-ads-mcp-local": {
+      "command": "google-ads-mcp",
+      "args": [],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}
