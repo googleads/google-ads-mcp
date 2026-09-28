@@ -4,6 +4,7 @@
 .python-version
 .gemini
 .vscode
+.DS_Store
 
 # Distribution / packaging
 .Python
@@ -37,3 +38,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
+
+# Local secrets
+.env
+service-account-key.json
