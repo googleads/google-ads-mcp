@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "google-ads-mcp": {
+      "command": "/.venv/bin/google-ads-mcp",
+      "args": [],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}
