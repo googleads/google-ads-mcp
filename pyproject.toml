@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "google-ads-mcp"
-version = "0.0.4"
+version = "0.0.5"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
