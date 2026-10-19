@@ -14,6 +14,7 @@
 
 """Test cases for the upload_video tool."""
 
+import json
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 
@@ -26,7 +27,7 @@ class TestUploadVideo(unittest.IsolatedAsyncioTestCase):
     @patch("ads_mcp.utils.get_googleads_client")
     @patch("os.path.isfile")
     async def test_upload_video_asset(self, mock_isfile, mock_get_client):
-        """Tests that the upload video function constructs the correct request and processes results."""
+        """Tests that the upload video function proposes (validate_only=True) and uploads (validate_only=False)."""
         # Setup mocks
         mock_isfile.return_value = True
         mock_client = MagicMock()
@@ -55,7 +56,23 @@ class TestUploadVideo(unittest.IsolatedAsyncioTestCase):
             mock_response
         )
 
-        # Mocking open as if the file exists and reading bytes
+        # 1. Propose phase (validate_only=True by default) does not stream video yet
+        propose_res = await upload_video.upload_video_asset(
+            customer_id="1234567890",
+            video_title="My Test Video",
+            video_description="This is a test video description.",
+            video_path="/fake/path/video.mp4",
+            video_privacy="PUBLIC",
+            youtube_channel_id="UC123456",
+        )
+        proposal = json.loads(propose_res)
+        self.assertEqual(proposal["status"], "PROPOSED")
+        self.assertTrue(proposal["validate_only"])
+        checksum = proposal["checksum"]
+        self.assertTrue(checksum)
+        mock_youtube_service.create_you_tube_video_upload.assert_not_called()
+
+        # 2. Confirm phase (validate_only=False with valid checksum) streams video
         m = mock_open(read_data=b"fakevideodata")
         with patch("builtins.open", m):
             result = await upload_video.upload_video_asset(
@@ -65,6 +82,8 @@ class TestUploadVideo(unittest.IsolatedAsyncioTestCase):
                 video_path="/fake/path/video.mp4",
                 video_privacy="PUBLIC",
                 youtube_channel_id="UC123456",
+                validate_only=False,
+                checksum=checksum,
             )
 
             # Assertions
@@ -82,6 +101,62 @@ class TestUploadVideo(unittest.IsolatedAsyncioTestCase):
 
             self.assertIn("Successfully uploaded video", result)
             self.assertIn("ID: 456", result)
+
+    @patch("ads_mcp.utils.get_googleads_client")
+    @patch("os.path.isfile")
+    async def test_upload_video_asset_checksum_enforcement(
+        self, mock_isfile, mock_get_client
+    ):
+        """Tests that missing or mismatched checksums are rejected without uploading."""
+        mock_isfile.return_value = True
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_youtube_service = MagicMock()
+        mock_client.get_service.return_value = mock_youtube_service
+
+        mock_privacy_enum = MagicMock()
+        mock_privacy_enum.YouTubeVideoPrivacy.UNLISTED = "UNLISTED"
+        mock_client.get_type.side_effect = lambda name: (
+            mock_privacy_enum
+            if name == "YouTubeVideoPrivacyEnum"
+            else MagicMock()
+        )
+
+        # Missing checksum
+        res_missing = await upload_video.upload_video_asset(
+            customer_id="1234567890",
+            video_title="My Test Video",
+            video_description="Description",
+            video_path="/fake/path/video.mp4",
+            validate_only=False,
+        )
+        self.assertIn(
+            "checksum from a previous validate_only=True call is required",
+            res_missing,
+        )
+        mock_youtube_service.create_you_tube_video_upload.assert_not_called()
+
+        # Mismatched checksum
+        propose_res = await upload_video.upload_video_asset(
+            customer_id="1234567890",
+            video_title="My Test Video",
+            video_description="Description",
+            video_path="/fake/path/video.mp4",
+            validate_only=True,
+        )
+        checksum = json.loads(propose_res)["checksum"]
+
+        res_mismatch = await upload_video.upload_video_asset(
+            customer_id="1234567890",
+            video_title="Modified Video Title",
+            video_description="Description",
+            video_path="/fake/path/video.mp4",
+            validate_only=False,
+            checksum=checksum,
+        )
+        self.assertIn("Invalid or mismatched checksum", res_mismatch)
+        mock_youtube_service.create_you_tube_video_upload.assert_not_called()
 
     @patch("os.path.isfile")
     async def test_upload_video_asset_file_not_found(self, mock_isfile):

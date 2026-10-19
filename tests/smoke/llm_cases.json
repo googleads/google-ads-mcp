@@ -2,154 +2,154 @@
   {
     "prompt": "List the customers I can access.",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 645,
+    "prompt_tokens": 3601,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Find campaigns matching 'Test Campaign' for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 2651,
+    "prompt_tokens": 3615,
     "output_tokens": 66,
-    "model": "gemini-3.1-flash-lite",
+    "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 37
+    "tool_tokens": 63
   },
   {
     "prompt": "Show me all my accounts.",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 644,
+    "prompt_tokens": 3600,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Which customers do I have access to?",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 646,
+    "prompt_tokens": 3602,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Find enabled ad groups for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 656,
+    "prompt_tokens": 3612,
     "output_tokens": 87,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 62
   },
   {
     "prompt": "Get keywords for campaign 'Summer Sale' in account {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 660,
-    "output_tokens": 91,
+    "prompt_tokens": 3616,
+    "output_tokens": 104,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 63
   },
   {
     "prompt": "Show me the metrics for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 656,
-    "output_tokens": 88,
+    "prompt_tokens": 3612,
+    "output_tokens": 79,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 61
   },
   {
     "prompt": "Generate a daily report of clicks for all active campaigns in account {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 662,
-    "output_tokens": 59,
+    "prompt_tokens": 3618,
+    "output_tokens": 73,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 130
+    "tool_tokens": 63
   },
   {
     "prompt": "What fields are available for the campaign resource?",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 647,
+    "prompt_tokens": 3603,
     "output_tokens": 22,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "tool_tokens": 37333
   },
   {
     "prompt": "Find metrics compatible with ad_group.",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 646,
+    "prompt_tokens": 3602,
     "output_tokens": 24,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "tool_tokens": 25823
   },
   {
     "prompt": "What segments can I select with the customer resource?",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 2640,
+    "prompt_tokens": 3604,
     "output_tokens": 22,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 22705
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 23897
   },
   {
     "prompt": "Create a label 'High Priority' with color #FF0000 for customer {customer_id}.",
     "expected_tool": "labels_manage_labels",
-    "prompt_tokens": 2641,
-    "output_tokens": 64,
+    "prompt_tokens": 3623,
+    "output_tokens": 61,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 68
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 869
   },
   {
     "prompt": "Remove label with ID 12345 for customer {customer_id}.",
     "expected_tool": "labels_manage_labels",
-    "prompt_tokens": 2638,
-    "output_tokens": 42,
+    "prompt_tokens": 3618,
+    "output_tokens": 57,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 68
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 877
   },
   {
     "prompt": "Associate label 12345 with campaign 67890 for customer {customer_id}.",
     "expected_tool": "labels_manage_label_associations",
-    "prompt_tokens": 2643,
-    "output_tokens": 53,
+    "prompt_tokens": 3624,
+    "output_tokens": 77,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 41
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 891
   },
   {
     "prompt": "Upload video '/tmp/test.mp4' titled 'Test Video' with description 'A test video' for customer {customer_id}.",
     "expected_tool": "assets_upload_video_asset",
-    "prompt_tokens": 2659,
-    "output_tokens": 77,
+    "prompt_tokens": 3630,
+    "output_tokens": 70,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 414
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 93
   },
   {
     "prompt": "Create a text asset with text 'Buy now!' for customer {customer_id}.",
     "expected_tool": "assets_create_asset",
-    "prompt_tokens": 2641,
-    "output_tokens": 61,
+    "prompt_tokens": 3618,
+    "output_tokens": 55,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 175
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 885
   },
   {
     "prompt": "Create a sitelink asset with text 'About Us' and final URL 'https://example.com/about' for customer {customer_id}.",
     "expected_tool": "assets_create_asset",
-    "prompt_tokens": 2659,
-    "output_tokens": 113,
+    "prompt_tokens": 3631,
+    "output_tokens": 73,
     "thought_tokens": null,
-    "model": "gemini-3.1-flash-lite",
-    "tool_tokens": 399
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 869
   }
 ]

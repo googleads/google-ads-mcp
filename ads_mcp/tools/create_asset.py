@@ -170,6 +170,8 @@ async def create_asset(
     structured_snippet_values: Optional[List[str]] = None,
     # Fallback/Custom Parameters
     extra_params: Optional[Dict[str, Any]] = None,
+    validate_only: bool = True,
+    checksum: Optional[str] = None,
 ) -> str:
     """Creates a new Google Ads asset under the specified customer account.
 
@@ -193,6 +195,11 @@ async def create_asset(
 
     For any other asset type, configure `extra_params` as a dict representing the sub-asset message fields.
 
+    Propose & Confirm Workflow (`validate_only` and `checksum`):
+    1. Call `create_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.
+    2. Present the `change_items` to the user and wait for explicit user approval.
+    3. Only after user confirmation, call `create_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.
+
     Args:
         customer_id: Google Ads Customer ID (without hyphens).
         asset_type: Type of the asset (e.g., 'TEXT', 'IMAGE', 'YOUTUBE_VIDEO', 'SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET').
@@ -214,9 +221,11 @@ async def create_asset(
         structured_snippet_header: Optional structured snippet header category (required for STRUCTURED_SNIPPET type).
         structured_snippet_values: Optional structured snippet list of values (required for STRUCTURED_SNIPPET type).
         extra_params: Optional dict representing nested parameters for less common asset types.
+        validate_only: If True (default), validates the request and returns proposed `change_items` and a `checksum` without creating the asset. If False, requires `checksum` from a prior `validate_only=True` call to commit the asset creation.
+        checksum: Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`.
 
     Returns:
-        A string indicating successful asset creation and its ID, or an error message.
+        When `validate_only=True`, a JSON proposal containing `change_items` and `checksum`. When `validate_only=False`, a string indicating successful asset creation and its ID, or an error message.
     """
     ga_client = utils.get_googleads_client()
     asset_service = ga_client.get_service("AssetService")
@@ -294,14 +303,83 @@ async def create_asset(
         else:
             return f"Error: Asset type field '{field_name}' does not exist on the Asset resource."
 
-    # 4. Mutate
-    try:
-        response = asset_service.mutate_assets(
-            customer_id=customer_id, operations=[asset_op]
-        )
+    # 4. Propose & Confirm workflow
+    operation_payload = {
+        "tool": "create_asset",
+        "operation": utils.MutateOperation.CREATE.value,
+        "asset_type": type_upper,
+        "name": name,
+        "final_urls": final_urls,
+        "final_mobile_urls": final_mobile_urls,
+        "tracking_url_template": tracking_url_template,
+        "final_url_suffix": final_url_suffix,
+        "url_custom_parameters": url_custom_parameters,
+        "text_asset_text": text_asset_text,
+        "image_asset_path": image_asset_path,
+        "image_asset_data": image_asset_data,
+        "image_asset_mime_type": image_asset_mime_type,
+        "image_bytes": (
+            asset.image_asset.data if type_upper == "IMAGE" else None
+        ),
+        "youtube_video_id": youtube_video_id,
+        "sitelink_link_text": sitelink_link_text,
+        "sitelink_description1": sitelink_description1,
+        "sitelink_description2": sitelink_description2,
+        "callout_text": callout_text,
+        "structured_snippet_header": structured_snippet_header,
+        "structured_snippet_values": structured_snippet_values,
+        "extra_params": extra_params,
+    }
+
+    change_items = utils.build_change_items(
+        operation=utils.MutateOperation.CREATE.value,
+        entity_readable=f"Asset ({type_upper})",
+        primary_key_readable=name or type_upper,
+        fields={
+            "Asset Type": type_upper,
+            "Name": name,
+            "Text": text_asset_text,
+            "Image Path": image_asset_path,
+            "Image MIME Type": image_asset_mime_type,
+            "YouTube Video ID": youtube_video_id,
+            "Sitelink Text": sitelink_link_text,
+            "Sitelink Description 1": sitelink_description1,
+            "Sitelink Description 2": sitelink_description2,
+            "Callout Text": callout_text,
+            "Structured Snippet Header": structured_snippet_header,
+            "Structured Snippet Values": structured_snippet_values,
+            "Final URLs": final_urls,
+            "Final Mobile URLs": final_mobile_urls,
+            "Tracking URL Template": tracking_url_template,
+            "Final URL Suffix": final_url_suffix,
+            "URL Custom Parameters": url_custom_parameters,
+            "Extra Parameters": extra_params,
+        },
+    )
+
+    request = ga_client.get_type("MutateAssetsRequest")
+    request.customer_id = customer_id
+    request.operations.append(asset_op)
+    request.validate_only = validate_only
+
+    def _validate() -> None:
+        request.validate_only = True
+        asset_service.mutate_assets(request=request)
+
+    def _commit() -> str:
+        request.validate_only = False
+        response = asset_service.mutate_assets(request=request)
         created_rn = response.results[0].resource_name
         created_id = utils.extract_id(created_rn)
         return f"Successfully created asset. ID: {created_id}"
-    except Exception as e:
-        utils.logger.error(f"Failed to create asset: {e}")
-        return f"Failed to create asset: {e}"
+
+    return utils.propose_and_confirm(
+        customer_id=customer_id,
+        validate_only=validate_only,
+        checksum=checksum,
+        operation_payload=operation_payload,
+        change_items=change_items,
+        validate_fn=_validate,
+        commit_fn=_commit,
+        error_prefix="Failed to create asset",
+    )

@@ -192,3 +192,13 @@ def get_gaql_resources_filepath():
     package_root = importlib.resources.files("ads_mcp")
     file_path = package_root.joinpath(_GAQL_FILENAME)
     return file_path
+
+
+from ads_mcp.propose_and_confirm import (  # noqa: E402, F401
+    ChangeItem,
+    build_change_items,
+    compute_checksum,
+    format_proposal_response,
+    propose_and_confirm,
+    verify_checksum,
+)

@@ -6,7 +6,7 @@
           "tags": []
         }
       },
-      "description": "Creates a new Google Ads asset under the specified customer account.\n\nRequired & Optional parameters per `asset_type`:\n- **TEXT**: Requires `text_asset_text`.\n- **IMAGE**: Requires either `image_asset_path` (absolute local path) OR `image_asset_data` (base64 encoded string).\n  If `image_asset_data` is provided, `image_asset_mime_type` is also required (e.g. 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF').\n- **YOUTUBE_VIDEO**: Requires `youtube_video_id`.\n- **SITELINK**: Requires `sitelink_link_text` and root-level `final_urls`.\n  Accepts optional `sitelink_description1` and `sitelink_description2`.\n- **CALLOUT**: Requires `callout_text`.\n- **STRUCTURED_SNIPPET**: Requires `structured_snippet_header` and `structured_snippet_values`.\n\nRoot-level URL and tracking configurations (optional except where noted):\n- `name`: Optional display name for the asset.\n- `final_urls`: Required for SITELINK. A list of URLs.\n- `final_mobile_urls`: List of mobile-specific destination URLs.\n- `tracking_url_template`: Template for constructing a tracking URL.\n- `final_url_suffix`: Suffix appended to the final URL.\n- `url_custom_parameters`: Custom parameters represented as a list of dicts (with 'key' and 'value').\n\nFor any other asset type, configure `extra_params` as a dict representing the sub-asset message fields.",
+      "description": "Creates a new Google Ads asset under the specified customer account.\n\nRequired & Optional parameters per `asset_type`:\n- **TEXT**: Requires `text_asset_text`.\n- **IMAGE**: Requires either `image_asset_path` (absolute local path) OR `image_asset_data` (base64 encoded string).\n  If `image_asset_data` is provided, `image_asset_mime_type` is also required (e.g. 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF').\n- **YOUTUBE_VIDEO**: Requires `youtube_video_id`.\n- **SITELINK**: Requires `sitelink_link_text` and root-level `final_urls`.\n  Accepts optional `sitelink_description1` and `sitelink_description2`.\n- **CALLOUT**: Requires `callout_text`.\n- **STRUCTURED_SNIPPET**: Requires `structured_snippet_header` and `structured_snippet_values`.\n\nRoot-level URL and tracking configurations (optional except where noted):\n- `name`: Optional display name for the asset.\n- `final_urls`: Required for SITELINK. A list of URLs.\n- `final_mobile_urls`: List of mobile-specific destination URLs.\n- `tracking_url_template`: Template for constructing a tracking URL.\n- `final_url_suffix`: Suffix appended to the final URL.\n- `url_custom_parameters`: Custom parameters represented as a list of dicts (with 'key' and 'value').\n\nFor any other asset type, configure `extra_params` as a dict representing the sub-asset message fields.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `create_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `create_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -25,6 +25,18 @@
             ],
             "default": null,
             "description": "Optional callout text (required for CALLOUT type)."
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
           },
           "customer_id": {
             "description": "Google Ads Customer ID (without hyphens).",
@@ -238,6 +250,11 @@
             "default": null,
             "description": "Optional custom parameters for tracking (list of key-value dicts)."
           },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without creating the asset. If False, requires `checksum` from a prior `validate_only=True` call to commit the asset creation.",
+            "type": "boolean"
+          },
           "youtube_video_id": {
             "anyOf": [
               {
@@ -257,7 +274,7 @@
         ],
         "type": "object"
       },
-      "name": "create_asset",
+      "name": "assets_create_asset",
       "outputSchema": {
         "properties": {
           "result": {
@@ -269,7 +286,95 @@
         ],
         "type": "object",
         "x-fastmcp-wrap-result": true
-      }
+      },
+      "title": "Assets Create Asset"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Uploads a video to YouTube natively via the Google Ads API.\nOnce a video has been uploaded, it can be used to create a video asset.\nThis operation executes via a FastMCP background task to gracefully handle large file uploads.\nOnce the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`\nresource matching the returned ID allows you to retrieve the YouTube Video ID and processing status.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `upload_video_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without uploading the video.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `upload_video_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
+      "execution": {
+        "taskSupport": "optional"
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
+          },
+          "customer_id": {
+            "description": "The ID of the customer (without hyphens).",
+            "type": "string"
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without uploading the video. If False, requires `checksum` from a prior `validate_only=True` call to execute the video upload.",
+            "type": "boolean"
+          },
+          "video_description": {
+            "description": "The description text attached to your YouTube video.",
+            "type": "string"
+          },
+          "video_path": {
+            "description": "The absolute path on the local filesystem to the video file to be uploaded.",
+            "type": "string"
+          },
+          "video_privacy": {
+            "default": "UNLISTED",
+            "description": "The privacy setting of the video on YouTube. Default is UNLISTED. Valid values are: PUBLIC, UNLISTED, PRIVATE. Note: PUBLIC is only allowed for brand channels.",
+            "type": "string"
+          },
+          "video_title": {
+            "description": "The title you wish your video to have on YouTube.",
+            "type": "string"
+          },
+          "youtube_channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account."
+          }
+        },
+        "required": [
+          "customer_id",
+          "video_title",
+          "video_description",
+          "video_path"
+        ],
+        "type": "object"
+      },
+      "name": "assets_upload_video_asset",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "title": "Assets Upload Video Asset"
     },
     {
       "_meta": {
@@ -310,7 +415,7 @@
           "tags": []
         }
       },
-      "description": "Manages associations between labels and Campaign, Customer, Ad Group, or Ad Group Criterion.\n\nSupports CREATE and REMOVE operations.",
+      "description": "Manages associations between labels and Campaign, Customer, Ad Group, or Ad Group Criterion.\n\nSupports CREATE and REMOVE operations.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `manage_label_associations` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `manage_label_associations` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -335,6 +440,18 @@
               "AD_GROUP_CRITERION"
             ],
             "type": "string"
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
           },
           "customer_id": {
             "description": "Google Ads Customer ID (without hyphens).",
@@ -372,6 +489,11 @@
             ],
             "default": null,
             "description": "The flat ID of the entity to associate (e.g., '456' for campaign).\n         Required for CREATE."
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the association. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -381,7 +503,7 @@
         ],
         "type": "object"
       },
-      "name": "manage_label_associations",
+      "name": "labels_manage_label_associations",
       "outputSchema": {
         "properties": {
           "result": {
@@ -393,7 +515,8 @@
         ],
         "type": "object",
         "x-fastmcp-wrap-result": true
-      }
+      },
+      "title": "Labels Manage Label Associations"
     },
     {
       "_meta": {
@@ -401,7 +524,7 @@
           "tags": []
         }
       },
-      "description": "Manages Label resources. Supports CREATE, UPDATE, and REMOVE operations.",
+      "description": "Manages Label resources. Supports CREATE, UPDATE, and REMOVE operations.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `manage_labels` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `manage_labels` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -416,6 +539,18 @@
             ],
             "default": null,
             "description": "Background color in HTML hex format (e.g., '#FF0000'). Optional."
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
           },
           "customer_id": {
             "description": "Google Ads Customer ID (without hyphens).",
@@ -465,6 +600,11 @@
               "REMOVE"
             ],
             "type": "string"
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the label. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -473,7 +613,7 @@
         ],
         "type": "object"
       },
-      "name": "manage_labels",
+      "name": "labels_manage_labels",
       "outputSchema": {
         "properties": {
           "result": {
@@ -485,7 +625,8 @@
         ],
         "type": "object",
         "x-fastmcp-wrap-result": true
-      }
+      },
+      "title": "Labels Manage Labels"
     },
     {
       "_meta": {
@@ -634,76 +775,8 @@
         ],
         "type": "object",
         "x-fastmcp-wrap-result": true
-      }
-    },
-    {
-      "_meta": {
-        "fastmcp": {
-          "tags": []
-        }
       },
-      "description": "Uploads a video to YouTube natively via the Google Ads API.\nOnce a video has been uploaded, it can be used to create a video asset.\nThis operation executes via a FastMCP background task to gracefully handle large file uploads.\nOnce the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`\nresource matching the returned ID allows you to retrieve the YouTube Video ID and processing status.",
-      "execution": {
-        "taskSupport": "optional"
-      },
-      "inputSchema": {
-        "additionalProperties": false,
-        "properties": {
-          "customer_id": {
-            "description": "The ID of the customer (without hyphens).",
-            "type": "string"
-          },
-          "video_description": {
-            "description": "The description text attached to your YouTube video.",
-            "type": "string"
-          },
-          "video_path": {
-            "description": "The absolute path on the local filesystem to the video file to be uploaded.",
-            "type": "string"
-          },
-          "video_privacy": {
-            "default": "UNLISTED",
-            "description": "The privacy setting of the video on YouTube. Default is UNLISTED. Valid values are: PUBLIC, UNLISTED, PRIVATE. Note: PUBLIC is only allowed for brand channels.",
-            "type": "string"
-          },
-          "video_title": {
-            "description": "The title you wish your video to have on YouTube.",
-            "type": "string"
-          },
-          "youtube_channel_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account."
-          }
-        },
-        "required": [
-          "customer_id",
-          "video_title",
-          "video_description",
-          "video_path"
-        ],
-        "type": "object"
-      },
-      "name": "upload_video_asset",
-      "outputSchema": {
-        "properties": {
-          "result": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "result"
-        ],
-        "type": "object",
-        "x-fastmcp-wrap-result": true
-      }
+      "title": "Search Search"
     }
   ]
 }

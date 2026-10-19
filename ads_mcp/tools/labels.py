@@ -42,6 +42,7 @@ def _get_label_resource_name(customer_id: str, label: str) -> str:
 ASSOCIATION_CONFIGS = {
     "CAMPAIGN": {
         "service": "CampaignLabelService",
+        "request": "MutateCampaignLabelsRequest",
         "operation": "CampaignLabelOperation",
         "mutate_method": "mutate_campaign_labels",
         "resource_field": "campaign",
@@ -51,6 +52,7 @@ ASSOCIATION_CONFIGS = {
     },
     "CUSTOMER": {
         "service": "CustomerLabelService",
+        "request": "MutateCustomerLabelsRequest",
         "operation": "CustomerLabelOperation",
         "mutate_method": "mutate_customer_labels",
         "resource_field": "customer",
@@ -60,6 +62,7 @@ ASSOCIATION_CONFIGS = {
     },
     "AD_GROUP": {
         "service": "AdGroupLabelService",
+        "request": "MutateAdGroupLabelsRequest",
         "operation": "AdGroupLabelOperation",
         "mutate_method": "mutate_ad_group_labels",
         "resource_field": "ad_group",
@@ -69,6 +72,7 @@ ASSOCIATION_CONFIGS = {
     },
     "AD_GROUP_CRITERION": {
         "service": "AdGroupCriterionLabelService",
+        "request": "MutateAdGroupCriterionLabelsRequest",
         "operation": "AdGroupCriterionLabelOperation",
         "mutate_method": "mutate_ad_group_criterion_labels",
         "resource_field": "ad_group_criterion",
@@ -102,8 +106,15 @@ async def manage_labels(
     background_color: Optional[str] = None,
     description: Optional[str] = None,
     label_id: Optional[str] = None,
+    validate_only: bool = True,
+    checksum: Optional[str] = None,
 ) -> str:
     """Manages Label resources. Supports CREATE, UPDATE, and REMOVE operations.
+
+    Propose & Confirm Workflow (`validate_only` and `checksum`):
+    1. Call `manage_labels` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.
+    2. Present the `change_items` to the user and wait for explicit user approval.
+    3. Only after user confirmation, call `manage_labels` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.
 
     Args:
         customer_id: Google Ads Customer ID (without hyphens).
@@ -113,9 +124,11 @@ async def manage_labels(
         description: Description of the label. Optional.
         label_id: The ID of the label (e.g., '456').
                   Required for UPDATE and REMOVE.
+        validate_only: If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the label. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.
+        checksum: Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`.
 
     Returns:
-        A string indicating the success and the mutated label's ID, or an error message.
+        When `validate_only=True`, a JSON proposal containing `change_items` and `checksum`. When `validate_only=False`, a string indicating the success and the mutated label's ID, or an error message.
     """
     ga_client = utils.get_googleads_client()
     label_service = ga_client.get_service("LabelService")
@@ -125,6 +138,7 @@ async def manage_labels(
         return f"Error: Invalid operation '{operation}'. Must be one of: CREATE, UPDATE, REMOVE."
 
     label_op = ga_client.get_type("LabelOperation")
+    target_resource_name: Optional[str] = None
 
     if op_upper == "CREATE":
         if not name:
@@ -140,7 +154,7 @@ async def manage_labels(
         if not label_id:
             return "Error: 'label_id' is required for UPDATE operation."
 
-        resource_name = f"customers/{customer_id}/labels/{label_id}"
+        target_resource_name = f"customers/{customer_id}/labels/{label_id}"
 
         # Use temp object to cleanly build the update mask
         temp_label = ga_client.get_type("Label")
@@ -161,7 +175,7 @@ async def manage_labels(
         mask = protobuf_helpers.field_mask(None, temp_label._pb)
 
         label = label_op.update
-        label.resource_name = resource_name
+        label.resource_name = target_resource_name
         if name is not None:
             label.name = name
         if background_color is not None:
@@ -174,13 +188,43 @@ async def manage_labels(
     elif op_upper == "REMOVE":
         if not label_id:
             return "Error: 'label_id' is required for REMOVE operation."
-        resource_name = f"customers/{customer_id}/labels/{label_id}"
-        label_op.remove = resource_name
+        target_resource_name = f"customers/{customer_id}/labels/{label_id}"
+        label_op.remove = target_resource_name
 
-    try:
-        response = label_service.mutate_labels(
-            customer_id=customer_id, operations=[label_op]
-        )
+    operation_payload = {
+        "tool": "manage_labels",
+        "operation": op_upper,
+        "name": name,
+        "background_color": background_color,
+        "description": description,
+        "label_id": label_id,
+    }
+
+    change_items = utils.build_change_items(
+        operation=op_upper,
+        entity_readable="Label",
+        primary_key_readable=name or target_resource_name or "",
+        fields={
+            "Label ID": label_id,
+            "Resource Name": target_resource_name,
+            "Name": name,
+            "Background Color": background_color,
+            "Description": description,
+        },
+    )
+
+    request = ga_client.get_type("MutateLabelsRequest")
+    request.customer_id = customer_id
+    request.operations.append(label_op)
+    request.validate_only = validate_only
+
+    def _validate() -> None:
+        request.validate_only = True
+        label_service.mutate_labels(request=request)
+
+    def _commit() -> str:
+        request.validate_only = False
+        response = label_service.mutate_labels(request=request)
         res_name = response.results[0].resource_name
         res_id = utils.extract_id(res_name)
         action_past = (
@@ -189,9 +233,17 @@ async def manage_labels(
             else "updated" if op_upper == "UPDATE" else "removed"
         )
         return f"Successfully {action_past} label. ID: {res_id}"
-    except Exception as e:
-        utils.logger.error(f"Failed to {op_upper.lower()} label: {e}")
-        return f"Failed to {op_upper.lower()} label: {e}"
+
+    return utils.propose_and_confirm(
+        customer_id=customer_id,
+        validate_only=validate_only,
+        checksum=checksum,
+        operation_payload=operation_payload,
+        change_items=change_items,
+        validate_fn=_validate,
+        commit_fn=_commit,
+        error_prefix=f"Failed to {op_upper.lower()} label",
+    )
 
 
 @labels_mcp.tool
@@ -202,10 +254,17 @@ async def manage_label_associations(
     resource_id: Optional[str] = None,
     label_id: Optional[str] = None,
     association_resource_name: Optional[str] = None,
+    validate_only: bool = True,
+    checksum: Optional[str] = None,
 ) -> str:
     """Manages associations between labels and Campaign, Customer, Ad Group, or Ad Group Criterion.
 
     Supports CREATE and REMOVE operations.
+
+    Propose & Confirm Workflow (`validate_only` and `checksum`):
+    1. Call `manage_label_associations` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.
+    2. Present the `change_items` to the user and wait for explicit user approval.
+    3. Only after user confirmation, call `manage_label_associations` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.
 
     Args:
         customer_id: Google Ads Customer ID (without hyphens).
@@ -219,9 +278,11 @@ async def manage_label_associations(
         association_resource_name: The full resource name of the association itself
                                    (e.g., 'customers/123/campaignLabels/456~789').
                                    Required for REMOVE if resource_id and label_id are not provided.
+        validate_only: If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the association. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.
+        checksum: Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`.
 
     Returns:
-        A string indicating success and the ID of the association, or an error message.
+        When `validate_only=True`, a JSON proposal containing `change_items` and `checksum`. When `validate_only=False`, a string indicating success and the ID of the association, or an error message.
     """
     op_upper = operation.upper()
     type_upper = association_type.upper()
@@ -239,6 +300,10 @@ async def manage_label_associations(
     ga_client = utils.get_googleads_client()
     service = ga_client.get_service(config["service"])
     op = ga_client.get_type(config["operation"])
+
+    resource_name: Optional[str] = None
+    label_resource_name: Optional[str] = None
+    target_rn: Optional[str] = None
 
     if op_upper == "CREATE":
         if not resource_id:
@@ -283,16 +348,54 @@ async def manage_label_associations(
 
     mutate_method = getattr(service, config["mutate_method"])
 
-    try:
-        response = mutate_method(customer_id=customer_id, operations=[op])
+    operation_payload = {
+        "tool": "manage_label_associations",
+        "operation": op_upper,
+        "association_type": type_upper,
+        "resource_id": resource_id,
+        "label_id": label_id,
+        "association_resource_name": association_resource_name,
+        "target_resource_name": target_rn,
+    }
+
+    change_items = utils.build_change_items(
+        operation=op_upper,
+        entity_readable=f"{type_upper} Label Association",
+        primary_key_readable=(
+            target_rn if op_upper == "REMOVE" else f"{resource_name}~{label_id}"
+        ),
+        fields={
+            "Association Type": type_upper,
+            "Resource": resource_name,
+            "Label": label_resource_name,
+            "Association Resource Name": target_rn,
+        },
+    )
+
+    request = ga_client.get_type(config["request"])
+    request.customer_id = customer_id
+    request.operations.append(op)
+    request.validate_only = validate_only
+
+    def _validate() -> None:
+        request.validate_only = True
+        mutate_method(request=request)
+
+    def _commit() -> str:
+        request.validate_only = False
+        response = mutate_method(request=request)
         res_name = response.results[0].resource_name
         res_id = utils.extract_id(res_name)
         action_past = "created" if op_upper == "CREATE" else "removed"
         return f"Successfully {action_past} {type_upper} label association. ID: {res_id}"
-    except Exception as e:
-        utils.logger.error(
-            f"Failed to {op_upper.lower()} {type_upper} label association: {e}"
-        )
-        return (
-            f"Failed to {op_upper.lower()} {type_upper} label association: {e}"
-        )
+
+    return utils.propose_and_confirm(
+        customer_id=customer_id,
+        validate_only=validate_only,
+        checksum=checksum,
+        operation_payload=operation_payload,
+        change_items=change_items,
+        validate_fn=_validate,
+        commit_fn=_commit,
+        error_prefix=f"Failed to {op_upper.lower()} {type_upper} label association",
+    )
