@@ -7,3 +7,6 @@ namespaces:
   customers: true
   search: true
   metadata: true
+  # Tools that modify Google Ads data. Disabled by default; use
+  # tools_config_write.yaml to enable them.
+  mutate: false

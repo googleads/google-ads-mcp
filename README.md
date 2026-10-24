@@ -18,6 +18,35 @@ to provide several
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
 
+### Write tools (disabled by default)
+
+The `mutate` namespace adds tools that modify Google Ads data:
+
+- `set_campaign_status`, `set_ad_group_status`, `set_ad_status`: Pause or
+  enable a campaign, an ad group or an ad.
+- `update_campaign_budget`: Change the daily budget of a campaign.
+- `add_negative_keywords`: Add negative keywords to a campaign or an ad group.
+- `set_ad_group_cpc_bid`, `set_keyword_cpc_bid`: Change max CPC bids.
+
+They are disabled in the default `tools_config.yaml`. To enable them, point
+`GOOGLE_ADS_MCP_TOOLS_CONFIG` at `ads_mcp/tools_config_write.yaml` (in the
+Docker image, `/app/ads_mcp/tools_config_write.yaml`).
+
+Safeguards:
+
+- Every write tool only validates its change unless it is called with
+  `validate_only=false`. The response describes the change (for example the
+  status before and after) so the agent can confirm it with the user first.
+- Budget and bid increases above a percentage of the current value are
+  rejected. Set the limits on the server with
+  `GOOGLE_ADS_MCP_MAX_BUDGET_INCREASE_PERCENT` and
+  `GOOGLE_ADS_MCP_MAX_BID_INCREASE_PERCENT` (50 by default). Decreases are
+  always allowed.
+- Changing a budget shared by several campaigns requires
+  `allow_shared_budget=true`.
+- Every call is logged with the authenticated user's email, the customer and
+  the change.
+
 ### Configuring and Namespacing Tools
 
 The Google Ads MCP server uses the `tools_config.yaml` to let you selectively enable or disable individual tools or tool categories (namespaces) and customize their namespace prefixes.

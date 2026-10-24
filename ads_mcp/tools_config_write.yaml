@@ -1,0 +1,11 @@
+# tools_config_write.yaml
+#
+# Tools configuration that also enables the tools that modify Google Ads data
+# (the `mutate` namespace). Point the GOOGLE_ADS_MCP_TOOLS_CONFIG environment
+# variable at this file to use it.
+
+namespaces:
+  customers: true
+  search: true
+  metadata: true
+  mutate: true
