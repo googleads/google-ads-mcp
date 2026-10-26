@@ -14,16 +14,22 @@
 
 """Generalized propose-and-confirm workflow utilities for MCP mutate tools."""
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 import hashlib
 import hmac
 import json
 import logging
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+import struct
+from typing import Any
 
+from fastmcp.exceptions import ToolError
+from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf.message import Message as PbMessage
 import proto
+
+from ads_mcp import utils
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +45,9 @@ class ChangeItem:
     value_readable: str = ""
     original_value_readable: str = ""
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Converts the ChangeItem into a dictionary representation."""
-        result: Dict[str, str] = {
+        result: dict[str, str] = {
             "operation": self.operation,
             "entity_readable": self.entity_readable,
             "primary_key_readable": self.primary_key_readable,
@@ -67,8 +73,8 @@ def build_change_items(
     entity_readable: str,
     primary_key_readable: str,
     fields: Mapping[str, Any],
-    original_fields: Optional[Mapping[str, Any]] = None,
-) -> List[ChangeItem]:
+    original_fields: Mapping[str, Any] | None = None,
+) -> list[ChangeItem]:
     """Builds a list of ChangeItems from a mapping of field labels to proposed values.
 
     Args:
@@ -83,7 +89,7 @@ def build_change_items(
     Returns:
         A list of ChangeItem instances describing the proposed changes.
     """
-    items: List[ChangeItem] = []
+    items: list[ChangeItem] = []
     orig_map = original_fields or {}
     for field_name, value in fields.items():
         if value is None:
@@ -150,6 +156,12 @@ def _serialize_operation_for_checksum(operation: Any) -> bytes:
     )
 
 
+def _update_length_prefixed(digest: "hashlib._Hash", chunk: bytes) -> None:
+    """Updates a hash digest with an 8-byte big-endian length prefix followed by chunk."""
+    digest.update(struct.pack(">Q", len(chunk)))
+    digest.update(chunk)
+
+
 def compute_checksum(customer_id: str, operations: Any) -> str:
     """Computes a deterministic SHA-256 hex digest bound to customer_id and operations.
 
@@ -162,8 +174,7 @@ def compute_checksum(customer_id: str, operations: Any) -> str:
         A 64-character lowercase hexadecimal SHA-256 checksum string.
     """
     digest = hashlib.sha256()
-    digest.update(str(customer_id).encode("utf-8"))
-    digest.update(b"\x00")
+    _update_length_prefixed(digest, str(customer_id).encode("utf-8"))
 
     op_list: Sequence[Any]
     if isinstance(operations, (list, tuple)):
@@ -171,9 +182,9 @@ def compute_checksum(customer_id: str, operations: Any) -> str:
     else:
         op_list = [operations]
 
+    digest.update(struct.pack(">Q", len(op_list)))
     for op in op_list:
-        digest.update(_serialize_operation_for_checksum(op))
-        digest.update(b"\x00")
+        _update_length_prefixed(digest, _serialize_operation_for_checksum(op))
 
     return digest.hexdigest()
 
@@ -181,9 +192,9 @@ def compute_checksum(customer_id: str, operations: Any) -> str:
 def verify_checksum(
     customer_id: str,
     operations: Any,
-    checksum: Optional[str],
-    expected_checksum: Optional[str] = None,
-) -> Optional[str]:
+    checksum: str | None,
+    expected_checksum: str | None = None,
+) -> str | None:
     """Verifies that a non-blank checksum matches the expected checksum for the operation.
 
     Args:
@@ -203,11 +214,11 @@ def verify_checksum(
         )
 
     actual_expected = (
-        expected_checksum
+        expected_checksum.lower()
         if expected_checksum is not None
         else compute_checksum(customer_id, operations)
     )
-    provided_bytes = checksum.strip().encode("utf-8")
+    provided_bytes = checksum.strip().lower().encode("utf-8")
     expected_bytes = actual_expected.encode("utf-8")
 
     if not hmac.compare_digest(provided_bytes, expected_bytes):
@@ -243,14 +254,21 @@ def format_proposal_response(
     return json.dumps(payload, indent=2)
 
 
+def _format_exception(error_prefix: str, exc: Exception) -> str:
+    """Formats GoogleAdsException or generic Exception with error_prefix."""
+    if isinstance(exc, GoogleAdsException):
+        return f"{error_prefix}:\n{utils.format_google_ads_error(exc)}"
+    return f"{error_prefix}: {exc}"
+
+
 def propose_and_confirm(
     *,
     customer_id: str,
     validate_only: bool,
-    checksum: Optional[str],
+    checksum: str | None,
     operation_payload: Any,
     change_items: Sequence[ChangeItem],
-    validate_fn: Optional[Callable[[], Any]] = None,
+    validate_fn: Callable[[], Any] | None = None,
     commit_fn: Callable[[], str],
     error_prefix: str = "Failed to execute mutation",
 ) -> str:
@@ -276,9 +294,12 @@ def propose_and_confirm(
         if validate_fn is not None:
             try:
                 validate_fn()
-            except Exception as e:
-                logger.error(f"{error_prefix}: {e}")
-                return f"{error_prefix}: {e}"
+            except ToolError:
+                raise
+            except Exception as exc:
+                msg = _format_exception(error_prefix, exc)
+                logger.error("%s", msg)
+                raise ToolError(msg) from exc
         return format_proposal_response(
             customer_id=customer_id,
             checksum=expected_checksum,
@@ -292,10 +313,13 @@ def propose_and_confirm(
         expected_checksum=expected_checksum,
     )
     if checksum_err:
-        return checksum_err
+        raise ToolError(checksum_err)
 
     try:
         return commit_fn()
-    except Exception as e:
-        logger.error(f"{error_prefix}: {e}")
-        return f"{error_prefix}: {e}"
+    except ToolError:
+        raise
+    except Exception as exc:
+        msg = _format_exception(error_prefix, exc)
+        logger.error("%s", msg)
+        raise ToolError(msg) from exc

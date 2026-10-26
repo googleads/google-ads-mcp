@@ -18,6 +18,14 @@ import json
 import unittest
 from unittest.mock import MagicMock
 
+from fastmcp.exceptions import ToolError
+from google.ads.googleads.errors import GoogleAdsException
+from google.ads.googleads.v25.errors.types.errors import (
+    ErrorCode,
+    GoogleAdsError,
+    GoogleAdsFailure,
+)
+from google.ads.googleads.v25.errors.types.request_error import RequestErrorEnum
 from google.ads.googleads.v25.services.types.asset_service import AssetOperation
 from ads_mcp import propose_and_confirm as pac
 from ads_mcp import utils
@@ -79,6 +87,13 @@ class TestProposeAndConfirm(unittest.TestCase):
         self.assertEqual(checksum_a, checksum_b)
         self.assertEqual(len(checksum_a), 64)
 
+        # Uppercase and padded checksum strings verify cleanly
+        self.assertIsNone(
+            pac.verify_checksum(
+                "1234567890", payload_a, f"  {checksum_a.upper()}  "
+            )
+        )
+
         # Changing customer_id or payload changes checksum
         self.assertNotEqual(
             checksum_a, pac.compute_checksum("9999999999", payload_a)
@@ -88,8 +103,8 @@ class TestProposeAndConfirm(unittest.TestCase):
             checksum_a, pac.compute_checksum("1234567890", payload_modified)
         )
 
-    def test_compute_checksum_with_proto_messages(self):
-        """Tests that compute_checksum deterministically hashes proto-plus and protobuf messages."""
+    def test_compute_checksum_with_proto_messages_and_framing(self):
+        """Tests that compute_checksum deterministically hashes proto messages and frames list items."""
         op1 = AssetOperation()
         op1.create.name = "Proto Asset"
         op1.create.text_asset.text = "Hello World"
@@ -113,6 +128,15 @@ class TestProposeAndConfirm(unittest.TestCase):
         self.assertNotEqual(
             pac.compute_checksum("1234567890", [op1]),
             pac.compute_checksum("1234567890", [op3]),
+        )
+        # Multi-operation list must not collide with single operation or reordered list
+        self.assertNotEqual(
+            pac.compute_checksum("1234567890", [op1]),
+            pac.compute_checksum("1234567890", [op1, AssetOperation()]),
+        )
+        self.assertNotEqual(
+            pac.compute_checksum("1234567890", [op1, op3]),
+            pac.compute_checksum("1234567890", [op3, op1]),
         )
 
     def test_propose_and_confirm_round_trip(self):
@@ -148,11 +172,11 @@ class TestProposeAndConfirm(unittest.TestCase):
         checksum = proposal["checksum"]
         self.assertTrue(checksum)
 
-        # 2. Confirm phase (validate_only=False) with valid checksum
+        # 2. Confirm phase (validate_only=False) with valid checksum (case-insensitive)
         confirm_res = pac.propose_and_confirm(
             customer_id="1234567890",
             validate_only=False,
-            checksum=checksum,
+            checksum=checksum.upper(),
             operation_payload=payload,
             change_items=items,
             validate_fn=validate_mock,
@@ -162,79 +186,123 @@ class TestProposeAndConfirm(unittest.TestCase):
         commit_mock.assert_called_once()
 
     def test_propose_and_confirm_rejects_missing_or_mismatched_checksum(self):
-        """Tests that validate_only=False rejects missing or mismatched checksums."""
+        """Tests that validate_only=False raises ToolError on missing or mismatched checksums."""
         commit_mock = MagicMock(return_value="Should not execute")
         payload = {"tool": "test_tool", "name": "Approved Name"}
         valid_checksum = pac.compute_checksum("1234567890", payload)
 
         # Missing checksum
-        res_missing = pac.propose_and_confirm(
-            customer_id="1234567890",
-            validate_only=False,
-            checksum=None,
-            operation_payload=payload,
-            change_items=[],
-            commit_fn=commit_mock,
-        )
-        self.assertIn(
+        with self.assertRaisesRegex(
+            ToolError,
             "checksum from a previous validate_only=True call is required",
-            res_missing,
-        )
+        ):
+            pac.propose_and_confirm(
+                customer_id="1234567890",
+                validate_only=False,
+                checksum=None,
+                operation_payload=payload,
+                change_items=[],
+                commit_fn=commit_mock,
+            )
         commit_mock.assert_not_called()
 
         # Mismatched payload
-        res_modified = pac.propose_and_confirm(
-            customer_id="1234567890",
-            validate_only=False,
-            checksum=valid_checksum,
-            operation_payload={"tool": "test_tool", "name": "Tampered Name"},
-            change_items=[],
-            commit_fn=commit_mock,
-        )
-        self.assertIn("Invalid or mismatched checksum", res_modified)
+        with self.assertRaisesRegex(
+            ToolError, "Invalid or mismatched checksum"
+        ):
+            pac.propose_and_confirm(
+                customer_id="1234567890",
+                validate_only=False,
+                checksum=valid_checksum,
+                operation_payload={"tool": "test_tool", "name": "Tampered"},
+                change_items=[],
+                commit_fn=commit_mock,
+            )
         commit_mock.assert_not_called()
 
         # Mismatched customer_id
-        res_wrong_customer = pac.propose_and_confirm(
-            customer_id="9999999999",
-            validate_only=False,
-            checksum=valid_checksum,
-            operation_payload=payload,
-            change_items=[],
-            commit_fn=commit_mock,
-        )
-        self.assertIn("Invalid or mismatched checksum", res_wrong_customer)
+        with self.assertRaisesRegex(
+            ToolError, "Invalid or mismatched checksum"
+        ):
+            pac.propose_and_confirm(
+                customer_id="9999999999",
+                validate_only=False,
+                checksum=valid_checksum,
+                operation_payload=payload,
+                change_items=[],
+                commit_fn=commit_mock,
+            )
         commit_mock.assert_not_called()
 
     def test_propose_and_confirm_handles_validation_and_commit_errors(self):
-        """Tests that exceptions in validate_fn or commit_fn return formatted errors."""
+        """Tests that exceptions in validate_fn or commit_fn raise formatted ToolErrors."""
         payload = {"tool": "test_tool", "name": "Test"}
         valid_checksum = pac.compute_checksum("1234567890", payload)
 
-        res_val_err = pac.propose_and_confirm(
-            customer_id="1234567890",
-            validate_only=True,
-            checksum=None,
-            operation_payload=payload,
-            change_items=[],
-            validate_fn=MagicMock(
-                side_effect=RuntimeError("API dry-run error")
-            ),
-            commit_fn=MagicMock(),
-            error_prefix="Failed to mutate",
-        )
-        self.assertEqual(res_val_err, "Failed to mutate: API dry-run error")
+        with self.assertRaisesRegex(
+            ToolError, "Failed to mutate: API dry-run error"
+        ):
+            pac.propose_and_confirm(
+                customer_id="1234567890",
+                validate_only=True,
+                checksum=None,
+                operation_payload=payload,
+                change_items=[],
+                validate_fn=MagicMock(
+                    side_effect=RuntimeError("API dry-run error")
+                ),
+                commit_fn=MagicMock(),
+                error_prefix="Failed to mutate",
+            )
 
-        res_commit_err = pac.propose_and_confirm(
-            customer_id="1234567890",
-            validate_only=False,
-            checksum=valid_checksum,
-            operation_payload=payload,
-            change_items=[],
-            commit_fn=MagicMock(side_effect=RuntimeError("API commit error")),
-            error_prefix="Failed to mutate",
+        with self.assertRaisesRegex(
+            ToolError, "Failed to mutate: API commit error"
+        ):
+            pac.propose_and_confirm(
+                customer_id="1234567890",
+                validate_only=False,
+                checksum=valid_checksum,
+                operation_payload=payload,
+                change_items=[],
+                commit_fn=MagicMock(
+                    side_effect=RuntimeError("API commit error")
+                ),
+                error_prefix="Failed to mutate",
+            )
+
+    def test_propose_and_confirm_formats_google_ads_exception(self):
+        """Tests that GoogleAdsException details are formatted cleanly into ToolError."""
+        failure = GoogleAdsFailure(
+            errors=[
+                GoogleAdsError(
+                    error_code=ErrorCode(
+                        request_error=RequestErrorEnum.RequestError.BAD_RESOURCE_ID
+                    ),
+                    message="Invalid customer ID.",
+                )
+            ]
         )
-        self.assertEqual(res_commit_err, "Failed to mutate: API commit error")
+        ga_ex = GoogleAdsException(
+            error=MagicMock(),
+            call=MagicMock(),
+            failure=type(failure).pb(failure),
+            request_id="req-abc-123",
+        )
+        with self.assertRaises(ToolError) as ctx:
+            pac.propose_and_confirm(
+                customer_id="1234567890",
+                validate_only=True,
+                checksum=None,
+                operation_payload={"tool": "test"},
+                change_items=[],
+                validate_fn=MagicMock(side_effect=ga_ex),
+                commit_fn=MagicMock(),
+                error_prefix="Failed to create asset",
+            )
+        msg = str(ctx.exception)
+        self.assertIn("Failed to create asset:", msg)
+        self.assertIn("Request ID: req-abc-123", msg)
+        self.assertIn("Invalid customer ID.", msg)
 
 
 if __name__ == "__main__":

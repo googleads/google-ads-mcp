@@ -28,12 +28,18 @@ class TestToolsConfig(unittest.TestCase):
         self.assertTrue(config.is_namespace_enabled("customers"))
         self.assertTrue(config.is_namespace_enabled("search"))
         self.assertTrue(config.is_namespace_enabled("metadata"))
+        self.assertTrue(config.is_namespace_enabled("labels"))
+        self.assertTrue(config.is_namespace_enabled("assets"))
         self.assertFalse(config.is_namespace_enabled("unknown_category"))
 
         self.assertEqual(config.get_namespace_prefix("customers"), "customers")
         self.assertEqual(config.get_namespace_prefix("search"), "search")
+        self.assertEqual(config.get_namespace_prefix("labels"), "labels")
+        self.assertEqual(config.get_namespace_prefix("assets"), "assets")
 
         self.assertTrue(config.is_tool_enabled("search", "search"))
+        self.assertTrue(config.is_tool_enabled("assets", "create_asset"))
+        self.assertTrue(config.is_tool_enabled("labels", "manage_labels"))
 
     def test_boolean_namespaces(self):
         """Tests namespaces enabled via simple booleans."""

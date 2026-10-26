@@ -18,6 +18,8 @@ import json
 import unittest
 from unittest.mock import MagicMock, create_autospec, patch
 
+from fastmcp.exceptions import ToolError
+from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v25.services.services.ad_group_criterion_label_service import (
     AdGroupCriterionLabelServiceClient,
 )
@@ -33,11 +35,21 @@ from google.ads.googleads.v25.services.services.customer_label_service import (
 from google.ads.googleads.v25.services.services.label_service import (
     LabelServiceClient,
 )
+from google.auth.credentials import AnonymousCredentials
+from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 from ads_mcp.tools import labels
 
 
-class TestLabels(unittest.IsolatedAsyncioTestCase):
+class TestLabels(unittest.TestCase):
     """Test cases for the label management tools."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.real_ga_client = GoogleAdsClient(
+            credentials=AnonymousCredentials(),
+            developer_token="fake-token",
+            use_proto_plus=True,
+        )
 
     def setUp(self):
         self.mock_client = MagicMock()
@@ -60,205 +72,154 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
         def get_service_mock(service_name, **kwargs):
             if service_name == "LabelService":
                 return self.mock_label_service
-            elif service_name == "CampaignLabelService":
+            if service_name == "CampaignLabelService":
                 return self.mock_campaign_label_service
-            elif service_name == "CustomerLabelService":
+            if service_name == "CustomerLabelService":
                 return self.mock_customer_label_service
-            elif service_name == "AdGroupLabelService":
+            if service_name == "AdGroupLabelService":
                 return self.mock_ad_group_label_service
-            elif service_name == "AdGroupCriterionLabelService":
+            if service_name == "AdGroupCriterionLabelService":
                 return self.mock_ad_group_criterion_label_service
             return MagicMock()
 
         self.mock_client.get_service.side_effect = get_service_mock
+        self.mock_client.get_type.side_effect = self.real_ga_client.get_type
 
-        # Setup mock operations & types
-        self.mock_label_op = MagicMock()
-        self.mock_campaign_label_op = MagicMock()
-        self.mock_customer_label_op = MagicMock()
-        self.mock_ad_group_label_op = MagicMock()
-        self.mock_ad_group_criterion_label_op = MagicMock()
+        def _make_resp(rn: str) -> MagicMock:
+            resp = MagicMock()
+            item = MagicMock()
+            item.resource_name = rn
+            resp.results = [item]
+            return resp
 
-        self.mock_mutate_labels_request = MagicMock()
-        self.mock_mutate_campaign_labels_request = MagicMock()
-        self.mock_mutate_customer_labels_request = MagicMock()
-
-        self.mock_label = MagicMock()
-        self.mock_label_op.create = self.mock_label
-        self.mock_label_op.update = self.mock_label
-
-        self.mock_campaign_label = MagicMock()
-        self.mock_campaign_label_op.create = self.mock_campaign_label
-
-        self.mock_customer_label = MagicMock()
-        self.mock_customer_label_op.create = self.mock_customer_label
-
-        self.mock_ad_group_label = MagicMock()
-        self.mock_ad_group_label_op.create = self.mock_ad_group_label
-
-        self.mock_ad_group_criterion_label = MagicMock()
-        self.mock_ad_group_criterion_label_op.create = (
-            self.mock_ad_group_criterion_label
+        self.mock_label_service.mutate_labels.return_value = _make_resp(
+            "customers/1234567890/labels/456"
         )
-
-        def get_type_mock(type_name):
-            if type_name == "LabelOperation":
-                return self.mock_label_op
-            elif type_name == "MutateLabelsRequest":
-                return self.mock_mutate_labels_request
-            elif type_name == "Label":
-                return MagicMock()
-            elif type_name == "CampaignLabelOperation":
-                return self.mock_campaign_label_op
-            elif type_name == "MutateCampaignLabelsRequest":
-                return self.mock_mutate_campaign_labels_request
-            elif type_name == "CustomerLabelOperation":
-                return self.mock_customer_label_op
-            elif type_name == "MutateCustomerLabelsRequest":
-                return self.mock_mutate_customer_labels_request
-            elif type_name == "AdGroupLabelOperation":
-                return self.mock_ad_group_label_op
-            elif type_name == "AdGroupCriterionLabelOperation":
-                return self.mock_ad_group_criterion_label_op
-            return MagicMock()
-
-        self.mock_client.get_type.side_effect = get_type_mock
-
-        # Default successful responses
-        self.mock_mutate_response = MagicMock()
-        mock_result = MagicMock()
-        mock_result.resource_name = "customers/123/labels/456"
-        self.mock_mutate_response.results = [mock_result]
-        self.mock_label_service.mutate_labels.return_value = (
-            self.mock_mutate_response
-        )
-
-        self.mock_campaign_response = MagicMock()
-        mock_c_result = MagicMock()
-        mock_c_result.resource_name = "customers/123/campaignLabels/456~789"
-        self.mock_campaign_response.results = [mock_c_result]
         self.mock_campaign_label_service.mutate_campaign_labels.return_value = (
-            self.mock_campaign_response
+            _make_resp("customers/1234567890/campaignLabels/456~789")
         )
-
-        self.mock_customer_response = MagicMock()
-        mock_cust_result = MagicMock()
-        mock_cust_result.resource_name = "customers/123/customerLabels/123~789"
-        self.mock_customer_response.results = [mock_cust_result]
         self.mock_customer_label_service.mutate_customer_labels.return_value = (
-            self.mock_customer_response
+            _make_resp("customers/1234567890/customerLabels/1234567890~789")
+        )
+        self.mock_ad_group_label_service.mutate_ad_group_labels.return_value = (
+            _make_resp("customers/1234567890/adGroupLabels/555~789")
+        )
+        self.mock_ad_group_criterion_label_service.mutate_ad_group_criterion_labels.return_value = _make_resp(
+            "customers/1234567890/adGroupCriterionLabels/555~666~789"
         )
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_label(self, mock_get_client):
-        """Tests Label creation with propose and confirm steps."""
+    def test_create_label(self, mock_get_client):
+        """Tests Label creation with propose/confirm, hyphenated customer_id, and interceptor."""
         mock_get_client.return_value = self.mock_client
 
-        propose_res = await labels.manage_labels(
-            customer_id="1234567890",
+        propose_res = labels.manage_labels(
+            customer_id="123-456-7890",
             operation="CREATE",
             name="Black Friday",
             background_color="#000000",
             description="Campaigns for Black Friday promotions",
+            login_customer_id="999-888-7777",
         )
+        mock_get_client.assert_called_with(login_customer_id="999-888-7777")
+        _, svc_kwargs = self.mock_client.get_service.call_args
+        self.assertIsInstance(
+            svc_kwargs["interceptors"][0], MCPHeaderInterceptor
+        )
+
         proposal = json.loads(propose_res)
         self.assertEqual(proposal["status"], "PROPOSED")
         checksum = proposal["checksum"]
-        self.assertEqual(
-            self.mock_mutate_labels_request.customer_id, "1234567890"
-        )
-        self.mock_mutate_labels_request.operations.append.assert_called_with(
-            self.mock_label_op
-        )
-        self.assertTrue(self.mock_mutate_labels_request.validate_only)
-        self.mock_label_service.mutate_labels.assert_called_once_with(
-            request=self.mock_mutate_labels_request
-        )
 
-        result = await labels.manage_labels(
-            customer_id="1234567890",
+        propose_req = self.mock_label_service.mutate_labels.call_args.kwargs[
+            "request"
+        ]
+        self.assertEqual(propose_req.customer_id, "1234567890")
+        self.assertTrue(propose_req.validate_only)
+
+        result = labels.manage_labels(
+            customer_id="123-456-7890",
             operation="CREATE",
             name="Black Friday",
             background_color="#000000",
             description="Campaigns for Black Friday promotions",
+            login_customer_id="999-888-7777",
             validate_only=False,
             checksum=checksum,
         )
 
-        self.assertEqual(self.mock_label.name, "Black Friday")
-        self.assertEqual(self.mock_label.text_label.background_color, "#000000")
+        commit_req = self.mock_label_service.mutate_labels.call_args.kwargs[
+            "request"
+        ]
+        created = commit_req.operations[0].create
+        self.assertEqual(created.name, "Black Friday")
+        self.assertEqual(created.text_label.background_color, "#000000")
         self.assertEqual(
-            self.mock_label.text_label.description,
+            created.text_label.description,
             "Campaigns for Black Friday promotions",
         )
-        self.assertFalse(self.mock_mutate_labels_request.validate_only)
-        self.mock_label_service.mutate_labels.assert_called_with(
-            request=self.mock_mutate_labels_request
-        )
+        self.assertFalse(commit_req.validate_only)
         self.assertIn("Successfully created label", result)
         self.assertIn("ID: 456", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_update_label(self, mock_get_client):
-        """Tests Label updates and clean field mask generation."""
+    def test_update_label_and_clear_description(self, mock_get_client):
+        """Tests Label updates, FieldMask paths (including clearing to empty string), and primary_key_readable."""
         mock_get_client.return_value = self.mock_client
 
-        # Mock temp Label and copy_from / copy_to behaviour
-        temp_label = MagicMock()
-        temp_label._pb = MagicMock()
-
-        def get_type_mock(type_name):
-            if type_name == "LabelOperation":
-                return self.mock_label_op
-            elif type_name == "MutateLabelsRequest":
-                return self.mock_mutate_labels_request
-            elif type_name == "Label":
-                return temp_label
-            return MagicMock()
-
-        self.mock_client.get_type.side_effect = get_type_mock
-
-        propose_res = await labels.manage_labels(
+        propose_res = labels.manage_labels(
             customer_id="1234567890",
             operation="UPDATE",
             label_id="456",
             name="Updated Name",
+            description="",
         )
-        checksum = json.loads(propose_res)["checksum"]
+        proposal = json.loads(propose_res)
+        checksum = proposal["checksum"]
+        self.assertEqual(
+            proposal["change_items"][0]["primary_key_readable"],
+            "customers/1234567890/labels/456",
+        )
 
-        result = await labels.manage_labels(
+        result = labels.manage_labels(
             customer_id="1234567890",
             operation="UPDATE",
             label_id="456",
             name="Updated Name",
+            description="",
             validate_only=False,
             checksum=checksum,
         )
 
+        commit_req = self.mock_label_service.mutate_labels.call_args.kwargs[
+            "request"
+        ]
+        op = commit_req.operations[0]
         self.assertEqual(
-            self.mock_label.resource_name, "customers/1234567890/labels/456"
+            op.update.resource_name, "customers/1234567890/labels/456"
         )
-        self.assertEqual(self.mock_label.name, "Updated Name")
-        self.assertEqual(self.mock_client.copy_from.call_count, 2)
-        self.assertFalse(self.mock_mutate_labels_request.validate_only)
-        self.mock_label_service.mutate_labels.assert_called_with(
-            request=self.mock_mutate_labels_request
+        self.assertEqual(op.update.name, "Updated Name")
+        self.assertEqual(op.update.text_label.description, "")
+        self.assertEqual(
+            list(op.update_mask.paths),
+            ["name", "text_label.description"],
         )
+        self.assertFalse(commit_req.validate_only)
         self.assertIn("Successfully updated label", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_label(self, mock_get_client):
+    def test_remove_label(self, mock_get_client):
         """Tests Label removal."""
         mock_get_client.return_value = self.mock_client
 
-        propose_res = await labels.manage_labels(
+        propose_res = labels.manage_labels(
             customer_id="1234567890",
             operation="REMOVE",
             label_id="456",
         )
         checksum = json.loads(propose_res)["checksum"]
 
-        result = await labels.manage_labels(
+        result = labels.manage_labels(
             customer_id="1234567890",
             operation="REMOVE",
             label_id="456",
@@ -266,21 +227,24 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             checksum=checksum,
         )
 
+        commit_req = self.mock_label_service.mutate_labels.call_args.kwargs[
+            "request"
+        ]
         self.assertEqual(
-            self.mock_label_op.remove, "customers/1234567890/labels/456"
+            commit_req.operations[0].remove, "customers/1234567890/labels/456"
         )
-        self.assertFalse(self.mock_mutate_labels_request.validate_only)
-        self.mock_label_service.mutate_labels.assert_called_with(
-            request=self.mock_mutate_labels_request
-        )
+        self.assertFalse(commit_req.validate_only)
         self.assertIn("Successfully removed label", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_campaign_label_association(self, mock_get_client):
-        """Tests CAMPAIGN label association creation."""
+    def test_campaign_label_association_create_and_remove(
+        self, mock_get_client
+    ):
+        """Tests CAMPAIGN label association creation and removal (by name and by IDs)."""
         mock_get_client.return_value = self.mock_client
 
-        propose_res = await labels.manage_label_associations(
+        # CREATE
+        propose_res = labels.manage_label_associations(
             customer_id="1234567890",
             operation="CREATE",
             association_type="CAMPAIGN",
@@ -288,8 +252,7 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             label_id="789",
         )
         checksum = json.loads(propose_res)["checksum"]
-
-        result = await labels.manage_label_associations(
+        result = labels.manage_label_associations(
             customer_id="1234567890",
             operation="CREATE",
             association_type="CAMPAIGN",
@@ -298,181 +261,237 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             validate_only=False,
             checksum=checksum,
         )
-
+        req = self.mock_campaign_label_service.mutate_campaign_labels.call_args.kwargs[
+            "request"
+        ]
         self.assertEqual(
-            self.mock_campaign_label.campaign,
+            req.operations[0].create.campaign,
             "customers/1234567890/campaigns/456",
         )
         self.assertEqual(
-            self.mock_campaign_label.label, "customers/1234567890/labels/789"
-        )
-        self.assertFalse(self.mock_mutate_campaign_labels_request.validate_only)
-        self.mock_campaign_label_service.mutate_campaign_labels.assert_called_with(
-            request=self.mock_mutate_campaign_labels_request
+            req.operations[0].create.label,
+            "customers/1234567890/labels/789",
         )
         self.assertIn("Successfully created CAMPAIGN label association", result)
 
-    @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_campaign_label_association_by_name(
-        self, mock_get_client
-    ):
-        """Tests disassociation when passing direct association resource name."""
-        mock_get_client.return_value = self.mock_client
-
-        propose_res = await labels.manage_label_associations(
+        # REMOVE by association_resource_name
+        propose_rm_name = labels.manage_label_associations(
             customer_id="1234567890",
             operation="REMOVE",
             association_type="CAMPAIGN",
             association_resource_name="customers/1234567890/campaignLabels/456~789",
         )
-        checksum = json.loads(propose_res)["checksum"]
-
-        result = await labels.manage_label_associations(
+        result_rm_name = labels.manage_label_associations(
             customer_id="1234567890",
             operation="REMOVE",
             association_type="CAMPAIGN",
             association_resource_name="customers/1234567890/campaignLabels/456~789",
             validate_only=False,
-            checksum=checksum,
+            checksum=json.loads(propose_rm_name)["checksum"],
         )
-
+        req_rm = self.mock_campaign_label_service.mutate_campaign_labels.call_args.kwargs[
+            "request"
+        ]
         self.assertEqual(
-            self.mock_campaign_label_op.remove,
+            req_rm.operations[0].remove,
             "customers/1234567890/campaignLabels/456~789",
-        )
-        self.assertFalse(self.mock_mutate_campaign_labels_request.validate_only)
-        self.mock_campaign_label_service.mutate_campaign_labels.assert_called_with(
-            request=self.mock_mutate_campaign_labels_request
-        )
-        self.assertIn("Successfully removed CAMPAIGN label association", result)
-
-    @patch("ads_mcp.utils.get_googleads_client")
-    async def test_remove_campaign_label_association_by_ids(
-        self, mock_get_client
-    ):
-        """Tests disassociation when passing resource_id and label_id for auto-construction."""
-        mock_get_client.return_value = self.mock_client
-
-        propose_res = await labels.manage_label_associations(
-            customer_id="1234567890",
-            operation="REMOVE",
-            association_type="CAMPAIGN",
-            resource_id="456",
-            label_id="789",
-        )
-        checksum = json.loads(propose_res)["checksum"]
-
-        result = await labels.manage_label_associations(
-            customer_id="1234567890",
-            operation="REMOVE",
-            association_type="CAMPAIGN",
-            resource_id="456",
-            label_id="789",
-            validate_only=False,
-            checksum=checksum,
-        )
-
-        self.assertEqual(
-            self.mock_campaign_label_op.remove,
-            "customers/1234567890/campaignLabels/456~789",
-        )
-        self.assertFalse(self.mock_mutate_campaign_labels_request.validate_only)
-        self.mock_campaign_label_service.mutate_campaign_labels.assert_called_with(
-            request=self.mock_mutate_campaign_labels_request
-        )
-        self.assertIn("Successfully removed CAMPAIGN label association", result)
-
-    @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_customer_label_association(self, mock_get_client):
-        """Tests CUSTOMER label association creation."""
-        mock_get_client.return_value = self.mock_client
-
-        propose_res = await labels.manage_label_associations(
-            customer_id="1234567890",
-            operation="CREATE",
-            association_type="CUSTOMER",
-            resource_id="1234567890",
-            label_id="789",
-        )
-        checksum = json.loads(propose_res)["checksum"]
-
-        result = await labels.manage_label_associations(
-            customer_id="1234567890",
-            operation="CREATE",
-            association_type="CUSTOMER",
-            resource_id="1234567890",
-            label_id="789",
-            validate_only=False,
-            checksum=checksum,
-        )
-
-        self.assertEqual(
-            self.mock_customer_label.customer, "customers/1234567890"
-        )
-        self.assertEqual(
-            self.mock_customer_label.label, "customers/1234567890/labels/789"
-        )
-        self.assertFalse(self.mock_mutate_customer_labels_request.validate_only)
-        self.mock_customer_label_service.mutate_customer_labels.assert_called_with(
-            request=self.mock_mutate_customer_labels_request
-        )
-        self.assertIn("Successfully created CUSTOMER label association", result)
-
-    @patch("ads_mcp.utils.get_googleads_client")
-    async def test_validation_errors(self, mock_get_client):
-        """Tests invalid inputs throw errors without mutations."""
-        mock_get_client.return_value = self.mock_client
-
-        # Test invalid operation for manage_labels
-        res = await labels.manage_labels(
-            customer_id="123",
-            operation="INVALID_OP",
-        )
-        self.assertIn("Error: Invalid operation", res)
-
-        # Test missing name for Label CREATE
-        res = await labels.manage_labels(
-            customer_id="123",
-            operation="CREATE",
-        )
-        self.assertIn("Error: 'name' is required", res)
-
-        # Test missing label_id for Label UPDATE
-        res = await labels.manage_labels(
-            customer_id="123",
-            operation="UPDATE",
-            name="Some Name",
-        )
-        self.assertIn("Error: 'label_id' is required", res)
-
-        # Test invalid association_type for manage_label_associations
-        res = await labels.manage_label_associations(
-            customer_id="123",
-            operation="CREATE",
-            association_type="INVALID_TYPE",
-        )
-        self.assertIn("Error: Invalid association_type", res)
-
-    @patch("ads_mcp.utils.get_googleads_client")
-    async def test_checksum_enforcement(self, mock_get_client):
-        """Tests that missing or mismatched checksums are rejected for label tools."""
-        mock_get_client.return_value = self.mock_client
-
-        # Missing checksum on manage_labels
-        res_missing = await labels.manage_labels(
-            customer_id="1234567890",
-            operation="CREATE",
-            name="Promo",
-            validate_only=False,
         )
         self.assertIn(
-            "checksum from a previous validate_only=True call is required",
-            res_missing,
+            "Successfully removed CAMPAIGN label association", result_rm_name
         )
+
+        # REMOVE by resource_id + label_id
+        propose_rm_ids = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="REMOVE",
+            association_type="CAMPAIGN",
+            resource_id="456",
+            label_id="789",
+        )
+        result_rm_ids = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="REMOVE",
+            association_type="CAMPAIGN",
+            resource_id="456",
+            label_id="789",
+            validate_only=False,
+            checksum=json.loads(propose_rm_ids)["checksum"],
+        )
+        self.assertIn(
+            "Successfully removed CAMPAIGN label association", result_rm_ids
+        )
+
+    @patch("ads_mcp.utils.get_googleads_client")
+    def test_customer_ad_group_and_criterion_associations(
+        self, mock_get_client
+    ):
+        """Tests CUSTOMER (defaulting resource_id), AD_GROUP, and AD_GROUP_CRITERION associations."""
+        mock_get_client.return_value = self.mock_client
+
+        # CUSTOMER omitting resource_id defaults to cleaned customer_id
+        propose_cust = labels.manage_label_associations(
+            customer_id="123-456-7890",
+            operation="CREATE",
+            association_type="CUSTOMER",
+            label_id="789",
+        )
+        res_cust = labels.manage_label_associations(
+            customer_id="123-456-7890",
+            operation="CREATE",
+            association_type="CUSTOMER",
+            label_id="789",
+            validate_only=False,
+            checksum=json.loads(propose_cust)["checksum"],
+        )
+        cust_req = self.mock_customer_label_service.mutate_customer_labels.call_args.kwargs[
+            "request"
+        ]
+        self.assertEqual(
+            cust_req.operations[0].create.customer, "customers/1234567890"
+        )
+        self.assertIn(
+            "Successfully created CUSTOMER label association", res_cust
+        )
+
+        # AD_GROUP
+        propose_ag = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="CREATE",
+            association_type="AD_GROUP",
+            resource_id="555",
+            label_id="789",
+        )
+        res_ag = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="CREATE",
+            association_type="AD_GROUP",
+            resource_id="555",
+            label_id="789",
+            validate_only=False,
+            checksum=json.loads(propose_ag)["checksum"],
+        )
+        ag_req = self.mock_ad_group_label_service.mutate_ad_group_labels.call_args.kwargs[
+            "request"
+        ]
+        self.assertEqual(
+            ag_req.operations[0].create.ad_group,
+            "customers/1234567890/adGroups/555",
+        )
+        self.assertIn("Successfully created AD_GROUP label association", res_ag)
+
+        # AD_GROUP_CRITERION with composite ad_group_id~criterion_id
+        propose_agc = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="CREATE",
+            association_type="AD_GROUP_CRITERION",
+            resource_id="555~666",
+            label_id="789",
+        )
+        res_agc = labels.manage_label_associations(
+            customer_id="1234567890",
+            operation="CREATE",
+            association_type="AD_GROUP_CRITERION",
+            resource_id="555~666",
+            label_id="789",
+            validate_only=False,
+            checksum=json.loads(propose_agc)["checksum"],
+        )
+        agc_req = self.mock_ad_group_criterion_label_service.mutate_ad_group_criterion_labels.call_args.kwargs[
+            "request"
+        ]
+        self.assertEqual(
+            agc_req.operations[0].create.ad_group_criterion,
+            "customers/1234567890/adGroupCriteria/555~666",
+        )
+        self.assertIn(
+            "Successfully created AD_GROUP_CRITERION label association",
+            res_agc,
+        )
+
+    @patch("ads_mcp.utils.get_googleads_client")
+    def test_validation_errors(self, mock_get_client):
+        """Tests invalid inputs raise ToolError without mutations."""
+        mock_get_client.return_value = self.mock_client
+
+        with self.assertRaisesRegex(ToolError, "Invalid operation"):
+            labels.manage_labels(
+                customer_id="123",
+                operation="INVALID_OP",  # type: ignore[arg-type]
+            )
+
+        with self.assertRaisesRegex(ToolError, "'name' is required"):
+            labels.manage_labels(
+                customer_id="123",
+                operation="CREATE",
+            )
+
+        with self.assertRaisesRegex(ToolError, "'label_id' is required"):
+            labels.manage_labels(
+                customer_id="123",
+                operation="UPDATE",
+                name="Some Name",
+            )
+
+        with self.assertRaisesRegex(ToolError, "At least one field to update"):
+            labels.manage_labels(
+                customer_id="123",
+                operation="UPDATE",
+                label_id="456",
+            )
+
+        with self.assertRaisesRegex(ToolError, "Must be CREATE or REMOVE"):
+            labels.manage_label_associations(
+                customer_id="123",
+                operation="UPDATE",  # type: ignore[arg-type]
+                association_type="CAMPAIGN",
+            )
+
+        with self.assertRaisesRegex(ToolError, "Invalid association_type"):
+            labels.manage_label_associations(
+                customer_id="123",
+                operation="CREATE",
+                association_type="INVALID_TYPE",  # type: ignore[arg-type]
+            )
+
+        # Non-composite resource_id for AD_GROUP_CRITERION rejected
+        with self.assertRaisesRegex(ToolError, "composite"):
+            labels.manage_label_associations(
+                customer_id="1234567890",
+                operation="CREATE",
+                association_type="AD_GROUP_CRITERION",
+                resource_id="555",
+                label_id="789",
+            )
+
+        # Bare ID passed as association_resource_name rejected
+        with self.assertRaisesRegex(
+            ToolError, "'association_resource_name' must start with"
+        ):
+            labels.manage_label_associations(
+                customer_id="1234567890",
+                operation="REMOVE",
+                association_type="CAMPAIGN",
+                association_resource_name="456~789",
+            )
+
+    @patch("ads_mcp.utils.get_googleads_client")
+    def test_checksum_enforcement(self, mock_get_client):
+        """Tests that missing or mismatched checksums raise ToolError for label tools."""
+        mock_get_client.return_value = self.mock_client
+
+        with self.assertRaisesRegex(
+            ToolError,
+            "checksum from a previous validate_only=True call is required",
+        ):
+            labels.manage_labels(
+                customer_id="1234567890",
+                operation="CREATE",
+                name="Promo",
+                validate_only=False,
+            )
         self.mock_label_service.mutate_labels.assert_not_called()
 
-        # Mismatched checksum on manage_label_associations
-        propose_res = await labels.manage_label_associations(
+        propose_res = labels.manage_label_associations(
             customer_id="1234567890",
             operation="CREATE",
             association_type="CAMPAIGN",
@@ -485,17 +504,23 @@ class TestLabels(unittest.IsolatedAsyncioTestCase):
             1,
         )
 
-        res_mismatch = await labels.manage_label_associations(
-            customer_id="1234567890",
-            operation="CREATE",
-            association_type="CAMPAIGN",
-            resource_id="999",
-            label_id="789",
-            validate_only=False,
-            checksum=checksum,
-        )
-        self.assertIn("Invalid or mismatched checksum", res_mismatch)
+        with self.assertRaisesRegex(
+            ToolError, "Invalid or mismatched checksum"
+        ):
+            labels.manage_label_associations(
+                customer_id="1234567890",
+                operation="CREATE",
+                association_type="CAMPAIGN",
+                resource_id="999",
+                label_id="789",
+                validate_only=False,
+                checksum=checksum,
+            )
         self.assertEqual(
             self.mock_campaign_label_service.mutate_campaign_labels.call_count,
             1,
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

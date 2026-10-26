@@ -108,6 +108,13 @@ def initialize_and_mount_tools(parent_mcp: FastMCP) -> None:
             attr_val = getattr(module, attr_name)
             if isinstance(attr_val, FastMCP):
                 category = attr_val.name
+                if (
+                    category in sub_servers
+                    and sub_servers[category] is not attr_val
+                ):
+                    raise ValueError(
+                        f"Conflicting FastMCP sub-servers registered for category '{category}'."
+                    )
                 sub_servers[category] = attr_val
 
     config = ToolsConfig.load()

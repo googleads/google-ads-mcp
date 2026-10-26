@@ -23,14 +23,6 @@ from ads_mcp.coordinator import mcp
 # Tools are loaded dynamically via reflection in coordinator.py.
 # The `# noqa: F401` comment tells the linter to ignore the "unused import"
 # warning.
-from ads_mcp.tools import (
-    search,
-    core,
-    get_resource_metadata,
-    upload_video,
-    create_asset,
-    labels,
-)  # noqa: F401
 from ads_mcp.resources import (
     discovery,
     metrics,

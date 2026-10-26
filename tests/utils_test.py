@@ -237,3 +237,85 @@ class TestUtils(unittest.TestCase):
             ):
                 client = utils._get_googleads_client()
                 self.assertIsNone(client.developer_token)
+
+    def test_extract_id(self):
+        """Tests that extract_id extracts the trailing segment from resource names."""
+        self.assertEqual(
+            utils.extract_id("customers/1234567890/assets/456"), "456"
+        )
+        self.assertEqual(
+            utils.extract_id("customers/1234567890/campaignLabels/456~789"),
+            "456~789",
+        )
+        self.assertEqual(utils.extract_id(""), "")
+
+    def test_is_remote_oauth_mode(self):
+        """Tests remote OAuth mode detection based on OAuth client env vars."""
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(utils.is_remote_oauth_mode())
+
+        with patch.dict(
+            os.environ,
+            {"GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "only-id"},
+            clear=True,
+        ):
+            self.assertFalse(utils.is_remote_oauth_mode())
+
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET": "csecret",
+            },
+            clear=True,
+        ):
+            self.assertTrue(utils.is_remote_oauth_mode())
+
+    def test_format_google_ads_error(self):
+        """Tests formatting of GoogleAdsException into readable error messages."""
+        from unittest.mock import MagicMock
+        from google.ads.googleads.errors import GoogleAdsException
+        from google.ads.googleads.v25.errors.types.errors import (
+            ErrorCode,
+            GoogleAdsError,
+            GoogleAdsFailure,
+        )
+        from google.ads.googleads.v25.errors.types.request_error import (
+            RequestErrorEnum,
+        )
+
+        failure = GoogleAdsFailure(
+            errors=[
+                GoogleAdsError(
+                    error_code=ErrorCode(
+                        request_error=RequestErrorEnum.RequestError.UNKNOWN
+                    ),
+                    message="Something went wrong.",
+                )
+            ]
+        )
+        ex = GoogleAdsException(
+            error=MagicMock(),
+            call=MagicMock(),
+            failure=type(failure).pb(failure),
+            request_id="req-999",
+        )
+        formatted = utils.format_google_ads_error(ex)
+        self.assertIn("Request ID: req-999", formatted)
+        self.assertIn("Something went wrong.", formatted)
+
+    def test_get_googleads_service_from_client_attaches_interceptor(self):
+        """Tests that get_googleads_service_from_client attaches MCPHeaderInterceptor."""
+        from unittest.mock import MagicMock
+        from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
+
+        mock_client = MagicMock()
+        utils.get_googleads_service_from_client(mock_client, "AssetService")
+        mock_client.get_service.assert_called_once()
+        args, kwargs = mock_client.get_service.call_args
+        self.assertEqual(args[0], "AssetService")
+        self.assertEqual(len(kwargs["interceptors"]), 1)
+        self.assertIsInstance(kwargs["interceptors"][0], MCPHeaderInterceptor)

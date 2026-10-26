@@ -16,17 +16,31 @@
 
 import base64
 import json
+import os
+import tempfile
 import unittest
-from unittest.mock import MagicMock, create_autospec, patch, mock_open
+from unittest.mock import MagicMock, create_autospec, patch
 
+from fastmcp.exceptions import ToolError
+from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.v25.services.services.asset_service import (
     AssetServiceClient,
 )
+from google.auth.credentials import AnonymousCredentials
+from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
 from ads_mcp.tools import create_asset
 
 
-class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
+class TestCreateAsset(unittest.TestCase):
     """Test cases for the create asset tool."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.real_ga_client = GoogleAdsClient(
+            credentials=AnonymousCredentials(),
+            developer_token="fake-token",
+            use_proto_plus=True,
+        )
 
     def setUp(self):
         self.mock_client = MagicMock()
@@ -34,129 +48,129 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
             AssetServiceClient, instance=True
         )
         self.mock_client.get_service.return_value = self.mock_asset_service
-
-        self.mock_asset_op = MagicMock()
-        self.mock_asset = MagicMock()
-        self.mock_asset_op.create = self.mock_asset
-        self.mock_mutate_request = MagicMock()
-
-        self.mock_asset_type_enum = MagicMock()
-        self.mock_asset_type_enum.AssetType.TEXT = "TEXT"
-        self.mock_asset_type_enum.AssetType.IMAGE = "IMAGE"
-        self.mock_asset_type_enum.AssetType.YOUTUBE_VIDEO = "YOUTUBE_VIDEO"
-        self.mock_asset_type_enum.AssetType.SITELINK = "SITELINK"
-        self.mock_asset_type_enum.AssetType.CALLOUT = "CALLOUT"
-        self.mock_asset_type_enum.AssetType.STRUCTURED_SNIPPET = (
-            "STRUCTURED_SNIPPET"
-        )
-
-        self.mock_mime_enum = MagicMock()
-        self.mock_mime_enum.MimeType.IMAGE_PNG = "IMAGE_PNG"
-        self.mock_mime_enum.MimeType.IMAGE_JPEG = "IMAGE_JPEG"
-        self.mock_mime_enum.MimeType.IMAGE_GIF = "IMAGE_GIF"
-
-        def get_type_mock(type_name):
-            if type_name == "AssetOperation":
-                return self.mock_asset_op
-            elif type_name == "MutateAssetsRequest":
-                return self.mock_mutate_request
-            elif type_name == "AssetTypeEnum":
-                return self.mock_asset_type_enum
-            elif type_name == "MimeTypeEnum":
-                return self.mock_mime_enum
-            return MagicMock()
-
-        self.mock_client.get_type.side_effect = get_type_mock
+        self.mock_client.get_type.side_effect = self.real_ga_client.get_type
 
         # Setup default successful response
         self.mock_response = MagicMock()
         mock_result = MagicMock()
-        mock_result.resource_name = "customers/123/assets/456"
+        mock_result.resource_name = "customers/1234567890/assets/456"
         self.mock_response.results = [mock_result]
         self.mock_asset_service.mutate_assets.return_value = self.mock_response
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_text_asset(self, mock_get_client):
-        """Tests that TEXT asset is proposed (validate_only=True) and created (validate_only=False)."""
+    def test_create_text_asset_and_customer_sanitization(self, mock_get_client):
+        """Tests TEXT asset propose/confirm, hyphenated customer_id, login_customer_id, and interceptor."""
         mock_get_client.return_value = self.mock_client
 
         # 1. Propose (validate_only=True by default)
-        propose_result = await create_asset.create_asset(
-            customer_id="1234567890",
+        propose_result = create_asset.create_asset(
+            customer_id="123-456-7890",
             asset_type="TEXT",
             name="My Text Asset",
             text_asset_text="Sign up today!",
+            login_customer_id="999-888-7777",
         )
+        mock_get_client.assert_called_with(login_customer_id="999-888-7777")
+        _, svc_kwargs = self.mock_client.get_service.call_args
+        self.assertEqual(len(svc_kwargs["interceptors"]), 1)
+        self.assertIsInstance(
+            svc_kwargs["interceptors"][0], MCPHeaderInterceptor
+        )
+
         proposal = json.loads(propose_result)
         self.assertEqual(proposal["status"], "PROPOSED")
         self.assertTrue(proposal["validate_only"])
+        self.assertEqual(proposal["customer_id"], "1234567890")
         checksum = proposal["checksum"]
         self.assertTrue(checksum)
-        self.assertEqual(self.mock_mutate_request.customer_id, "1234567890")
-        self.mock_mutate_request.operations.append.assert_called_with(
-            self.mock_asset_op
-        )
-        self.assertTrue(self.mock_mutate_request.validate_only)
-        self.mock_asset_service.mutate_assets.assert_called_once_with(
-            request=self.mock_mutate_request
+
+        propose_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        self.assertEqual(propose_req.customer_id, "1234567890")
+        self.assertTrue(propose_req.validate_only)
+        self.assertEqual(propose_req.operations[0].create.name, "My Text Asset")
+        self.assertEqual(
+            propose_req.operations[0].create.text_asset.text, "Sign up today!"
         )
 
         # 2. Confirm (validate_only=False with checksum)
-        result = await create_asset.create_asset(
-            customer_id="1234567890",
+        result = create_asset.create_asset(
+            customer_id="123-456-7890",
             asset_type="TEXT",
             name="My Text Asset",
             text_asset_text="Sign up today!",
+            login_customer_id="999-888-7777",
             validate_only=False,
             checksum=checksum,
         )
 
-        self.assertEqual(self.mock_asset.name, "My Text Asset")
-        self.assertEqual(self.mock_asset.text_asset.text, "Sign up today!")
-        self.assertFalse(self.mock_mutate_request.validate_only)
-        self.mock_asset_service.mutate_assets.assert_called_with(
-            request=self.mock_mutate_request
-        )
+        commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        self.assertFalse(commit_req.validate_only)
         self.assertIn("Successfully created asset", result)
         self.assertIn("ID: 456", result)
 
+    @patch.dict(os.environ, {}, clear=True)
     @patch("ads_mcp.utils.get_googleads_client")
-    @patch("os.path.isfile")
-    async def test_create_image_asset_local(self, mock_isfile, mock_get_client):
-        """Tests creating an IMAGE asset from a local file path."""
-        mock_isfile.return_value = True
+    def test_create_image_asset_local(self, mock_get_client):
+        """Tests creating an IMAGE asset from a real temporary local file."""
         mock_get_client.return_value = self.mock_client
 
-        m = mock_open(read_data=b"fakeimagebytes")
-        with patch("builtins.open", m):
-            propose_res = await create_asset.create_asset(
-                customer_id="1234567890",
-                asset_type="IMAGE",
-                name="My Local Image",
-                image_asset_path="/path/to/logo.png",
-            )
-            checksum = json.loads(propose_res)["checksum"]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            img_path = os.path.join(tmpdir, "logo.png")
+            with open(img_path, "wb") as f:
+                f.write(b"fakeimagebytes")
 
-            result = await create_asset.create_asset(
+            propose_res = create_asset.create_asset(
                 customer_id="1234567890",
                 asset_type="IMAGE",
                 name="My Local Image",
-                image_asset_path="/path/to/logo.png",
+                image_asset_path=img_path,
+            )
+            proposal = json.loads(propose_res)
+            checksum = proposal["checksum"]
+
+            result = create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="IMAGE",
+                name="My Local Image",
+                image_asset_path=img_path,
                 validate_only=False,
                 checksum=checksum,
             )
 
-        self.assertEqual(self.mock_asset.image_asset.data, b"fakeimagebytes")
-        self.assertEqual(self.mock_asset.image_asset.mime_type, "IMAGE_PNG")
-        self.assertIn("Successfully created asset", result)
+            commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+                "request"
+            ]
+            created = commit_req.operations[0].create
+            self.assertEqual(created.image_asset.data, b"fakeimagebytes")
+            self.assertEqual(created.image_asset.mime_type.name, "IMAGE_PNG")
+            self.assertIn("Successfully created asset", result)
+
+            # Modifying the image bytes on disk invalidates the checksum
+            with open(img_path, "wb") as f:
+                f.write(b"tampered_image_bytes")
+            with self.assertRaisesRegex(
+                ToolError, "Invalid or mismatched checksum"
+            ):
+                create_asset.create_asset(
+                    customer_id="1234567890",
+                    asset_type="IMAGE",
+                    name="My Local Image",
+                    image_asset_path=img_path,
+                    validate_only=False,
+                    checksum=checksum,
+                )
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_image_asset_base64(self, mock_get_client):
+    def test_create_image_asset_base64(self, mock_get_client):
         """Tests creating an IMAGE asset using base64 encoded data."""
         mock_get_client.return_value = self.mock_client
         b64_data = base64.b64encode(b"fakeb64bytes").decode("utf-8")
 
-        propose_res = await create_asset.create_asset(
+        propose_res = create_asset.create_asset(
             customer_id="1234567890",
             asset_type="IMAGE",
             name="My Base64 Image",
@@ -165,7 +179,7 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         )
         checksum = json.loads(propose_res)["checksum"]
 
-        result = await create_asset.create_asset(
+        result = create_asset.create_asset(
             customer_id="1234567890",
             asset_type="IMAGE",
             name="My Base64 Image",
@@ -175,57 +189,61 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
             checksum=checksum,
         )
 
-        self.assertEqual(self.mock_asset.image_asset.data, b"fakeb64bytes")
-        self.assertEqual(self.mock_asset.image_asset.mime_type, "IMAGE_JPEG")
+        commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        created = commit_req.operations[0].create
+        self.assertEqual(created.image_asset.data, b"fakeb64bytes")
+        self.assertEqual(created.image_asset.mime_type.name, "IMAGE_JPEG")
         self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_sitelink_asset(self, mock_get_client):
-        """Tests creating a SITELINK asset with descriptions and final URLs."""
+    def test_create_sitelink_and_url_custom_params(self, mock_get_client):
+        """Tests creating a SITELINK asset with descriptions, URLs, and custom tracking params."""
         mock_get_client.return_value = self.mock_client
 
-        propose_res = await create_asset.create_asset(
-            customer_id="1234567890",
-            asset_type="SITELINK",
-            name="Contact Us Sitelink",
-            sitelink_link_text="Contact Us",
-            sitelink_description1="Get in touch with our support",
-            sitelink_description2="Available 24/7",
-            final_urls=["https://example.com/contact"],
-        )
+        kwargs = {
+            "customer_id": "1234567890",
+            "asset_type": "SITELINK",
+            "name": "Contact Us Sitelink",
+            "sitelink_link_text": "Contact Us",
+            "sitelink_description1": "Get in touch with our support",
+            "sitelink_description2": "Available 24/7",
+            "final_urls": ["https://example.com/contact"],
+            "url_custom_parameters": [{"key": "src", "value": "mcp"}],
+        }
+        propose_res = create_asset.create_asset(**kwargs)
         checksum = json.loads(propose_res)["checksum"]
 
-        result = await create_asset.create_asset(
-            customer_id="1234567890",
-            asset_type="SITELINK",
-            name="Contact Us Sitelink",
-            sitelink_link_text="Contact Us",
-            sitelink_description1="Get in touch with our support",
-            sitelink_description2="Available 24/7",
-            final_urls=["https://example.com/contact"],
+        result = create_asset.create_asset(
+            **kwargs,
             validate_only=False,
             checksum=checksum,
         )
 
-        self.assertEqual(self.mock_asset.sitelink_asset.link_text, "Contact Us")
+        commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        created = commit_req.operations[0].create
+        self.assertEqual(created.sitelink_asset.link_text, "Contact Us")
         self.assertEqual(
-            self.mock_asset.sitelink_asset.description1,
+            created.sitelink_asset.description1,
             "Get in touch with our support",
         )
+        self.assertEqual(created.sitelink_asset.description2, "Available 24/7")
         self.assertEqual(
-            self.mock_asset.sitelink_asset.description2, "Available 24/7"
+            list(created.final_urls), ["https://example.com/contact"]
         )
-        self.mock_asset.final_urls.extend.assert_called_with(
-            ["https://example.com/contact"]
-        )
+        self.assertEqual(created.url_custom_parameters[0].key, "src")
+        self.assertEqual(created.url_custom_parameters[0].value, "mcp")
         self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_create_structured_snippet_asset(self, mock_get_client):
+    def test_create_structured_snippet_asset(self, mock_get_client):
         """Tests creating a STRUCTURED_SNIPPET asset."""
         mock_get_client.return_value = self.mock_client
 
-        propose_res = await create_asset.create_asset(
+        propose_res = create_asset.create_asset(
             customer_id="1234567890",
             asset_type="STRUCTURED_SNIPPET",
             structured_snippet_header="Brands",
@@ -233,7 +251,7 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         )
         checksum = json.loads(propose_res)["checksum"]
 
-        result = await create_asset.create_asset(
+        result = create_asset.create_asset(
             customer_id="1234567890",
             asset_type="STRUCTURED_SNIPPET",
             structured_snippet_header="Brands",
@@ -242,57 +260,177 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
             checksum=checksum,
         )
 
+        commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        created = commit_req.operations[0].create
+        self.assertEqual(created.structured_snippet_asset.header, "Brands")
         self.assertEqual(
-            self.mock_asset.structured_snippet_asset.header, "Brands"
-        )
-        self.mock_asset.structured_snippet_asset.values.extend.assert_called_with(
-            ["Google", "DeepMind", "Android"]
+            list(created.structured_snippet_asset.values),
+            ["Google", "DeepMind", "Android"],
         )
         self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_validation_error_missing_fields(self, mock_get_client):
-        """Tests that validation correctly errors when required fields are missing."""
+    def test_create_price_asset_via_extra_params(self, mock_get_client):
+        """Tests creating a complex sub-asset (PRICE) with repeated messages and enums via extra_params."""
         mock_get_client.return_value = self.mock_client
 
-        # Test TEXT missing text_asset_text
-        result = await create_asset.create_asset(
+        extra_params = {
+            "type": "BRANDS",
+            "price_qualifier": "FROM",
+            "language_code": "en",
+            "price_offerings": [
+                {
+                    "header": "Starter Plan",
+                    "description": "Great for small teams",
+                    "price": {
+                        "amount_micros": 9990000,
+                        "currency_code": "USD",
+                    },
+                    "unit": "PER_MONTH",
+                    "final_url": "https://example.com/starter",
+                }
+            ],
+        }
+        propose_res = create_asset.create_asset(
             customer_id="1234567890",
-            asset_type="TEXT",
+            asset_type="PRICE",
+            name="Pricing Table",
+            extra_params=extra_params,
         )
-        self.assertIn("Error: 'text_asset_text' is required", result)
+        checksum = json.loads(propose_res)["checksum"]
 
-        # Test SITELINK missing final_urls
-        result = await create_asset.create_asset(
+        result = create_asset.create_asset(
             customer_id="1234567890",
-            asset_type="SITELINK",
-            sitelink_link_text="Link Text",
+            asset_type="PRICE",
+            name="Pricing Table",
+            extra_params=extra_params,
+            validate_only=False,
+            checksum=checksum,
         )
-        self.assertIn("Error: Root-level 'final_urls' is required", result)
+
+        commit_req = self.mock_asset_service.mutate_assets.call_args.kwargs[
+            "request"
+        ]
+        price_asset = commit_req.operations[0].create.price_asset
+        self.assertEqual(price_asset.type_.name, "BRANDS")
+        self.assertEqual(price_asset.price_qualifier.name, "FROM")
+        self.assertEqual(len(price_asset.price_offerings), 1)
+        self.assertEqual(price_asset.price_offerings[0].header, "Starter Plan")
+        self.assertEqual(
+            price_asset.price_offerings[0].price.amount_micros, 9990000
+        )
+        self.assertIn("Successfully created asset", result)
 
     @patch("ads_mcp.utils.get_googleads_client")
-    async def test_confirm_missing_or_mismatched_checksum_rejected(
+    def test_validation_and_security_errors(self, mock_get_client):
+        """Tests validation and security guardrails raise ToolError."""
+        mock_get_client.return_value = self.mock_client
+
+        # Missing text_asset_text
+        with self.assertRaisesRegex(ToolError, "'text_asset_text' is required"):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="TEXT",
+            )
+
+        # Missing final_urls on SITELINK
+        with self.assertRaisesRegex(
+            ToolError, "Root-level 'final_urls' is required"
+        ):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="SITELINK",
+                sitelink_link_text="Link Text",
+            )
+
+        # UNSPECIFIED asset_type rejected
+        with self.assertRaisesRegex(ToolError, "Invalid 'asset_type'"):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="UNSPECIFIED",
+            )
+
+        # Non-dedicated asset_type missing extra_params rejected
+        with self.assertRaisesRegex(ToolError, "'extra_params' is required"):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="PRICE",
+            )
+
+        # Both image_asset_path and image_asset_data rejected
+        with self.assertRaisesRegex(ToolError, "not both"):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="IMAGE",
+                image_asset_path="/tmp/a.png",
+                image_asset_data=base64.b64encode(b"x").decode("utf-8"),
+                image_asset_mime_type="IMAGE_PNG",
+            )
+
+        # Non-image MIME type rejected
+        with self.assertRaisesRegex(
+            ToolError, "Invalid 'image_asset_mime_type'"
+        ):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="IMAGE",
+                image_asset_data=base64.b64encode(b"x").decode("utf-8"),
+                image_asset_mime_type="AUDIO_MP3",
+            )
+
+        # Invalid base64 rejected
+        with self.assertRaisesRegex(
+            ToolError, "Error decoding base64 'image_asset_data'"
+        ):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="IMAGE",
+                image_asset_data="!!!not-base64!!!",
+                image_asset_mime_type="IMAGE_PNG",
+            )
+
+        # Remote OAuth mode blocks local image_asset_path
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_ID": "cid",
+                "GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET": "csecret",
+            },
+        ):
+            with self.assertRaisesRegex(
+                ToolError, "only supported in local stdio mode"
+            ):
+                create_asset.create_asset(
+                    customer_id="1234567890",
+                    asset_type="IMAGE",
+                    image_asset_path="/tmp/logo.png",
+                )
+
+    @patch("ads_mcp.utils.get_googleads_client")
+    def test_confirm_missing_or_mismatched_checksum_rejected(
         self, mock_get_client
     ):
-        """Tests that validate_only=False rejects missing or mismatched checksums."""
+        """Tests that validate_only=False raises ToolError on missing or mismatched checksums."""
         mock_get_client.return_value = self.mock_client
 
         # Missing checksum
-        res_missing = await create_asset.create_asset(
-            customer_id="1234567890",
-            asset_type="TEXT",
-            name="My Text Asset",
-            text_asset_text="Sign up today!",
-            validate_only=False,
-        )
-        self.assertIn(
+        with self.assertRaisesRegex(
+            ToolError,
             "checksum from a previous validate_only=True call is required",
-            res_missing,
-        )
+        ):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="TEXT",
+                name="My Text Asset",
+                text_asset_text="Sign up today!",
+                validate_only=False,
+            )
         self.mock_asset_service.mutate_assets.assert_not_called()
 
         # Obtain valid checksum, then modify text_asset_text on confirm
-        propose_res = await create_asset.create_asset(
+        propose_res = create_asset.create_asset(
             customer_id="1234567890",
             asset_type="TEXT",
             name="My Text Asset",
@@ -302,13 +440,19 @@ class TestCreateAsset(unittest.IsolatedAsyncioTestCase):
         checksum = json.loads(propose_res)["checksum"]
         self.assertEqual(self.mock_asset_service.mutate_assets.call_count, 1)
 
-        res_mismatched = await create_asset.create_asset(
-            customer_id="1234567890",
-            asset_type="TEXT",
-            name="My Text Asset",
-            text_asset_text="Modified unapproved text!",
-            validate_only=False,
-            checksum=checksum,
-        )
-        self.assertIn("Invalid or mismatched checksum", res_mismatched)
+        with self.assertRaisesRegex(
+            ToolError, "Invalid or mismatched checksum"
+        ):
+            create_asset.create_asset(
+                customer_id="1234567890",
+                asset_type="TEXT",
+                name="My Text Asset",
+                text_asset_text="Modified unapproved text!",
+                validate_only=False,
+                checksum=checksum,
+            )
         self.assertEqual(self.mock_asset_service.mutate_assets.call_count, 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

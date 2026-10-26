@@ -16,169 +16,247 @@
 
 import base64
 import os
-from fastmcp import FastMCP
-from typing import List, Dict, Any, Optional
+from typing import Any, TypedDict
+
+from fastmcp.exceptions import ToolError
+from google.protobuf.json_format import ParseDict
+from mcp.types import ToolAnnotations
+
+from ads_mcp import propose_and_confirm as pac
+from ads_mcp.tools import assets_mcp
 import ads_mcp.utils as utils
 
-assets_mcp = FastMCP("assets")
+# Safety ceiling before reading local or base64 image data into memory (20 MB).
+_MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024
+
+_DEDICATED_ASSET_TYPES = frozenset(
+    {
+        "TEXT",
+        "IMAGE",
+        "YOUTUBE_VIDEO",
+        "SITELINK",
+        "CALLOUT",
+        "STRUCTURED_SNIPPET",
+    }
+)
+
+_EXTENSION_TO_MIME_NAME = {
+    ".png": "IMAGE_PNG",
+    ".jpg": "IMAGE_JPEG",
+    ".jpeg": "IMAGE_JPEG",
+    ".gif": "IMAGE_GIF",
+}
 
 
-def _populate_message(msg, data: Dict[str, Any]) -> None:
-    """Recursively populates a proto-plus message from a dictionary."""
-    for key, value in data.items():
-        if isinstance(value, dict):
-            nested_msg = getattr(msg, key)
-            _populate_message(nested_msg, value)
-        elif isinstance(value, list):
-            field_list = getattr(msg, key)
-            for item in value:
-                if isinstance(item, dict):
-                    if hasattr(field_list, "add"):
-                        added_element = field_list.add()
-                        _populate_message(added_element, item)
-                else:
-                    field_list.append(item)
-        else:
-            setattr(msg, key, value)
+class UrlCustomParameter(TypedDict):
+    """Key-value pair for custom tracking URL parameters."""
+
+    key: str
+    value: str
 
 
 def _populate_sub_asset(
-    asset,
-    ga_client,
+    asset: Any,
+    ga_client: Any,
     type_upper: str,
-    final_urls: Optional[List[str]] = None,
-    text_asset_text: str = None,
-    image_asset_path: str = None,
-    image_asset_data: str = None,
-    image_asset_mime_type: str = None,
-    youtube_video_id: str = None,
-    sitelink_link_text: str = None,
-    sitelink_description1: str = None,
-    sitelink_description2: str = None,
-    callout_text: str = None,
-    structured_snippet_header: str = None,
-    structured_snippet_values: Optional[List[str]] = None,
-) -> Optional[str]:
-    """Populates specific sub-asset fields based on asset type."""
+    final_urls: list[str] | None = None,
+    text_asset_text: str | None = None,
+    image_asset_path: str | None = None,
+    image_asset_data: str | None = None,
+    image_asset_mime_type: str | None = None,
+    youtube_video_id: str | None = None,
+    sitelink_link_text: str | None = None,
+    sitelink_description1: str | None = None,
+    sitelink_description2: str | None = None,
+    callout_text: str | None = None,
+    structured_snippet_header: str | None = None,
+    structured_snippet_values: list[str] | None = None,
+) -> str | None:
+    """Populates specific sub-asset fields based on asset type.
+
+    Returns:
+        The resolved image MIME type name when ``type_upper == 'IMAGE'``,
+        otherwise ``None``.
+    """
     if type_upper == "TEXT":
         if not text_asset_text:
-            return "Error: 'text_asset_text' is required when 'asset_type' is 'TEXT'."
+            raise ToolError(
+                "Error: 'text_asset_text' is required when 'asset_type' is 'TEXT'."
+            )
         asset.text_asset.text = text_asset_text
+        return None
 
-    elif type_upper == "IMAGE":
-        image_bytes = None
-        mime_val = None
+    if type_upper == "IMAGE":
+        if image_asset_path and image_asset_data:
+            raise ToolError(
+                "Error: Provide either 'image_asset_path' or 'image_asset_data', not both."
+            )
 
         mime_enum = ga_client.get_type("MimeTypeEnum").MimeType
+        valid_image_mimes = {
+            m.name: m for m in mime_enum if m.name.startswith("IMAGE_")
+        }
 
         if image_asset_path:
-            if not os.path.isfile(image_asset_path):
-                return f"Error: Local image file does not exist at path: '{image_asset_path}'."
-            try:
-                with open(image_asset_path, "rb") as f:
-                    image_bytes = f.read()
-            except Exception as e:
-                return f"Error reading image file from local disk: {e}"
+            if utils.is_remote_oauth_mode():
+                raise ToolError(
+                    "Error: 'image_asset_path' is only supported in local stdio mode; "
+                    "pass base64-encoded 'image_asset_data' instead."
+                )
 
-            # Infer MIME type from extension
-            ext = os.path.splitext(image_asset_path)[1].lower()
-            if ext in [".png"]:
-                mime_val = mime_enum.IMAGE_PNG
-            elif ext in [".jpg", ".jpeg"]:
-                mime_val = mime_enum.IMAGE_JPEG
-            elif ext in [".gif"]:
-                mime_val = mime_enum.IMAGE_GIF
-            else:
-                return f"Error: Inferred image extension '{ext}' is unsupported. Must be png, jpg, jpeg, or gif."
+            resolved_path = os.path.realpath(image_asset_path)
+            ext = os.path.splitext(resolved_path)[1].lower()
+            mime_name = _EXTENSION_TO_MIME_NAME.get(ext)
+            if mime_name is None:
+                raise ToolError(
+                    f"Error: Inferred image extension '{ext}' is unsupported. "
+                    "Must be png, jpg, jpeg, or gif."
+                )
+
+            if not os.path.isfile(resolved_path):
+                raise ToolError(
+                    f"Error: Local image file does not exist at path: '{image_asset_path}'."
+                )
+
+            try:
+                with open(resolved_path, "rb") as f:
+                    image_bytes = f.read(_MAX_IMAGE_SIZE_BYTES + 1)
+            except OSError as exc:
+                raise ToolError(
+                    f"Error reading image file from local disk: {exc}"
+                ) from exc
+
+            if len(image_bytes) > _MAX_IMAGE_SIZE_BYTES:
+                raise ToolError(
+                    f"Error: Image file exceeds maximum allowed size of {_MAX_IMAGE_SIZE_BYTES} bytes."
+                )
+            mime_val = valid_image_mimes[mime_name]
+
         elif image_asset_data:
             if not image_asset_mime_type:
-                return "Error: 'image_asset_mime_type' is required when using base64 'image_asset_data'."
-            mime_type_upper = image_asset_mime_type.upper()
-            if hasattr(mime_enum, mime_type_upper):
-                mime_val = getattr(mime_enum, mime_type_upper)
-            else:
-                return f"Error: Invalid 'image_asset_mime_type' value '{image_asset_mime_type}'."
+                raise ToolError(
+                    "Error: 'image_asset_mime_type' is required when using base64 'image_asset_data'."
+                )
+            mime_name = image_asset_mime_type.upper()
+            mime_val = valid_image_mimes.get(mime_name)
+            if mime_val is None:
+                allowed = ", ".join(sorted(valid_image_mimes))
+                raise ToolError(
+                    f"Error: Invalid 'image_asset_mime_type' value '{image_asset_mime_type}'. "
+                    f"Must be one of: {allowed}."
+                )
 
             try:
-                image_bytes = base64.b64decode(image_asset_data)
-            except Exception as e:
-                return f"Error decoding base64 'image_asset_data': {e}"
+                image_bytes = base64.b64decode(image_asset_data, validate=True)
+            except Exception as exc:
+                raise ToolError(
+                    f"Error decoding base64 'image_asset_data': {exc}"
+                ) from exc
+
+            if len(image_bytes) > _MAX_IMAGE_SIZE_BYTES:
+                raise ToolError(
+                    f"Error: Decoded image data exceeds maximum allowed size of {_MAX_IMAGE_SIZE_BYTES} bytes."
+                )
         else:
-            return "Error: Either 'image_asset_path' or 'image_asset_data' must be provided when 'asset_type' is 'IMAGE'."
+            raise ToolError(
+                "Error: Either 'image_asset_path' or 'image_asset_data' must be provided "
+                "when 'asset_type' is 'IMAGE'."
+            )
 
         asset.image_asset.data = image_bytes
         asset.image_asset.mime_type = mime_val
+        return mime_name
 
-    elif type_upper == "YOUTUBE_VIDEO":
+    if type_upper == "YOUTUBE_VIDEO":
         if not youtube_video_id:
-            return "Error: 'youtube_video_id' is required when 'asset_type' is 'YOUTUBE_VIDEO'."
+            raise ToolError(
+                "Error: 'youtube_video_id' is required when 'asset_type' is 'YOUTUBE_VIDEO'."
+            )
         asset.youtube_video_asset.youtube_video_id = youtube_video_id
+        return None
 
-    elif type_upper == "SITELINK":
+    if type_upper == "SITELINK":
         if not sitelink_link_text:
-            return "Error: 'sitelink_link_text' is required when 'asset_type' is 'SITELINK'."
+            raise ToolError(
+                "Error: 'sitelink_link_text' is required when 'asset_type' is 'SITELINK'."
+            )
         if not final_urls:
-            return "Error: Root-level 'final_urls' is required when 'asset_type' is 'SITELINK'."
+            raise ToolError(
+                "Error: Root-level 'final_urls' is required when 'asset_type' is 'SITELINK'."
+            )
         asset.sitelink_asset.link_text = sitelink_link_text
         if sitelink_description1:
             asset.sitelink_asset.description1 = sitelink_description1
         if sitelink_description2:
             asset.sitelink_asset.description2 = sitelink_description2
+        return None
 
-    elif type_upper == "CALLOUT":
+    if type_upper == "CALLOUT":
         if not callout_text:
-            return "Error: 'callout_text' is required when 'asset_type' is 'CALLOUT'."
+            raise ToolError(
+                "Error: 'callout_text' is required when 'asset_type' is 'CALLOUT'."
+            )
         asset.callout_asset.callout_text = callout_text
+        return None
 
-    elif type_upper == "STRUCTURED_SNIPPET":
+    if type_upper == "STRUCTURED_SNIPPET":
         if not structured_snippet_header:
-            return "Error: 'structured_snippet_header' is required when 'asset_type' is 'STRUCTURED_SNIPPET'."
+            raise ToolError(
+                "Error: 'structured_snippet_header' is required when 'asset_type' is 'STRUCTURED_SNIPPET'."
+            )
         if not structured_snippet_values:
-            return "Error: 'structured_snippet_values' list is required when 'asset_type' is 'STRUCTURED_SNIPPET'."
+            raise ToolError(
+                "Error: 'structured_snippet_values' list is required when 'asset_type' is 'STRUCTURED_SNIPPET'."
+            )
         asset.structured_snippet_asset.header = structured_snippet_header
         asset.structured_snippet_asset.values.extend(structured_snippet_values)
+        return None
 
     return None
 
 
-@assets_mcp.tool
-async def create_asset(
-    customer_id: str,
+@assets_mcp.tool(
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False)
+)
+def create_asset(
+    customer_id: str | int,
     asset_type: str,
-    name: Optional[str] = None,
-    final_urls: Optional[List[str]] = None,
-    final_mobile_urls: Optional[List[str]] = None,
-    tracking_url_template: Optional[str] = None,
-    final_url_suffix: Optional[str] = None,
-    url_custom_parameters: Optional[List[Dict[str, str]]] = None,
+    name: str | None = None,
+    final_urls: list[str] | None = None,
+    final_mobile_urls: list[str] | None = None,
+    tracking_url_template: str | None = None,
+    final_url_suffix: str | None = None,
+    url_custom_parameters: list[UrlCustomParameter] | None = None,
     # Text Asset
-    text_asset_text: Optional[str] = None,
+    text_asset_text: str | None = None,
     # Image Asset
-    image_asset_path: Optional[str] = None,
-    image_asset_data: Optional[str] = None,
-    image_asset_mime_type: Optional[str] = None,
+    image_asset_path: str | None = None,
+    image_asset_data: str | None = None,
+    image_asset_mime_type: str | None = None,
     # YouTube Video Asset
-    youtube_video_id: Optional[str] = None,
+    youtube_video_id: str | None = None,
     # Sitelink Asset
-    sitelink_link_text: Optional[str] = None,
-    sitelink_description1: Optional[str] = None,
-    sitelink_description2: Optional[str] = None,
+    sitelink_link_text: str | None = None,
+    sitelink_description1: str | None = None,
+    sitelink_description2: str | None = None,
     # Callout Asset
-    callout_text: Optional[str] = None,
+    callout_text: str | None = None,
     # Structured Snippet Asset
-    structured_snippet_header: Optional[str] = None,
-    structured_snippet_values: Optional[List[str]] = None,
+    structured_snippet_header: str | None = None,
+    structured_snippet_values: list[str] | None = None,
     # Fallback/Custom Parameters
-    extra_params: Optional[Dict[str, Any]] = None,
+    extra_params: dict[str, Any] | None = None,
+    login_customer_id: str | int | None = None,
     validate_only: bool = True,
-    checksum: Optional[str] = None,
+    checksum: str | None = None,
 ) -> str:
     """Creates a new Google Ads asset under the specified customer account.
 
     Required & Optional parameters per `asset_type`:
     - **TEXT**: Requires `text_asset_text`.
-    - **IMAGE**: Requires either `image_asset_path` (absolute local path) OR `image_asset_data` (base64 encoded string).
-      If `image_asset_data` is provided, `image_asset_mime_type` is also required (e.g. 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF').
+    - **IMAGE**: Requires either `image_asset_path` (absolute local path, local stdio mode only)
+      OR `image_asset_data` (base64 encoded string). If `image_asset_data` is provided,
+      `image_asset_mime_type` is also required (e.g. 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF').
     - **YOUTUBE_VIDEO**: Requires `youtube_video_id`.
     - **SITELINK**: Requires `sitelink_link_text` and root-level `final_urls`.
       Accepts optional `sitelink_description1` and `sitelink_description2`.
@@ -193,7 +271,7 @@ async def create_asset(
     - `final_url_suffix`: Suffix appended to the final URL.
     - `url_custom_parameters`: Custom parameters represented as a list of dicts (with 'key' and 'value').
 
-    For any other asset type, configure `extra_params` as a dict representing the sub-asset message fields.
+    For any other asset type, provide `extra_params` as a dict representing the sub-asset message fields.
 
     Propose & Confirm Workflow (`validate_only` and `checksum`):
     1. Call `create_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.
@@ -201,16 +279,16 @@ async def create_asset(
     3. Only after user confirmation, call `create_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.
 
     Args:
-        customer_id: Google Ads Customer ID (without hyphens).
+        customer_id: Google Ads Customer ID (digits or hyphenated, e.g. '1234567890').
         asset_type: Type of the asset (e.g., 'TEXT', 'IMAGE', 'YOUTUBE_VIDEO', 'SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET').
         name: Optional name of the asset.
         final_urls: Optional list of final URLs (required for SITELINK).
         final_mobile_urls: Optional list of final mobile URLs.
         tracking_url_template: Optional tracking URL template.
         final_url_suffix: Optional final URL suffix.
-        url_custom_parameters: Optional custom parameters for tracking (list of key-value dicts).
+        url_custom_parameters: Optional custom parameters for tracking (list of {'key': ..., 'value': ...} dicts).
         text_asset_text: Optional text content (required for TEXT type).
-        image_asset_path: Optional absolute file path to a local image (supported for IMAGE type).
+        image_asset_path: Optional absolute file path to a local image (supported for IMAGE type in local stdio mode).
         image_asset_data: Optional base64 encoded image data (supported for IMAGE type).
         image_asset_mime_type: Optional MIME type (e.g., 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF'; required if image_asset_data is used).
         youtube_video_id: Optional YouTube 11-character video ID (required for YOUTUBE_VIDEO type).
@@ -221,16 +299,19 @@ async def create_asset(
         structured_snippet_header: Optional structured snippet header category (required for STRUCTURED_SNIPPET type).
         structured_snippet_values: Optional structured snippet list of values (required for STRUCTURED_SNIPPET type).
         extra_params: Optional dict representing nested parameters for less common asset types.
+        login_customer_id: Optional manager customer ID to use as the login-customer-id header.
         validate_only: If True (default), validates the request and returns proposed `change_items` and a `checksum` without creating the asset. If False, requires `checksum` from a prior `validate_only=True` call to commit the asset creation.
         checksum: Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`.
-
-    Returns:
-        When `validate_only=True`, a JSON proposal containing `change_items` and `checksum`. When `validate_only=False`, a string indicating successful asset creation and its ID, or an error message.
     """
-    ga_client = utils.get_googleads_client()
-    asset_service = ga_client.get_service("AssetService")
+    cleaned_customer_id = utils.clean_customer_id(customer_id)
+    if not cleaned_customer_id:
+        raise ToolError("Error: 'customer_id' must contain digits.")
 
-    # Build Asset operation
+    ga_client = utils.get_googleads_client(login_customer_id=login_customer_id)
+    asset_service = utils.get_googleads_service_from_client(
+        ga_client, "AssetService"
+    )
+
     asset_op = ga_client.get_type("AssetOperation")
     asset = asset_op.create
 
@@ -251,7 +332,9 @@ async def create_asset(
             key = param_dict.get("key")
             value = param_dict.get("value")
             if not key or not value:
-                return "Error: Each item in 'url_custom_parameters' must contain both 'key' and 'value'."
+                raise ToolError(
+                    "Error: Each item in 'url_custom_parameters' must contain non-empty 'key' and 'value'."
+                )
             param = ga_client.get_type("CustomParameter")
             param.key = key
             param.value = value
@@ -259,19 +342,26 @@ async def create_asset(
 
     # Parse and validate AssetType
     asset_type_enum = ga_client.get_type("AssetTypeEnum").AssetType
+    valid_types = {
+        t.name: t
+        for t in asset_type_enum
+        if t.name not in ("UNSPECIFIED", "UNKNOWN")
+    }
     type_upper = asset_type.upper()
-    if hasattr(asset_type_enum, type_upper):
-        asset.type_ = getattr(asset_type_enum, type_upper)
-    else:
-        valid_types = [
-            t.name
-            for t in asset_type_enum
-            if t.name not in ["UNSPECIFIED", "UNKNOWN"]
-        ]
-        return f"Error: Invalid 'asset_type' value '{asset_type}'. Must be one of: {', '.join(valid_types)}."
+    if type_upper not in valid_types:
+        raise ToolError(
+            f"Error: Invalid 'asset_type' value '{asset_type}'. "
+            f"Must be one of: {', '.join(valid_types)}."
+        )
+    asset.type_ = valid_types[type_upper]
+
+    if type_upper not in _DEDICATED_ASSET_TYPES and not extra_params:
+        raise ToolError(
+            f"Error: 'extra_params' is required when 'asset_type' is '{type_upper}'."
+        )
 
     # 2. Populate Sub-Asset details
-    err = _populate_sub_asset(
+    resolved_mime_name = _populate_sub_asset(
         asset,
         ga_client,
         type_upper,
@@ -288,22 +378,24 @@ async def create_asset(
         structured_snippet_header=structured_snippet_header,
         structured_snippet_values=structured_snippet_values,
     )
-    if err:
-        return err
 
     # 3. Fallback/Custom parameters populator
     if extra_params:
         field_name = f"{type_upper.lower()}_asset"
-        if hasattr(asset, field_name):
-            sub_msg = getattr(asset, field_name)
-            try:
-                _populate_message(sub_msg, extra_params)
-            except Exception as e:
-                return f"Error populating dynamic 'extra_params' for '{field_name}': {e}"
-        else:
-            return f"Error: Asset type field '{field_name}' does not exist on the Asset resource."
+        if not hasattr(asset, field_name):
+            raise ToolError(
+                f"Error: Asset type field '{field_name}' does not exist on the Asset resource."
+            )
+        sub_msg = getattr(asset, field_name)
+        try:
+            ParseDict(extra_params, type(sub_msg).pb(sub_msg))
+        except Exception as exc:
+            raise ToolError(
+                f"Error populating 'extra_params' for '{field_name}': {exc}"
+            ) from exc
 
     # 4. Propose & Confirm workflow
+    image_bytes = asset.image_asset.data if type_upper == "IMAGE" else None
     operation_payload = {
         "tool": "create_asset",
         "operation": utils.MutateOperation.CREATE.value,
@@ -317,10 +409,8 @@ async def create_asset(
         "text_asset_text": text_asset_text,
         "image_asset_path": image_asset_path,
         "image_asset_data": image_asset_data,
-        "image_asset_mime_type": image_asset_mime_type,
-        "image_bytes": (
-            asset.image_asset.data if type_upper == "IMAGE" else None
-        ),
+        "image_asset_mime_type": resolved_mime_name,
+        "image_bytes": image_bytes,
         "youtube_video_id": youtube_video_id,
         "sitelink_link_text": sitelink_link_text,
         "sitelink_description1": sitelink_description1,
@@ -331,7 +421,7 @@ async def create_asset(
         "extra_params": extra_params,
     }
 
-    change_items = utils.build_change_items(
+    change_items = pac.build_change_items(
         operation=utils.MutateOperation.CREATE.value,
         entity_readable=f"Asset ({type_upper})",
         primary_key_readable=name or type_upper,
@@ -340,7 +430,10 @@ async def create_asset(
             "Name": name,
             "Text": text_asset_text,
             "Image Path": image_asset_path,
-            "Image MIME Type": image_asset_mime_type,
+            "Image MIME Type": resolved_mime_name,
+            "Image Size (bytes)": (
+                len(image_bytes) if image_bytes is not None else None
+            ),
             "YouTube Video ID": youtube_video_id,
             "Sitelink Text": sitelink_link_text,
             "Sitelink Description 1": sitelink_description1,
@@ -358,7 +451,7 @@ async def create_asset(
     )
 
     request = ga_client.get_type("MutateAssetsRequest")
-    request.customer_id = customer_id
+    request.customer_id = cleaned_customer_id
     request.operations.append(asset_op)
     request.validate_only = validate_only
 
@@ -373,8 +466,8 @@ async def create_asset(
         created_id = utils.extract_id(created_rn)
         return f"Successfully created asset. ID: {created_id}"
 
-    return utils.propose_and_confirm(
-        customer_id=customer_id,
+    return pac.propose_and_confirm(
+        customer_id=cleaned_customer_id,
         validate_only=validate_only,
         checksum=checksum,
         operation_payload=operation_payload,
