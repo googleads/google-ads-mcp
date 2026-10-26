@@ -7,9 +7,452 @@
         }
       },
       "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Creates a new Google Ads asset under the specified customer account.\n\nRequired & Optional parameters per `asset_type`:\n- **TEXT**: Requires `text_asset_text`.\n- **IMAGE**: Requires either `image_asset_path` (absolute local path, local stdio mode only)\n  OR `image_asset_data` (base64 encoded string). If `image_asset_data` is provided,\n  `image_asset_mime_type` is also required (e.g. 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF').\n- **YOUTUBE_VIDEO**: Requires `youtube_video_id`.\n- **SITELINK**: Requires `sitelink_link_text` and root-level `final_urls`.\n  Accepts optional `sitelink_description1` and `sitelink_description2`.\n- **CALLOUT**: Requires `callout_text`.\n- **STRUCTURED_SNIPPET**: Requires `structured_snippet_header` and `structured_snippet_values`.\n\nRoot-level URL and tracking configurations (optional except where noted):\n- `name`: Optional display name for the asset.\n- `final_urls`: Required for SITELINK. A list of URLs.\n- `final_mobile_urls`: List of mobile-specific destination URLs.\n- `tracking_url_template`: Template for constructing a tracking URL.\n- `final_url_suffix`: Suffix appended to the final URL.\n- `url_custom_parameters`: Custom parameters represented as a list of dicts (with 'key' and 'value').\n\nFor any other asset type, provide `extra_params` as a dict representing the sub-asset message fields.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `create_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `create_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_type": {
+            "description": "Type of the asset (e.g., 'TEXT', 'IMAGE', 'YOUTUBE_VIDEO', 'SITELINK', 'CALLOUT', 'STRUCTURED_SNIPPET').",
+            "type": "string"
+          },
+          "callout_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional callout text (required for CALLOUT type)."
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "description": "Google Ads Customer ID (digits or hyphenated, e.g. '1234567890')."
+          },
+          "extra_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional dict representing nested parameters for less common asset types."
+          },
+          "final_mobile_urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of final mobile URLs."
+          },
+          "final_url_suffix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional final URL suffix."
+          },
+          "final_urls": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of final URLs (required for SITELINK)."
+          },
+          "image_asset_data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional base64 encoded image data (supported for IMAGE type)."
+          },
+          "image_asset_mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional MIME type (e.g., 'IMAGE_PNG', 'IMAGE_JPEG', 'IMAGE_GIF'; required if image_asset_data is used)."
+          },
+          "image_asset_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional absolute file path to a local image (supported for IMAGE type in local stdio mode)."
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional manager customer ID to use as the login-customer-id header."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional name of the asset."
+          },
+          "sitelink_description1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sitelink line 1 description."
+          },
+          "sitelink_description2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sitelink line 2 description."
+          },
+          "sitelink_link_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional link text (required for SITELINK type)."
+          },
+          "structured_snippet_header": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional structured snippet header category (required for STRUCTURED_SNIPPET type)."
+          },
+          "structured_snippet_values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional structured snippet list of values (required for STRUCTURED_SNIPPET type)."
+          },
+          "text_asset_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional text content (required for TEXT type)."
+          },
+          "tracking_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional tracking URL template."
+          },
+          "url_custom_parameters": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "Key-value pair for custom tracking URL parameters.",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional custom parameters for tracking (list of {'key': ..., 'value': ...} dicts)."
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without creating the asset. If False, requires `checksum` from a prior `validate_only=True` call to commit the asset creation.",
+            "type": "boolean"
+          },
+          "youtube_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional YouTube 11-character video ID (required for YOUTUBE_VIDEO type)."
+          }
+        },
+        "required": [
+          "customer_id",
+          "asset_type"
+        ],
+        "type": "object"
+      },
+      "name": "assets_create_asset",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "title": "Assets Create Asset"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Uploads a video to YouTube natively via the Google Ads API.\n\nOnce a video has been uploaded, it can be used to create a video asset.\nThis operation executes via a FastMCP background task to gracefully handle large file uploads\n(supported in local stdio mode only).\nOnce the upload finishes successfully, using the search tool and querying the `you_tube_video_upload`\nresource matching the returned ID allows you to retrieve the YouTube Video ID and processing status.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `upload_video_asset` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without uploading the video.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `upload_video_asset` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
+      "execution": {
+        "taskSupport": "optional"
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "description": "Google Ads Customer ID (digits or hyphenated, e.g. '1234567890')."
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional manager customer ID to use as the login-customer-id header."
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without uploading the video. If False, requires `checksum` from a prior `validate_only=True` call to execute the video upload.",
+            "type": "boolean"
+          },
+          "video_description": {
+            "description": "The description text attached to your YouTube video.",
+            "type": "string"
+          },
+          "video_path": {
+            "description": "The absolute path on the local filesystem to the video file to be uploaded (local stdio mode only).",
+            "type": "string"
+          },
+          "video_privacy": {
+            "default": "UNLISTED",
+            "description": "The privacy setting of the video on YouTube. Default is UNLISTED. Valid values are: PUBLIC, UNLISTED, PRIVATE. Note: PUBLIC is only allowed for brand channels.",
+            "enum": [
+              "PUBLIC",
+              "UNLISTED",
+              "PRIVATE"
+            ],
+            "type": "string"
+          },
+          "video_title": {
+            "description": "The title you wish your video to have on YouTube.",
+            "type": "string"
+          },
+          "youtube_channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional. The ID of the YouTube channel the video will be uploaded to. If not provided, it will be uploaded to a Google-managed YouTube channel linked to your ads account."
+          }
+        },
+        "required": [
+          "customer_id",
+          "video_title",
+          "video_description",
+          "video_path"
+        ],
+        "type": "object"
+      },
+      "name": "assets_upload_video_asset",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "title": "Assets Upload Video Asset"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
         "readOnlyHint": true
       },
-      "description": "Returns ids of customers directly accessible by the user authenticating the call.\n\nUse this tool first to discover available customer IDs if the user hasn't\nprovided one. Most other tools require a valid customer ID as input.\n\nReturns:\n    List[str]: A list of customer IDs.",
+      "description": "Returns ids of customers directly accessible by the user authenticating the call.\n\nUse this tool first to discover available customer IDs if the user hasn't\nprovided one. Most other tools require a valid customer ID as input.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},
@@ -32,6 +475,276 @@
         "x-fastmcp-wrap-result": true
       },
       "title": "Customers List Accessible Customers"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Manages associations between labels and Campaign, Customer, Ad Group, or Ad Group Criterion.\n\nSupports CREATE and REMOVE operations.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `manage_label_associations` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `manage_label_associations` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "association_resource_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The full resource name of the association itself\n(e.g., 'customers/123/campaignLabels/456~789'). Optional alternative for REMOVE\nwhen `resource_id` and `label_id` are not provided."
+          },
+          "association_type": {
+            "description": "The type of resource being associated.\nMust be 'CAMPAIGN', 'CUSTOMER', 'AD_GROUP', or 'AD_GROUP_CRITERION'.",
+            "enum": [
+              "CAMPAIGN",
+              "CUSTOMER",
+              "AD_GROUP",
+              "AD_GROUP_CRITERION"
+            ],
+            "type": "string"
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "description": "Google Ads Customer ID (digits or hyphenated, e.g. '1234567890')."
+          },
+          "label_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ID of the Label (e.g., '789'). Required for CREATE."
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional manager customer ID to use as the login-customer-id header."
+          },
+          "operation": {
+            "description": "The operation to perform. Must be 'CREATE' or 'REMOVE'.",
+            "enum": [
+              "CREATE",
+              "REMOVE"
+            ],
+            "type": "string"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ID of the entity to associate (e.g., '456' for CAMPAIGN or AD_GROUP,\nor composite '{ad_group_id}~{criterion_id}' such as '456~789' for AD_GROUP_CRITERION).\nOptional for CUSTOMER (defaults to `customer_id`); required for CREATE on other types."
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the association. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "customer_id",
+          "operation",
+          "association_type"
+        ],
+        "type": "object"
+      },
+      "name": "labels_manage_label_associations",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "title": "Labels Manage Label Associations"
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Manages Label resources. Supports CREATE, UPDATE, and REMOVE operations.\n\nPropose & Confirm Workflow (`validate_only` and `checksum`):\n1. Call `manage_labels` with `validate_only=True` (the default). After validation passes, the tool returns structured `change_items` and a `checksum` without committing changes.\n2. Present the `change_items` to the user and wait for explicit user approval.\n3. Only after user confirmation, call `manage_labels` with `validate_only=False` along with the exact same parameters and the `checksum` returned by the previous `validate_only=True` call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Background color in HTML hex format (e.g., '#FF0000'). Optional."
+          },
+          "checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checksum of the validated operation returned by a prior `validate_only=True` call. Required when `validate_only=False`."
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "description": "Google Ads Customer ID (digits or hyphenated, e.g. '1234567890')."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Description of the label. Optional."
+          },
+          "label_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ID of the label (e.g., '456'). Required for UPDATE and REMOVE."
+          },
+          "login_customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional manager customer ID to use as the login-customer-id header."
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The name of the label. Required for CREATE, optional for UPDATE."
+          },
+          "operation": {
+            "description": "The operation to perform. Must be 'CREATE', 'UPDATE', or 'REMOVE'.",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "REMOVE"
+            ],
+            "type": "string"
+          },
+          "validate_only": {
+            "default": true,
+            "description": "If True (default), validates the request and returns proposed `change_items` and a `checksum` without mutating the label. If False, requires `checksum` from a prior `validate_only=True` call to commit the mutation.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "customer_id",
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "labels_manage_labels",
+      "outputSchema": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object",
+        "x-fastmcp-wrap-result": true
+      },
+      "title": "Labels Manage Labels"
     },
     {
       "_meta": {

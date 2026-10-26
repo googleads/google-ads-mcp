@@ -2,100 +2,154 @@
   {
     "prompt": "List the customers I can access.",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 645,
+    "prompt_tokens": 4037,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Find campaigns matching 'Test Campaign' for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 659,
+    "prompt_tokens": 4051,
     "output_tokens": 66,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 65
   },
   {
     "prompt": "Show me all my accounts.",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 644,
+    "prompt_tokens": 4036,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Which customers do I have access to?",
     "expected_tool": "customers_list_accessible_customers",
-    "prompt_tokens": 646,
+    "prompt_tokens": 4038,
     "output_tokens": 14,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 138
+    "tool_tokens": 172
   },
   {
     "prompt": "Find enabled ad groups for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 656,
+    "prompt_tokens": 4048,
     "output_tokens": 87,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 62
   },
   {
     "prompt": "Get keywords for campaign 'Summer Sale' in account {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 660,
-    "output_tokens": 91,
+    "prompt_tokens": 4052,
+    "output_tokens": 158,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 63
   },
   {
     "prompt": "Show me the metrics for customer {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 656,
+    "prompt_tokens": 4048,
     "output_tokens": 88,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 130
+    "tool_tokens": 58
   },
   {
     "prompt": "Generate a daily report of clicks for all active campaigns in account {customer_id}.",
     "expected_tool": "search_search",
-    "prompt_tokens": 662,
-    "output_tokens": 59,
+    "prompt_tokens": 4054,
+    "output_tokens": 73,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 130
+    "tool_tokens": 62
   },
   {
     "prompt": "What fields are available for the campaign resource?",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 647,
+    "prompt_tokens": 4039,
     "output_tokens": 22,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "tool_tokens": 37333
   },
   {
     "prompt": "Find metrics compatible with ad_group.",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 646,
+    "prompt_tokens": 4038,
     "output_tokens": 24,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "tool_tokens": 25823
   },
   {
     "prompt": "What segments can I select with the customer resource?",
     "expected_tool": "metadata_get_resource_metadata",
-    "prompt_tokens": 648,
+    "prompt_tokens": 4040,
     "output_tokens": 22,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 153
+    "tool_tokens": 23897
+  },
+  {
+    "prompt": "Create a label 'High Priority' with color #FF0000 for customer {customer_id}.",
+    "expected_tool": "labels_manage_labels",
+    "prompt_tokens": 4059,
+    "output_tokens": 61,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 70
+  },
+  {
+    "prompt": "Remove label with ID 12345 for customer {customer_id}.",
+    "expected_tool": "labels_manage_labels",
+    "prompt_tokens": 4054,
+    "output_tokens": 53,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 71
+  },
+  {
+    "prompt": "Associate label 12345 with campaign 67890 for customer {customer_id}.",
+    "expected_tool": "labels_manage_label_associations",
+    "prompt_tokens": 4060,
+    "output_tokens": 77,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 76
+  },
+  {
+    "prompt": "Upload video '/tmp/test.mp4' titled 'Test Video' with description 'A test video' for customer {customer_id}.",
+    "expected_tool": "assets_upload_video_asset",
+    "prompt_tokens": 4066,
+    "output_tokens": 70,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 51
+  },
+  {
+    "prompt": "Create a text asset with text 'Buy now!' for customer {customer_id}.",
+    "expected_tool": "assets_create_asset",
+    "prompt_tokens": 4054,
+    "output_tokens": 55,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 71
+  },
+  {
+    "prompt": "Create a sitelink asset with text 'About Us' and final URL 'https://example.com/about' for customer {customer_id}.",
+    "expected_tool": "assets_create_asset",
+    "prompt_tokens": 4067,
+    "output_tokens": 73,
+    "thought_tokens": null,
+    "model": "gemini-3.5-flash-lite",
+    "tool_tokens": 72
   }
 ]

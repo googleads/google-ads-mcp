@@ -84,3 +84,12 @@ class TestUtils(unittest.TestCase):
                 server.run_server()
 
         run.assert_called_once_with()
+
+    def test_tasks_extension_registered(self):
+        """Tests that the tasks extension required by task-enabled tools is registered."""
+        import asyncio
+        from fastmcp.utilities.tasks import TASKS_EXTENSION_ID
+        from ads_mcp import server
+
+        self.assertIn(TASKS_EXTENSION_ID, server.mcp._extensions)
+        asyncio.run(server.mcp._validate_task_extension_registered())

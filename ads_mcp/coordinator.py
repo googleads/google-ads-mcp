@@ -23,6 +23,7 @@ import os
 from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
+from fastmcp_tasks import TasksExtension
 from mcp import types as mcp_types
 from mcp.server.subscriptions import InMemorySubscriptionBus, ListenHandler
 from ads_mcp.auth_storage import create_client_storage
@@ -54,6 +55,8 @@ if _CLIENT_ID and _CLIENT_SECRET:
     mcp = FastMCP("Google Ads Server", auth=auth)
 else:
     mcp = FastMCP("Google Ads Server")
+
+mcp.add_extension(TasksExtension())
 
 
 def ensure_subscriptions_listen(server: FastMCP) -> bool:
@@ -105,6 +108,13 @@ def initialize_and_mount_tools(parent_mcp: FastMCP) -> None:
             attr_val = getattr(module, attr_name)
             if isinstance(attr_val, FastMCP):
                 category = attr_val.name
+                if (
+                    category in sub_servers
+                    and sub_servers[category] is not attr_val
+                ):
+                    raise ValueError(
+                        f"Conflicting FastMCP sub-servers registered for category '{category}'."
+                    )
                 sub_servers[category] = attr_val
 
     config = ToolsConfig.load()

@@ -16,25 +16,28 @@
 
 """Common utilities used by the MCP server."""
 
-from typing import Any
-import proto
-from google.protobuf.message import Message as PbMessage
-from google.protobuf.json_format import MessageToDict
+from contextlib import contextmanager
+from enum import Enum
+import importlib.resources
 import logging
+import os
+import re
+import subprocess
+from typing import Any
+from unittest.mock import patch
+
 from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
+from google.ads.googleads.util import get_nested_attr
 from google.ads.googleads.v25.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
-
-from google.ads.googleads.util import get_nested_attr
 import google.auth
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message as PbMessage
+import proto
+
 from ads_mcp.mcp_header_interceptor import MCPHeaderInterceptor
-import os
-import re
-import importlib.resources
-import contextlib
-import subprocess
-from unittest.mock import patch
 
 # filename for generated field information used by search
 _GAQL_FILENAME = "gaql_resources.txt"
@@ -43,13 +46,40 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# OAuth scope for the Google Ads API. Google Ads does not publish a separate
-# read-only scope; access is restricted to read methods by the tools this
-# server exposes (see ads_mcp/tools/).
+# OAuth scope for the Google Ads API. Google Ads publishes a single OAuth scope;
+# exposed read/write capabilities are governed by tools_config.yaml, and all
+# mutate tools enforce the two-step propose-and-confirm workflow.
 _ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
 
-@contextlib.contextmanager
+class MutateOperation(str, Enum):
+    """Enum representing common mutate operations in Google Ads."""
+
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    REMOVE = "REMOVE"
+
+
+def is_remote_oauth_mode() -> bool:
+    """Returns True when the server is configured to run in remote OAuth HTTP mode."""
+    return bool(
+        os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
+        and os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
+    )
+
+
+def format_google_ads_error(ex: GoogleAdsException) -> str:
+    """Formats a GoogleAdsException into a human-readable error message."""
+    error_msgs = [
+        f"Google Ads API Error: {error.message}" for error in ex.failure.errors
+    ]
+    details = "\n".join(error_msgs)
+    if details:
+        return f"Request ID: {ex.request_id}\n{details}"
+    return f"Request ID: {ex.request_id}"
+
+
+@contextmanager
 def prevent_stdio_inheritance():
     """Prevents child processes from inheriting the parent's stdio handles.
 
@@ -110,7 +140,7 @@ def _get_login_customer_id(
 def _get_googleads_client(
     login_customer_id: str | int | None = None,
 ) -> GoogleAdsClient:
-    args = {
+    args: dict[str, Any] = {
         "credentials": _create_credentials(),
         "use_proto_plus": True,
     }
@@ -126,18 +156,27 @@ def _get_googleads_client(
     if resolved_login_customer_id:
         args["login_customer_id"] = resolved_login_customer_id
 
-    client = GoogleAdsClient(**args)
+    return GoogleAdsClient(**args)
 
-    return client
+
+def get_googleads_service_from_client(
+    client: GoogleAdsClient,
+    service_name: str,
+) -> Any:
+    """Returns a Google Ads service client with the MCP telemetry header attached."""
+    return client.get_service(
+        service_name, interceptors=[MCPHeaderInterceptor()]
+    )
 
 
 def get_googleads_service(
     serviceName: str,
     login_customer_id: str | int | None = None,
 ) -> GoogleAdsServiceClient:
-    return _get_googleads_client(
-        login_customer_id=login_customer_id
-    ).get_service(serviceName, interceptors=[MCPHeaderInterceptor()])
+    return get_googleads_service_from_client(
+        _get_googleads_client(login_customer_id=login_customer_id),
+        serviceName,
+    )
 
 
 def get_googleads_type(typeName: str):
@@ -146,7 +185,7 @@ def get_googleads_type(typeName: str):
 
 def get_googleads_client(
     login_customer_id: str | int | None = None,
-):
+) -> GoogleAdsClient:
     return _get_googleads_client(login_customer_id=login_customer_id)
 
 
@@ -168,6 +207,13 @@ def format_output_row(row: proto.Message, attributes):
         attr: format_output_value(get_nested_attr(row, attr))
         for attr in attributes
     }
+
+
+def extract_id(resource_name_or_id: str) -> str:
+    """Extracts the last component (the ID) from a resource name or returns the ID as-is."""
+    if "/" in resource_name_or_id:
+        return resource_name_or_id.split("/")[-1]
+    return resource_name_or_id
 
 
 def get_gaql_resources_filepath():
