@@ -16,11 +16,12 @@
 
 import base64
 import os
-from typing import Any, TypedDict
+from typing import Any
 
 from fastmcp.exceptions import ToolError
 from google.protobuf.json_format import ParseDict
 from mcp.types import ToolAnnotations
+from typing_extensions import TypedDict
 
 from ads_mcp import propose_and_confirm as pac
 from ads_mcp.tools import assets_mcp
