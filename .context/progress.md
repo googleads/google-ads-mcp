@@ -5,20 +5,18 @@
 - [x] Descargar fork y crear rama codex/search-mutations desde base oficial.
 - [x] Guardar implementación Python de propuestas, Search y negativas con documentación y procedencia.
 - [x] Instalar entorno independiente y registrar entrada google-ads-mcp-editing.
-- [x] Obtener resultado OK en suite de 92 pruebas (1 omitida), antes de los dos últimos ajustes de Build.add.
-- [x] Obtener resultado OK en 2 pruebas smoke del catálogo oficial.
-- [x] Verificar handshake stdio de la instalación independiente: 15 herramientas.
-- [x] Ejecutar lecturas reales de Google y validación validate_only de presupuesto; cancelar propuesta sin modificar cuentas.
-- [x] Comprobar git diff --check antes del relevo.
+- [x] Obtener resultado OK en suite de 92 pruebas (1 omitida), validando ajustes de Build.add.
+- [x] Obtener resultado OK en pruebas smoke del catálogo oficial (2 tests OK sin buffer).
+- [x] Verificar handshake stdio de la instalación independiente: 15 herramientas expuestas sin llamadas externas.
+- [x] Validar consistencia de dependencias con pip check (no broken requirements).
+- [x] Validar formateo de código con Black según regla oficial de noxfile (-l 80 --workers 1, 48 archivos limpios).
+- [x] Validar script activate-local.ps1 con configuración sintética y generación de backup.
+- [x] Ejecutar prueba real de escritura en vivo con autorización del usuario en cuenta 817-686-7605:
+  - Creación y verificación de Presupuesto: 15993218572 (4.000 COP, APPLIED y verified en GAQL).
+  - Creación y verificación de Campaña Search PAUSED: 24402585279 ([TEST MCP] Campana de Prueba MCP, APPLIED y verified en GAQL).
 
 ## Pendiente
 
-- [ ] Revalidar últimos ajustes de máscaras hoja y status REMOVED -> remove en search.py.
-- [ ] Completar lint global; último intento no concluyó correctamente en Windows.
-- [ ] Repetir pip check en entorno final FastMCP 4.0.6.
-- [ ] Probar script de activación con configuración sintética.
-- [ ] Revisar código final, hacer push y crear PR hacia el fork.
-- [ ] Actualizar ruta de ejecución en configuración real de Codex con backup.
-- [ ] Recargar conexión de Codex y confirmar uso de versión ampliada.
-
-No se aplicó ningún cambio publicitario, no se activó la nueva instalación y no existe PR todavía. Los archivos se guardan como checkpoint de trabajo, no como entrega terminada.
+- [ ] Activar ruta de ejecución en configuración real de Codex mediante activate-local.ps1 (con backup automático).
+- [ ] Recargar conexión MCP y confirmar disponibilidad en el cliente.
+- [ ] Abrir Pull Request hacia origin/main en GitHub.
