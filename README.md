@@ -35,6 +35,11 @@ to provide several
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
 - `list_accessible_customers`: Returns ids of customers directly accessible by the user authenticating the call.
 
+#### Media Buyer Intelligence & Audit Tools (Community Edition)
+- `intelligence_audit_search_terms`: Audits real search queries to identify bleeders (wasted spend without conversions), top converting terms, and negative keyword candidates with n-gram analysis.
+- `intelligence_analyze_impression_share`: Diagnoses auction bottlenecks (Search Impression Share, lost to budget vs. lost to rank) to provide explicit scaling recommendations.
+- `intelligence_check_account_health`: Instantly flags budget-constrained campaigns and responsive search ads (RSAs) with poor or average Ad Strength.
+
 #### Extended Safe Mutation Tools (Community Edition)
 - `prepare_campaign`: Prepares a validated creation, update or status change for a Search campaign.
 - `prepare_budget`: Prepares daily budget creations or updates.

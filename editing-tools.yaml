@@ -1,6 +1,6 @@
-# Opt-in local single-operator editing profile. Default package stays read-only.
 namespaces:
   customers: true
   search: true
   metadata: true
   editing: true
+  intelligence: true

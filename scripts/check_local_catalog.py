@@ -25,8 +25,11 @@ async def main():
                 "metadata_get_resource_metadata",
                 "editing_apply_proposal",
                 "editing_prepare_negative_list",
+                "intelligence_audit_search_terms",
+                "intelligence_analyze_impression_share",
+                "intelligence_check_account_health",
             } <= names
-            assert len(names) == 15, names
+            assert len(names) == 18, names
             print(f"LOCAL_STDIO_CATALOG_OK: {len(names)} tools; no API calls")
 
 

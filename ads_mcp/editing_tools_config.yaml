@@ -3,3 +3,4 @@ namespaces:
   search: true
   metadata: true
   editing: true
+  intelligence: true
