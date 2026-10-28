@@ -37,6 +37,9 @@ to provide several
 
 #### Media Buyer Intelligence & Audit Tools (Community Edition)
 - `intelligence_audit_search_terms`: Audits real search queries to identify bleeders (wasted spend without conversions), top converting terms, and negative keyword candidates with n-gram analysis.
+- `intelligence_prepare_mined_negatives`: Closed-loop bridge that Google-validates and prepares adding mined bleeder search terms to a shared negative list or campaign in 1 step.
+- `intelligence_audit_devices_and_geos`: Analyzes performance breakdown across devices (Mobile vs. Desktop vs. Tablet) and geographical views, providing explicit bid adjustment guidance.
+- `intelligence_audit_budget_pacing`: Audits monthly budget pacing and flighting to prevent end-of-month budget depletion or under-delivery.
 - `intelligence_analyze_impression_share`: Diagnoses auction bottlenecks (Search Impression Share, lost to budget vs. lost to rank) to provide explicit scaling recommendations.
 - `intelligence_check_account_health`: Instantly flags budget-constrained campaigns and responsive search ads (RSAs) with poor or average Ad Strength.
 
