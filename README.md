@@ -40,6 +40,9 @@ to provide several
 - `intelligence_prepare_mined_negatives`: Closed-loop bridge that Google-validates and prepares adding mined bleeder search terms to a shared negative list or campaign in 1 step.
 - `intelligence_audit_devices_and_geos`: Analyzes performance breakdown across devices (Mobile vs. Desktop vs. Tablet) and geographical views, providing explicit bid adjustment guidance.
 - `intelligence_audit_budget_pacing`: Audits monthly budget pacing and flighting to prevent end-of-month budget depletion or under-delivery.
+- `intelligence_audit_campaign_assets`: Audits ad asset / extension coverage (sitelinks, callouts, structured snippets) to diagnose and fix Ad Rank penalties.
+- `intelligence_audit_creative_fatigue`: Audits RSA headlines and descriptions by Google performance labels (LOW vs. BEST) to optimize ad strength.
+- `intelligence_audit_conversion_health`: Audits primary vs. secondary conversion actions and alerts on orphan primary goals without recent firing.
 - `intelligence_analyze_impression_share`: Diagnoses auction bottlenecks (Search Impression Share, lost to budget vs. lost to rank) to provide explicit scaling recommendations.
 - `intelligence_check_account_health`: Instantly flags budget-constrained campaigns and responsive search ads (RSAs) with poor or average Ad Strength.
 

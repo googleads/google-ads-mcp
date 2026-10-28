@@ -659,3 +659,315 @@ def check_account_health(
             f"{len(poor_ads)} anuncios con Ad Strength subóptimo (POOR/AVERAGE)."
         ),
     }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_campaign_assets(
+    customer_id: str,
+    campaign_id: str | None = None,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit ad asset coverage (sitelinks, callouts, snippets, calls) to diagnose Ad Rank penalties.
+
+    Checks which extensions are attached, enabled, or paused, calculating an asset
+    completeness score per campaign to unlock maximum Ad Rank and lower CPCs.
+    """
+    fields = [
+        "campaign.id",
+        "campaign.name",
+        "campaign.status",
+        "campaign_asset.asset",
+        "campaign_asset.field_type",
+        "campaign_asset.status",
+        "asset.name",
+        "asset.type",
+    ]
+    where_clause = (
+        "campaign.status != 'REMOVED' AND campaign_asset.status != 'REMOVED'"
+    )
+    if campaign_id:
+        where_clause += f" AND campaign.id = {campaign_id}"
+
+    rows = changes.query(
+        customer_id,
+        "campaign_asset",
+        fields,
+        where_clause,
+        login_customer_id,
+        limit=200,
+    )
+
+    campaigns: dict[str, dict] = {}
+    for r in rows:
+        cid = str(r.get("campaign.id"))
+        cname = r.get("campaign.name")
+        cstatus = r.get("campaign.status")
+        ftype = str(r.get("campaign_asset.field_type", ""))
+        astatus = str(r.get("campaign_asset.status", ""))
+
+        if cid not in campaigns:
+            campaigns[cid] = {
+                "campaign_id": cid,
+                "campaign_name": cname,
+                "campaign_status": cstatus,
+                "enabled_assets": {
+                    "SITELINK": 0,
+                    "CALLOUT": 0,
+                    "STRUCTURED_SNIPPET": 0,
+                    "CALL": 0,
+                },
+                "paused_assets": {
+                    "SITELINK": 0,
+                    "CALLOUT": 0,
+                    "STRUCTURED_SNIPPET": 0,
+                    "CALL": 0,
+                },
+            }
+
+        target_dict = (
+            campaigns[cid]["enabled_assets"]
+            if astatus == "ENABLED"
+            else campaigns[cid]["paused_assets"]
+        )
+        if ftype in target_dict:
+            target_dict[ftype] += 1
+
+    audit_results = []
+    for cid, data in campaigns.items():
+        enabled = data["enabled_assets"]
+        paused = data["paused_assets"]
+
+        # Minimum best-practice thresholds: >=4 sitelinks, >=4 callouts, >=1 snippet
+        sitelinks_ok = enabled["SITELINK"] >= 4
+        callouts_ok = enabled["CALLOUT"] >= 4
+        snippets_ok = enabled["STRUCTURED_SNIPPET"] >= 1
+
+        score = 0
+        if enabled["SITELINK"] >= 2:
+            score += 25
+        if enabled["SITELINK"] >= 4:
+            score += 15
+        if enabled["CALLOUT"] >= 2:
+            score += 20
+        if enabled["CALLOUT"] >= 4:
+            score += 15
+        if enabled["STRUCTURED_SNIPPET"] >= 1:
+            score += 25
+
+        recommendations = []
+        if not sitelinks_ok:
+            recommendations.append(
+                f"Faltan sitelinks activos (actual: {enabled['SITELINK']}, pausados: {paused['SITELINK']}, meta: >=4). Activar o añadir sitelinks."
+            )
+        if not callouts_ok:
+            recommendations.append(
+                f"Faltan textos destacados (Callouts) activos (actual: {enabled['CALLOUT']}, meta: >=4)."
+            )
+        if not snippets_ok:
+            recommendations.append(
+                f"Falta al menos 1 fragmento estructurado activo (actual: {enabled['STRUCTURED_SNIPPET']})."
+            )
+
+        audit_results.append(
+            {
+                "campaign_id": cid,
+                "campaign_name": data["campaign_name"],
+                "campaign_status": data["campaign_status"],
+                "asset_completeness_score_pct": score,
+                "active_sitelinks": enabled["SITELINK"],
+                "paused_sitelinks": paused["SITELINK"],
+                "active_callouts": enabled["CALLOUT"],
+                "active_snippets": enabled["STRUCTURED_SNIPPET"],
+                "recommendations": recommendations
+                or ["Cobertura de activos excelente para Ad Rank óptimo."],
+            }
+        )
+
+    return {
+        "customer_id": customer_id,
+        "campaigns_audited": len(audit_results),
+        "campaigns": audit_results,
+        "media_buyer_verdict": (
+            "Campañas con cobertura incompleta de activos pierden automáticamente entre 15% y 25% de Ad Rank, "
+            "elevando el CPC medio en subasta."
+        ),
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_creative_fatigue(
+    customer_id: str,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit RSA copy elements (headlines & descriptions) by Google performance label (LOW, GOOD, BEST).
+
+    Identifies underperforming copy assets tagged as 'LOW' to replace them,
+    and highlights 'BEST' headlines to inspire new winning variations.
+    """
+    fields = [
+        "ad_group_ad_asset_view.ad_group_ad",
+        "ad_group_ad_asset_view.field_type",
+        "ad_group_ad_asset_view.performance_label",
+        "ad_group_ad_asset_view.pinned_field",
+        "asset.text_asset.text",
+        "campaign.name",
+        "ad_group.name",
+    ]
+    where_clause = "ad_group_ad_asset_view.performance_label IN ('LOW', 'GOOD', 'BEST', 'LEARNING')"
+
+    rows = changes.query(
+        customer_id,
+        "ad_group_ad_asset_view",
+        fields,
+        where_clause,
+        login_customer_id,
+        limit=200,
+    )
+
+    low_assets = []
+    best_assets = []
+    good_assets = []
+
+    for r in rows:
+        label = str(r.get("ad_group_ad_asset_view.performance_label", ""))
+        text = str(r.get("asset.text_asset.text", "")).strip()
+        ftype = str(r.get("ad_group_ad_asset_view.field_type", ""))
+        campaign = str(r.get("campaign.name", ""))
+        ad_group = str(r.get("ad_group.name", ""))
+
+        item = {
+            "text": text,
+            "type": ftype,
+            "performance_label": label,
+            "campaign": campaign,
+            "ad_group": ad_group,
+        }
+
+        if label == "LOW":
+            low_assets.append(item)
+        elif label == "BEST":
+            best_assets.append(item)
+        elif label == "GOOD":
+            good_assets.append(item)
+
+    return {
+        "customer_id": customer_id,
+        "total_rated_elements": len(rows),
+        "low_performing_elements_count": len(low_assets),
+        "low_performing_elements": low_assets[:15],
+        "best_performing_elements_count": len(best_assets),
+        "best_performing_elements": best_assets[:15],
+        "media_buyer_recommendation": (
+            f"Se detectaron {len(low_assets)} elementos de copy calificados como 'LOW'. "
+            "Reemplazarlos en prepare_ad utilizando variaciones basadas en los copys 'BEST' "
+            "para elevar el Ad Strength y el Quality Score general."
+            if low_assets
+            else "No se detectaron titulares ni descripciones con calificación 'LOW'."
+        ),
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_conversion_health(
+    customer_id: str,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit conversion tracking actions, primary/secondary goals, and orphan actions without recent data.
+
+    Validates that Smart Bidding is optimizing against true business goals (not vanity metrics)
+    and alerts on primary conversions that have ceased firing.
+    """
+    days = min(max(int(days), 1), 90)
+
+    # 1. Conversion Action Definitions
+    action_fields = [
+        "conversion_action.id",
+        "conversion_action.name",
+        "conversion_action.type",
+        "conversion_action.status",
+        "conversion_action.primary_for_goal",
+        "conversion_action.category",
+    ]
+    action_rows = changes.query(
+        customer_id,
+        "conversion_action",
+        action_fields,
+        "conversion_action.status != 'HIDDEN'",
+        login_customer_id,
+        limit=100,
+    )
+
+    # 2. Segmented campaign metrics
+    metric_fields = [
+        "segments.conversion_action",
+        "metrics.conversions",
+        "metrics.all_conversions",
+    ]
+    where_metrics = f"segments.date DURING LAST_{days}_DAYS"
+    metric_rows = changes.query(
+        customer_id,
+        "campaign",
+        metric_fields,
+        where_metrics,
+        login_customer_id,
+        limit=500,
+    )
+
+    conversions_by_action: dict[str, float] = {}
+    for mr in metric_rows:
+        act_rn = str(mr.get("segments.conversion_action", ""))
+        conv = float(mr.get("metrics.conversions", 0.0))
+        conversions_by_action[act_rn] = (
+            conversions_by_action.get(act_rn, 0.0) + conv
+        )
+
+    primary_actions = []
+    secondary_actions = []
+    orphan_primary_alerts = []
+
+    for a in action_rows:
+        aid = str(a.get("conversion_action.id"))
+        aname = str(a.get("conversion_action.name"))
+        atype = str(a.get("conversion_action.type"))
+        astatus = str(a.get("conversion_action.status"))
+        is_primary = bool(a.get("conversion_action.primary_for_goal", False))
+        category = str(a.get("conversion_action.category"))
+        rn = f"customers/{customer_id}/conversionActions/{aid}"
+
+        recent_convs = conversions_by_action.get(rn, 0.0)
+
+        info = {
+            "id": aid,
+            "name": aname,
+            "type": atype,
+            "status": astatus,
+            "is_primary": is_primary,
+            "category": category,
+            "conversions_last_n_days": round(recent_convs, 1),
+        }
+
+        if is_primary:
+            primary_actions.append(info)
+            if astatus == "ENABLED" and recent_convs == 0.0:
+                orphan_primary_alerts.append(
+                    f"Acción primaria activa '{aname}' sin conversiones en los últimos {days} días (posible tracking roto)."
+                )
+        else:
+            secondary_actions.append(info)
+
+    return {
+        "customer_id": customer_id,
+        "evaluated_days": days,
+        "total_actions": len(action_rows),
+        "primary_actions_count": len(primary_actions),
+        "primary_actions": primary_actions,
+        "secondary_actions_count": len(secondary_actions),
+        "secondary_actions": secondary_actions,
+        "orphan_primary_alerts": orphan_primary_alerts,
+        "media_buyer_recommendation": (
+            "Verificar que solo las acciones de valor monetario directo (Leads cualificados, llamadas reales, compras) "
+            "estén marcadas como Primarias. Acciones de navegación (visitas de página, clicks en botones secundarios) "
+            "deben ser Secundarias para no confundir a los algoritmos de Smart Bidding."
+        ),
+    }
