@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "google-ads-mcp"
-version = "0.0.5"
+name = "google-ads-mcp-extended"
+version = "0.1.0"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
@@ -13,14 +13,15 @@ dependencies = [
     "fastmcp>=4.0.6,<5"
 ]
 
-description = "MCP Server for Google Ads, depends on Google Ads API."
+description = "Community extended MCP Server for Google Ads with safe read & write (Search mutations, negatives and proposals)."
 readme = "README.md"
 authors = [
+    { name = "Edd Vásquez", email = "eddisonv@gmail.com" },
     { name = "Dean Lukies", email = "lukiesd@users.noreply.github.com" },
     { name = "Mattia Tommasone", email = "Raibaz@users.noreply.github.com" },
     { name = "Ben Karl", email = "benrkarl@users.noreply.github.com" },
 ]
-keywords = ["Google Ads", "Google Ads API", "MCP"]
+keywords = ["Google Ads", "Google Ads API", "MCP", "mutations", "campaigns", "automation"]
 classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
@@ -38,9 +39,10 @@ firestore = [
 ]
 
 [project.urls]
-homepage = "https://github.com/googleads/google-ads-mcp"
-repository = "https://github.com/googleads/google-ads-mcp.git"
-issues = "https://github.com/googleads/google-ads-mcp/issues"
+homepage = "https://github.com/eddvasquez/google-ads-mcp"
+repository = "https://github.com/eddvasquez/google-ads-mcp.git"
+upstream = "https://github.com/googleads/google-ads-mcp"
+issues = "https://github.com/eddvasquez/google-ads-mcp/issues"
 
 [project.scripts]
 google-ads-mcp = "ads_mcp.server:run_server"

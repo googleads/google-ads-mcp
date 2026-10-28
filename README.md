@@ -1,8 +1,25 @@
-# Google Ads MCP Server
+# Google Ads MCP Extended (Community Edition)
 
-This repo contains the source code for running an
-[MCP](https://modelcontextprotocol.io) server that interacts with the
-[Google Ads API](https://developers.google.com/google-ads/api).
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Upstream](https://img.shields.io/badge/Forked%20From-googleads%2Fgoogle--ads--mcp-orange)](https://github.com/googleads/google-ads-mcp)
+
+> [!NOTE]
+> **Legal Disclaimer / Aviso de No Afiliacion:**  
+> Este es un proyecto comunitario independiente mantenido por [Edd Vasquez](https://github.com/eddvasquez) y colaboradores. **No es un producto oficial de Google LLC**, ni esta respaldado, patrocinado o afiliado a Google LLC. Google Ads es una marca comercial de Google LLC. Este software se distribuye bajo los terminos de la [Licencia Apache 2.0](LICENSE).
+
+This repository is an **extended community fork** of Google's official [google-ads-mcp](https://github.com/googleads/google-ads-mcp) server. While the upstream official server provides read-only query tools, **Google Ads MCP Extended** adds a robust, safe, and human-in-the-loop editing layer for Search campaigns, budgets, ad groups, responsive search ads (RSAs), positive/negative keywords, and shared negative lists.
+
+---
+
+## What makes Extended different?
+
+1. **Full Search Mutation Suite (12 Extra Tools):** Safely create, update, and manage Search campaigns, ad groups, ads, budgets, keywords, and negative keyword lists.
+2. **Two-Phase Human-in-the-Loop Safety:** Every mutation is first validated against Google Ads (`validate_only=True`) and stored as a structured `PREPARED` proposal with integrity hashes. No live advertising changes are ever made without explicit human confirmation in the client.
+3. **Double-Check Verification:** Automatically verifies post-conditions and GAQL resource state after every applied change to detect desynchronizations or network timeouts.
+4. **Upstream Compatibility:** Preserves 100% backward compatibility with official query tools (`search`, `get_resource_metadata`, `list_accessible_customers`) and tool namespacing configurations.
+5. **Local-First & Credential Reuse:** Connects directly via stdio to existing Google Cloud OAuth Desktop apps or Codex/Antigravity setups without needing remote SaaS hosting.
+
+---
 
 ## Tools
 
@@ -13,10 +30,24 @@ to provide several
 
 ### Tools available
 
+#### Standard Read-Only Tools (Official Upstream)
 - `search`: Retrieves information about the Google Ads account.
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
-- `list_accessible_customers`: Returns ids of customers directly accessible
-  by the user authenticating the call.
+- `list_accessible_customers`: Returns ids of customers directly accessible by the user authenticating the call.
+
+#### Extended Safe Mutation Tools (Community Edition)
+- `prepare_campaign`: Prepares a validated creation, update or status change for a Search campaign.
+- `prepare_budget`: Prepares daily budget creations or updates.
+- `prepare_ad_group`: Prepares ad group creation, CPC bids, and status updates.
+- `prepare_ad`: Prepares Responsive Search Ads (RSAs) with headlines, descriptions, and URLs.
+- `prepare_keywords`: Prepares ad group keyword additions or status updates.
+- `prepare_negative_list`: Prepares shared negative keyword list creation or keyword additions.
+- `list_negative_lists`: Lists negative keyword lists attached to the account or campaigns.
+- `get_negative_list`: Inspects items within a shared negative list.
+- `get_proposal`: Inspects the details, expected changes, and status of a prepared plan.
+- `apply_proposal`: Applies a prepared proposal to Google Ads after explicit human confirmation.
+- `cancel_proposal`: Cancels a prepared proposal.
+- `reconcile_proposal`: Reconciles ambiguous states after network timeouts without re-applying mutations blindly.
 
 ### Configuring and Namespacing Tools
 

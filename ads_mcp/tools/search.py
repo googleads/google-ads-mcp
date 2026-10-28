@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications copyright 2026 Edd Vasquez and contributors.
+# Modified to support Google Ads MCP Extended features (API v25 explicit pinning and extended docstrings).
 
 """Tools for exposing the API Search method to the MCP server."""
 
