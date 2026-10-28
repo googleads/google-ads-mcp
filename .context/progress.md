@@ -14,9 +14,10 @@
 - [x] Ejecutar prueba real de escritura en vivo con autorización del usuario en cuenta 817-686-7605:
   - Creación y verificación de Presupuesto: 15993218572 (4.000 COP, APPLIED y verified en GAQL).
   - Creación y verificación de Campaña Search PAUSED: 24402585279 ([TEST MCP] Campana de Prueba MCP, APPLIED y verified en GAQL).
+- [x] Establecer identidad propia de paquete: google-ads-mcp-extended v0.1.0 y Google Ads MCP Extended (Community Edition).
+- [x] Cumplir formalmente con la Licencia Apache 2.0 (archivo NOTICE, avisos de modificación 4.b, disclaimer de no afiliación).
+- [x] Publicar cambios en GitHub bajo autoría de Edd Vásquez (https://github.com/eddvasquez/google-ads-mcp/tree/codex/search-mutations).
+- [x] Activar ruta de ejecución en la configuración real de Codex (~/.codex/config.toml) apuntando a google-ads-mcp-editing.exe con backup creado.
 
-## Pendiente
-
-- [ ] Activar ruta de ejecución en configuración real de Codex mediante activate-local.ps1 (con backup automático).
-- [ ] Recargar conexión MCP y confirmar disponibilidad en el cliente.
-- [ ] Abrir Pull Request hacia origin/main en GitHub.
+## Estado final
+Servidor extendido completamente integrado, activado localmente y respaldado en la nube.
