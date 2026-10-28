@@ -1320,3 +1320,313 @@ def prepare_high_ticket_negative_shield(
         )
     else:
         raise ValueError("destination_type must be 'SHARED_LIST' or 'CAMPAIGN'")
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_quality_score_triad(
+    customer_id: str,
+    days: int = 30,
+    min_impressions: int = 5,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit the Google Ads Quality Score Triad (Expected CTR, Ad Relevance, Landing Page Experience).
+
+    Diagnoses why campaigns suffer from Ad Rank penalties (Rank Lost IS) and reveals keywords
+    where post-click landing page friction or weak message match is artificially inflating CPCs.
+    """
+    days = min(max(int(days), 1), 90)
+    fields = [
+        "ad_group_criterion.keyword.text",
+        "ad_group_criterion.keyword.match_type",
+        "ad_group_criterion.quality_info.quality_score",
+        "ad_group_criterion.quality_info.creative_quality_score",
+        "ad_group_criterion.quality_info.post_click_quality_score",
+        "ad_group_criterion.quality_info.search_predicted_ctr",
+        "campaign.name",
+        "ad_group.name",
+        "metrics.cost_micros",
+        "metrics.impressions",
+        "metrics.clicks",
+        "metrics.conversions",
+    ]
+    where_clause = (
+        f"ad_group_criterion.status = 'ENABLED' "
+        f"AND ad_group_criterion.negative = FALSE "
+        f"AND metrics.impressions >= {min_impressions} "
+        f"AND segments.date DURING LAST_{days}_DAYS"
+    )
+
+    rows = changes.query(
+        customer_id,
+        "keyword_view",
+        fields,
+        where_clause,
+        login_customer_id,
+        limit=150,
+    )
+
+    penalized_keywords = []
+    landing_page_issues = []
+    creative_relevance_issues = []
+
+    for r in rows:
+        kw_text = str(r.get("ad_group_criterion.keyword.text", ""))
+        qs = int(r.get("ad_group_criterion.quality_info.quality_score", 0))
+        creative_qs = str(
+            r.get(
+                "ad_group_criterion.quality_info.creative_quality_score",
+                "UNSPECIFIED",
+            )
+        )
+        post_click_qs = str(
+            r.get(
+                "ad_group_criterion.quality_info.post_click_quality_score",
+                "UNSPECIFIED",
+            )
+        )
+        exp_ctr = str(
+            r.get(
+                "ad_group_criterion.quality_info.search_predicted_ctr",
+                "UNSPECIFIED",
+            )
+        )
+        cost = int(r.get("metrics.cost_micros", 0))
+        impr = int(r.get("metrics.impressions", 0))
+        clicks = int(r.get("metrics.clicks", 0))
+
+        item = {
+            "keyword": kw_text,
+            "quality_score": qs,
+            "ad_relevance": creative_qs,
+            "landing_page_experience": post_click_qs,
+            "expected_ctr": exp_ctr,
+            "cost": str(Decimal(cost) / 1_000_000),
+            "impressions": impr,
+            "clicks": clicks,
+            "campaign": r.get("campaign.name"),
+            "ad_group": r.get("ad_group.name"),
+        }
+
+        if post_click_qs == "BELOW_AVERAGE":
+            landing_page_issues.append(item)
+        if creative_qs == "BELOW_AVERAGE":
+            creative_relevance_issues.append(item)
+        if qs > 0 and qs < 6:
+            penalized_keywords.append(item)
+
+    penalized_keywords.sort(key=lambda x: Decimal(x["cost"]), reverse=True)
+
+    recommendations = []
+    if landing_page_issues:
+        recommendations.append(
+            f"Se detectaron {len(landing_page_issues)} keywords con experiencia de Landing Page 'BELOW_AVERAGE'. "
+            "Alinear el titular de la landing page con la promesa del anuncio (Message Match) para reducir el CPC de castigo."
+        )
+    if creative_relevance_issues:
+        recommendations.append(
+            f"Se detectaron {len(creative_relevance_issues)} keywords con relevancia de anuncio 'BELOW_AVERAGE'. "
+            "Incluir estas palabras clave exactas en los titulares y descripciones del RSA correspondiente."
+        )
+
+    return {
+        "customer_id": customer_id,
+        "analyzed_days": days,
+        "total_active_keywords_analyzed": len(rows),
+        "penalized_keywords_count": len(penalized_keywords),
+        "penalized_keywords": penalized_keywords[:15],
+        "landing_page_friction_count": len(landing_page_issues),
+        "creative_relevance_friction_count": len(creative_relevance_issues),
+        "recommendations": recommendations
+        or [
+            "Calidad de subasta y experiencia post-clic en niveles saludables."
+        ],
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_lead_dropoff(
+    customer_id: str,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit funnel drop-off from Ad Clicks -> Landing Page Visits -> Qualified Contacts (WhatsApp/Calls).
+
+    Diagnoses where prospects are dropping out in the desanonimization journey
+    to isolate whether conversion bottlenecks are caused by traffic or by landing page friction.
+    """
+    days = min(max(int(days), 1), 90)
+    where_clause = f"segments.date DURING LAST_{days}_DAYS"
+
+    # Campaign metrics: Clicks, Cost, Impressions
+    camp_fields = [
+        "campaign.id",
+        "campaign.name",
+        "metrics.impressions",
+        "metrics.clicks",
+        "metrics.cost_micros",
+        "metrics.conversions",
+    ]
+    camp_rows = changes.query(
+        customer_id,
+        "campaign",
+        camp_fields,
+        f"campaign.status != 'REMOVED' AND {where_clause}",
+        login_customer_id,
+        limit=50,
+    )
+
+    # Conversion action segmented metrics
+    conv_fields = [
+        "segments.conversion_action_name",
+        "segments.conversion_action_category",
+        "metrics.conversions",
+        "metrics.all_conversions",
+    ]
+    conv_rows = changes.query(
+        customer_id,
+        "campaign",
+        conv_fields,
+        f"campaign.status != 'REMOVED' AND {where_clause}",
+        login_customer_id,
+        limit=200,
+    )
+
+    total_clicks = sum(int(r.get("metrics.clicks", 0)) for r in camp_rows)
+    total_cost_micros = sum(
+        int(r.get("metrics.cost_micros", 0)) for r in camp_rows
+    )
+    total_impr = sum(int(r.get("metrics.impressions", 0)) for r in camp_rows)
+
+    whatsapp_leads = 0.0
+    phone_leads = 0.0
+    page_views = 0.0
+
+    for cr in conv_rows:
+        aname = str(cr.get("segments.conversion_action_name", "")).lower()
+        conv = float(cr.get("metrics.conversions", 0.0))
+        all_conv = float(cr.get("metrics.all_conversions", 0.0))
+
+        if "whatsapp" in aname:
+            whatsapp_leads += conv if conv > 0 else all_conv
+        elif "tel" in aname or "llama" in aname:
+            phone_leads += conv if conv > 0 else all_conv
+        elif "landing" in aname or "visit" in aname or "page" in aname:
+            page_views += all_conv
+
+    total_contacts = whatsapp_leads + phone_leads
+    ctr_pct = (
+        round((total_clicks / total_impr) * 100, 2) if total_impr > 0 else 0.0
+    )
+    click_to_contact_rate = (
+        round((total_contacts / total_clicks) * 100, 2)
+        if total_clicks > 0
+        else 0.0
+    )
+    cpc = (
+        Decimal(total_cost_micros) / Decimal(str(total_clicks)) / 1_000_000
+        if total_clicks > 0
+        else Decimal(0)
+    )
+    cpa_contact = (
+        Decimal(total_cost_micros) / Decimal(str(total_contacts)) / 1_000_000
+        if total_contacts > 0
+        else Decimal(0)
+    )
+
+    verdict = "Flujo de conversión equilibrado."
+    if total_clicks >= 50 and click_to_contact_rate < 3.0:
+        verdict = (
+            f"Fricción severa en Landing Page: Tasa de conversión clic-a-contacto de solo {click_to_contact_rate}%. "
+            "El tráfico llega pero no inicia contacto. Simplificar el botón de WhatsApp y colocar el CTA principal visible sin hacer scroll (Above the Fold)."
+        )
+    elif click_to_contact_rate >= 8.0:
+        verdict = f"Excelente tasa de desanonimización ({click_to_contact_rate}% de clics convertidos en contactos directos)."
+
+    return {
+        "customer_id": customer_id,
+        "analyzed_days": days,
+        "impressions": total_impr,
+        "ad_clicks": total_clicks,
+        "ad_ctr_pct": ctr_pct,
+        "cpc_average": str(round(cpc, 2)),
+        "whatsapp_contacts": whatsapp_leads,
+        "phone_call_contacts": phone_leads,
+        "total_qualified_contacts": total_contacts,
+        "click_to_contact_conversion_rate_pct": click_to_contact_rate,
+        "cost_per_qualified_contact": str(round(cpa_contact, 2)),
+        "funnel_diagnosis": verdict,
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def calculate_high_ticket_unit_economics(
+    customer_id: str,
+    average_ticket_value: str,
+    target_profit_margin_pct: float = 60.0,
+    estimated_call_close_rate_pct: float = 20.0,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Calculate unit economics: determine Max Allowable CPA per Lead and target Sales Calls based on ticket size.
+
+    Connects ad spend to the bottom line (P&L): calculates how much can be spent per qualified contact
+    without breaking profitability margins, and determines current Real vs. Target CAC.
+    """
+    ticket = Decimal(str(average_ticket_value))
+    margin_pct = Decimal(str(target_profit_margin_pct)) / Decimal("100")
+    close_rate = Decimal(str(estimated_call_close_rate_pct)) / Decimal("100")
+
+    if close_rate <= 0:
+        raise ValueError(
+            "estimated_call_close_rate_pct must be greater than 0."
+        )
+
+    # Max CAC allowable
+    max_allowable_cac = ticket * (Decimal("1") - margin_pct)
+    # Max Allowable CPA per Lead/Conversation = Max CAC * Close Rate
+    max_allowable_cpa_lead = max_allowable_cac * close_rate
+
+    # Pull real account spend & contacts
+    dropoff = audit_lead_dropoff(
+        customer_id, days=days, login_customer_id=login_customer_id
+    )
+    contacts = Decimal(str(dropoff["total_qualified_contacts"]))
+    real_cpa_lead = (
+        Decimal(str(dropoff["cost_per_qualified_contact"]))
+        if contacts > 0
+        else Decimal(0)
+    )
+
+    # Unit economics viability
+    is_profitable = (
+        real_cpa_lead <= max_allowable_cpa_lead if real_cpa_lead > 0 else True
+    )
+
+    if real_cpa_lead == 0:
+        status = "NO_DATA"
+        guidance = "No se registraron contactos calificados suficientes en el periodo para evaluar el CPA real."
+    elif is_profitable:
+        status = "HIGHLY_PROFITABLE"
+        guidance = (
+            f"Economía unitaria sólida: Tu CPA real por contacto ({real_cpa_lead}) está por debajo "
+            f"del CPA máximo permitido ({round(max_allowable_cpa_lead, 2)}). La cuenta tiene margen para escalar presupuesto."
+        )
+    else:
+        status = "UNIT_ECONOMICS_BROKEN"
+        guidance = (
+            f"Alerta de P&L: Tu CPA real por contacto ({real_cpa_lead}) supera el límite rentable "
+            f"({round(max_allowable_cpa_lead, 2)}). Para recuperar rentabilidad debes: 1) Elevar la tasa de cierre en llamadas de venta, "
+            "2) Subir el ticket promedio de la oferta, o 3) Eliminar términos con fuga usando prepare_mined_negatives."
+        )
+
+    return {
+        "customer_id": customer_id,
+        "average_ticket": str(ticket),
+        "target_profit_margin_pct": target_profit_margin_pct,
+        "call_close_rate_pct": estimated_call_close_rate_pct,
+        "max_allowable_cac_customer": str(round(max_allowable_cac, 2)),
+        "max_allowable_cpa_per_contact": str(round(max_allowable_cpa_lead, 2)),
+        "current_real_cpa_per_contact": str(real_cpa_lead),
+        "unit_economics_status": status,
+        "strategic_guidance": guidance,
+    }
