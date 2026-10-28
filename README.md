@@ -11,13 +11,14 @@ This repository is an **extended community fork** of Google's official [google-a
 
 ---
 
-## What makes Extended different?
+## What makes Extended different? (27 Tools Total)
 
-1. **Full Search Mutation Suite (12 Extra Tools):** Safely create, update, and manage Search campaigns, ad groups, ads, budgets, keywords, and negative keyword lists.
-2. **Two-Phase Human-in-the-Loop Safety:** Every mutation is first validated against Google Ads (`validate_only=True`) and stored as a structured `PREPARED` proposal with integrity hashes. No live advertising changes are ever made without explicit human confirmation in the client.
-3. **Double-Check Verification:** Automatically verifies post-conditions and GAQL resource state after every applied change to detect desynchronizations or network timeouts.
-4. **Upstream Compatibility:** Preserves 100% backward compatibility with official query tools (`search`, `get_resource_metadata`, `list_accessible_customers`) and tool namespacing configurations.
-5. **Local-First & Credential Reuse:** Connects directly via stdio to existing Google Cloud OAuth Desktop apps or Codex/Antigravity setups without needing remote SaaS hosting.
+1. **Full Search Mutation Suite (12 Tools):** Safely create, update, and manage Search campaigns, ad groups, ads, budgets, keywords, and shared negative lists.
+2. **Media Buyer Intelligence Suite (12 Tools):** Purpose-built analytics for high-level media buyers, including real search query bleeders detection, auction bottleneck diagnosis (Lost to Budget vs. Lost to Rank), device breakdowns, and budget pacing.
+3. **The Interlude Strategic Engine:** Native frameworks to classify Transactional vs. Informational intent leaks, enforce anti-cliché copy hygiene on RSAs, and inject pre-curated Universal Negative Shields against non-paying traffic.
+4. **Two-Phase Human-in-the-Loop Safety:** Every mutation is first Google-validated (`validate_only=True`) and stored as a structured `PREPARED` proposal with integrity hashes. Zero live advertising changes occur without explicit human confirmation in the client.
+5. **Double-Check Verification:** Automatically validates post-conditions and GAQL resource state after every applied change to detect desynchronizations or network timeouts.
+6. **Upstream Compatibility & Local-First:** 100% backward compatible with official query tools (`search`, `get_resource_metadata`, `list_accessible_customers`) connecting directly via stdio without remote SaaS hosting.
 
 ---
 
