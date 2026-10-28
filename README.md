@@ -15,7 +15,7 @@ This repository is an **extended community fork** of Google's official [google-a
 
 1. **Full Search Mutation Suite (12 Tools):** Safely create, update, and manage Search campaigns, ad groups, ads, budgets, keywords, and shared negative lists.
 2. **Media Buyer Intelligence Suite (12 Tools):** Purpose-built analytics for high-level media buyers, including real search query bleeders detection, auction bottleneck diagnosis (Lost to Budget vs. Lost to Rank), device breakdowns, and budget pacing.
-3. **The Interlude Strategic Engine:** Native frameworks to classify Transactional vs. Informational intent leaks, enforce anti-cliché copy hygiene on RSAs, and inject pre-curated Universal Negative Shields against non-paying traffic.
+3. **High-Ticket & Unit Economics Engine:** Native frameworks to classify Transactional vs. Informational intent leaks, enforce anti-cliché Direct Response copy hygiene on RSAs, and inject pre-curated Universal Negative Shields against non-paying traffic.
 4. **Two-Phase Human-in-the-Loop Safety:** Every mutation is first Google-validated (`validate_only=True`) and stored as a structured `PREPARED` proposal with integrity hashes. Zero live advertising changes occur without explicit human confirmation in the client.
 5. **Double-Check Verification:** Automatically validates post-conditions and GAQL resource state after every applied change to detect desynchronizations or network timeouts.
 6. **Upstream Compatibility & Local-First:** 100% backward compatible with official query tools (`search`, `get_resource_metadata`, `list_accessible_customers`) connecting directly via stdio without remote SaaS hosting.
@@ -44,9 +44,9 @@ to provide several
 - `intelligence_audit_campaign_assets`: Audits ad asset / extension coverage (sitelinks, callouts, structured snippets) to diagnose and fix Ad Rank penalties.
 - `intelligence_audit_creative_fatigue`: Audits RSA headlines and descriptions by Google performance labels (LOW vs. BEST) to optimize ad strength.
 - `intelligence_audit_conversion_health`: Audits primary vs. secondary conversion actions and alerts on orphan primary goals without recent firing.
-- `intelligence_audit_copy_persuasion`: Evaluates RSA headlines/descriptions under the Interlude framework, detecting generic clichés and verifying ICP pain/hooks.
+- `intelligence_audit_copy_persuasion`: Evaluates RSA headlines/descriptions under the Direct Response framework, detecting generic clichés and verifying ICP pain/hooks.
 - `intelligence_classify_intent_funnel`: Classifies real search query spend into Transactional (High Intent) vs. Informational (Low Intent / Waste) to protect unit economics.
-- `intelligence_prepare_interlude_negative_shield`: 1-step injection of the Interlude Universal Negative Shield (45+ pre-curated high-friction negative keywords) to block non-paying traffic.
+- `intelligence_prepare_high_ticket_negative_shield`: 1-step injection of the High-Ticket Universal Negative Shield (45+ pre-curated high-friction negative keywords) to block non-paying traffic.
 - `intelligence_analyze_impression_share`: Diagnoses auction bottlenecks (Search Impression Share, lost to budget vs. lost to rank) to provide explicit scaling recommendations.
 - `intelligence_check_account_health`: Instantly flags budget-constrained campaigns and responsive search ads (RSAs) with poor or average Ad Strength.
 

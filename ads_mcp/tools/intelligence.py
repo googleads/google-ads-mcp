@@ -979,7 +979,7 @@ def audit_copy_persuasion(
     campaign_id: str | None = None,
     login_customer_id: str | None = None,
 ) -> dict:
-    """Audit RSA copy elements under the Interlude framework: identify weak clichés and evaluate ICP pain/hooks.
+    """Audit RSA copy elements under the Direct Response & ICP Qualification framework: identify weak clichés and evaluate ICP pain/hooks.
 
     Scans active responsive search ad headlines and descriptions, detecting prohibited generic
     clichés ('los mejores', 'económico', 'solución integral', 'calidad garantizada') and scoring
@@ -1063,7 +1063,7 @@ def audit_copy_persuasion(
     # Persuasion verdict
     has_cliches = len(detected_cliches) > 0
     verdict = (
-        f"Se detectaron {len(detected_cliches)} copys con lugares comunes o clichés genéricos prohibidos por la metodología Interlude. "
+        f"Se detectaron {len(detected_cliches)} copys con lugares comunes o clichés genéricos prohibidos por los principios de Respuesta Directa. "
         "El anuncio es el filtro: los titulares genéricos atraen curiosos sin intención de pago. Reemplazarlos por copys anclados al dolor del ICP y con mecanismo único."
         if has_cliches
         else "Excelente higiene de copy: no se detectaron clichés genéricos prohibidos en la muestra analizada."
@@ -1076,7 +1076,7 @@ def audit_copy_persuasion(
         "unique_descriptions_count": len(unique_descriptions),
         "cliches_detected_count": len(detected_cliches),
         "cliches_detected": detected_cliches[:15],
-        "interlude_verdict": verdict,
+        "strategic_verdict": verdict,
         "framework_rules": [
             "1. El anuncio es el primer filtro: repele a los no cualificados antes del clic.",
             "2. Prohibido usar clichés vacíos ('los mejores', 'solución integral').",
@@ -1215,7 +1215,7 @@ def classify_intent_funnel(
     diagnosis = "INTENT_OPTIMAL"
     if info_pct >= 25.0:
         diagnosis = "INFORMATIONAL_LEAK"
-        verdict = f"Alerta Interlude: El {info_pct}% del gasto se está fugando en búsquedas informativas ('cómo', 'qué es', 'gratis') que rara vez convierten en llamadas de alto valor. Se sugiere excluir estos términos con prepare_mined_negatives."
+        verdict = f"Alerta Estratégica High-Ticket: El {info_pct}% del gasto se está fugando en búsquedas informativas ('cómo', 'qué es', 'gratis') que rara vez convierten en llamadas de alto valor. Se sugiere excluir estos términos con prepare_mined_negatives."
     else:
         verdict = f"Tráfico enfocado principalmente en términos comerciales y transaccionales ({trans_pct}% transaccional directo)."
 
@@ -1230,20 +1230,20 @@ def classify_intent_funnel(
         "informational_spend_pct": info_pct,
         "informational_conversions": info_conv,
         "intent_diagnosis": diagnosis,
-        "interlude_verdict": verdict,
+        "strategic_verdict": verdict,
         "top_informational_leaks": sample_info_queries[:10],
         "top_transactional_winners": sample_trans_queries[:10],
     }
 
 
 @intelligence_mcp.tool(annotations=READ)
-def prepare_interlude_negative_shield(
+def prepare_high_ticket_negative_shield(
     customer_id: str,
     destination_type: Literal["SHARED_LIST", "CAMPAIGN"],
     destination_id: str,
     login_customer_id: str | None = None,
 ) -> dict:
-    """Inject the pre-curated Interlude Universal Negative Shield to block low-ticket curiosities.
+    """Inject the pre-curated High-Ticket Universal Negative Shield to block low-ticket curiosities.
 
     Injects a master list of 45+ high-friction commercial negative keywords (gratis, barato,
     pdf, curso, como hacer, diy, empleo, sueldo, reclamos, plantilla) in 1 step via validate_only.
