@@ -34,8 +34,11 @@ async def main():
                 "intelligence_audit_campaign_assets",
                 "intelligence_audit_creative_fatigue",
                 "intelligence_audit_conversion_health",
+                "intelligence_audit_copy_persuasion",
+                "intelligence_classify_intent_funnel",
+                "intelligence_prepare_interlude_negative_shield",
             } <= names
-            assert len(names) == 24, names
+            assert len(names) == 27, names
             print(f"LOCAL_STDIO_CATALOG_OK: {len(names)} tools; no API calls")
 
 

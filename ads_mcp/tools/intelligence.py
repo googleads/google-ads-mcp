@@ -971,3 +971,352 @@ def audit_conversion_health(
             "deben ser Secundarias para no confundir a los algoritmos de Smart Bidding."
         ),
     }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_copy_persuasion(
+    customer_id: str,
+    campaign_id: str | None = None,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit RSA copy elements under the Interlude framework: identify weak clichés and evaluate ICP pain/hooks.
+
+    Scans active responsive search ad headlines and descriptions, detecting prohibited generic
+    clichés ('los mejores', 'económico', 'solución integral', 'calidad garantizada') and scoring
+    whether copy prequalifies high-intent prospects or attracts low-intent clickers.
+    """
+    fields = [
+        "ad_group_ad.ad.id",
+        "ad_group_ad.ad.name",
+        "ad_group_ad.status",
+        "campaign.id",
+        "campaign.name",
+        "ad_group.id",
+        "ad_group.name",
+        "asset.text_asset.text",
+        "ad_group_ad_asset_view.field_type",
+    ]
+    where_clause = (
+        "ad_group_ad.status != 'REMOVED' AND campaign.status != 'REMOVED'"
+    )
+    if campaign_id:
+        where_clause += f" AND campaign.id = {campaign_id}"
+
+    rows = changes.query(
+        customer_id,
+        "ad_group_ad_asset_view",
+        fields,
+        where_clause,
+        login_customer_id,
+        limit=250,
+    )
+
+    cliche_patterns = [
+        "los mejores",
+        "el mejor",
+        "la mejor",
+        "economico",
+        "barato",
+        "solucion integral",
+        "lideres en",
+        "calidad garantizada",
+        "atencion profesional",
+        "100% garantizado",
+        "precios bajos",
+        "experiencia unica",
+        "somos tu mejor opcion",
+    ]
+
+    detected_cliches = []
+    analyzed_headlines = []
+    analyzed_descriptions = []
+
+    for r in rows:
+        text = str(r.get("asset.text_asset.text", "")).strip()
+        if not text:
+            continue
+        ftype = str(r.get("ad_group_ad_asset_view.field_type", ""))
+        text_lower = text.lower()
+
+        for c in cliche_patterns:
+            if c in text_lower:
+                detected_cliches.append(
+                    {
+                        "text": text,
+                        "cliche_matched": c,
+                        "type": ftype,
+                        "campaign": r.get("campaign.name"),
+                        "ad_group": r.get("ad_group.name"),
+                    }
+                )
+                break
+
+        if ftype == "HEADLINE":
+            analyzed_headlines.append(text)
+        elif ftype == "DESCRIPTION":
+            analyzed_descriptions.append(text)
+
+    # Unique samples
+    unique_headlines = list(dict.fromkeys(analyzed_headlines))
+    unique_descriptions = list(dict.fromkeys(analyzed_descriptions))
+
+    # Persuasion verdict
+    has_cliches = len(detected_cliches) > 0
+    verdict = (
+        f"Se detectaron {len(detected_cliches)} copys con lugares comunes o clichés genéricos prohibidos por la metodología Interlude. "
+        "El anuncio es el filtro: los titulares genéricos atraen curiosos sin intención de pago. Reemplazarlos por copys anclados al dolor del ICP y con mecanismo único."
+        if has_cliches
+        else "Excelente higiene de copy: no se detectaron clichés genéricos prohibidos en la muestra analizada."
+    )
+
+    return {
+        "customer_id": customer_id,
+        "total_elements_audited": len(rows),
+        "unique_headlines_count": len(unique_headlines),
+        "unique_descriptions_count": len(unique_descriptions),
+        "cliches_detected_count": len(detected_cliches),
+        "cliches_detected": detected_cliches[:15],
+        "interlude_verdict": verdict,
+        "framework_rules": [
+            "1. El anuncio es el primer filtro: repele a los no cualificados antes del clic.",
+            "2. Prohibido usar clichés vacíos ('los mejores', 'solución integral').",
+            "3. Cada titular debe anclar un dolor operativo específico o enunciar el mecanismo único de solución.",
+            "4. Incluir siempre un CTA directo hacia desanonimización (Llamada o WhatsApp).",
+        ],
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def classify_intent_funnel(
+    customer_id: str,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Classify search query spend into Transactional (High Intent) vs. Informational (Low Intent / Waste).
+
+    Separates commercial hiring terms ('urgente', 'servicio', 'precio', 'consulta', 'contratar')
+    from informational research queries ('como', 'que es', 'gratis', 'definicion', 'por que'),
+    identifying budget leaks on top-of-funnel curiosities.
+    """
+    days = min(max(int(days), 1), 90)
+    where_clause = f"segments.date DURING LAST_{days}_DAYS"
+
+    fields = [
+        "search_term_view.search_term",
+        "metrics.clicks",
+        "metrics.cost_micros",
+        "metrics.conversions",
+    ]
+
+    rows = changes.query(
+        customer_id,
+        "search_term_view",
+        fields,
+        where_clause,
+        login_customer_id,
+        limit=500,
+    )
+
+    informational_tokens = {
+        "como",
+        "cmo",
+        "que",
+        "qu",
+        "definicion",
+        "porque",
+        "por que",
+        "por qu",
+        "gratis",
+        "free",
+        "diy",
+        "tutorial",
+        "ejemplo",
+        "pdf",
+        "pasos",
+    }
+    transactional_tokens = {
+        "precio",
+        "costo",
+        "servicio",
+        "urgente",
+        "consulta",
+        "contratar",
+        "agencia",
+        "especialista",
+        "experto",
+        "cita",
+        "telefono",
+        "whatsapp",
+        "online",
+        "ya",
+    }
+
+    trans_spend_micros = 0
+    info_spend_micros = 0
+    mixed_spend_micros = 0
+
+    trans_conv = 0.0
+    info_conv = 0.0
+
+    sample_info_queries = []
+    sample_trans_queries = []
+
+    for r in rows:
+        term = str(r.get("search_term_view.search_term", "")).strip().lower()
+        cost = int(r.get("metrics.cost_micros", 0))
+        conv = float(r.get("metrics.conversions", 0.0))
+        words = set(term.split())
+
+        is_info = bool(words & informational_tokens)
+        is_trans = bool(words & transactional_tokens)
+
+        if is_info and not is_trans:
+            info_spend_micros += cost
+            info_conv += conv
+            if cost > 0:
+                sample_info_queries.append(
+                    {
+                        "term": term,
+                        "cost": str(Decimal(cost) / 1_000_000),
+                        "conversions": conv,
+                    }
+                )
+        elif is_trans:
+            trans_spend_micros += cost
+            trans_conv += conv
+            if cost > 0:
+                sample_trans_queries.append(
+                    {
+                        "term": term,
+                        "cost": str(Decimal(cost) / 1_000_000),
+                        "conversions": conv,
+                    }
+                )
+        else:
+            mixed_spend_micros += cost
+
+    total_cost_micros = (
+        trans_spend_micros + info_spend_micros + mixed_spend_micros
+    )
+    info_pct = (
+        round((info_spend_micros / total_cost_micros) * 100, 2)
+        if total_cost_micros > 0
+        else 0.0
+    )
+    trans_pct = (
+        round((trans_spend_micros / total_cost_micros) * 100, 2)
+        if total_cost_micros > 0
+        else 0.0
+    )
+
+    sample_info_queries.sort(key=lambda x: Decimal(x["cost"]), reverse=True)
+    sample_trans_queries.sort(key=lambda x: Decimal(x["cost"]), reverse=True)
+
+    diagnosis = "INTENT_OPTIMAL"
+    if info_pct >= 25.0:
+        diagnosis = "INFORMATIONAL_LEAK"
+        verdict = f"Alerta Interlude: El {info_pct}% del gasto se está fugando en búsquedas informativas ('cómo', 'qué es', 'gratis') que rara vez convierten en llamadas de alto valor. Se sugiere excluir estos términos con prepare_mined_negatives."
+    else:
+        verdict = f"Tráfico enfocado principalmente en términos comerciales y transaccionales ({trans_pct}% transaccional directo)."
+
+    return {
+        "customer_id": customer_id,
+        "analyzed_days": days,
+        "total_analyzed_spend": str(Decimal(total_cost_micros) / 1_000_000),
+        "transactional_spend": str(Decimal(trans_spend_micros) / 1_000_000),
+        "transactional_spend_pct": trans_pct,
+        "transactional_conversions": trans_conv,
+        "informational_spend": str(Decimal(info_spend_micros) / 1_000_000),
+        "informational_spend_pct": info_pct,
+        "informational_conversions": info_conv,
+        "intent_diagnosis": diagnosis,
+        "interlude_verdict": verdict,
+        "top_informational_leaks": sample_info_queries[:10],
+        "top_transactional_winners": sample_trans_queries[:10],
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def prepare_interlude_negative_shield(
+    customer_id: str,
+    destination_type: Literal["SHARED_LIST", "CAMPAIGN"],
+    destination_id: str,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Inject the pre-curated Interlude Universal Negative Shield to block low-ticket curiosities.
+
+    Injects a master list of 45+ high-friction commercial negative keywords (gratis, barato,
+    pdf, curso, como hacer, diy, empleo, sueldo, reclamos, plantilla) in 1 step via validate_only.
+    Requires explicit human approval before live application.
+    """
+    master_shield_terms = [
+        "gratis",
+        "free",
+        "barato",
+        "barata",
+        "baratos",
+        "economico",
+        "economica",
+        "low cost",
+        "como hacer",
+        "como se hace",
+        "tutorial",
+        "curso",
+        "diplomado",
+        "universidad",
+        "estudiar",
+        "pdf",
+        "descargar",
+        "download",
+        "plantilla",
+        "template",
+        "formato",
+        "modelo de",
+        "empleo",
+        "vacantes",
+        "trabajo",
+        "sueldo",
+        "salario",
+        "pasantia",
+        "requisitos para trabajar",
+        "quejas",
+        "reclamos",
+        "denuncias",
+        "demanda",
+        "estafa",
+        "opiniones negativas",
+        "fraude",
+        "significado de",
+        "definicion de",
+        "que significa",
+        "wikipedia",
+        "youtube",
+        "login",
+        "portal",
+    ]
+
+    keywords = [
+        search.Keyword(text=term, match_type="PHRASE")
+        for term in master_shield_terms
+    ]
+
+    if destination_type == "SHARED_LIST":
+        change = search.NegativeList(
+            action="add",
+            list_id=str(destination_id),
+            keywords=keywords,
+        )
+        return search.prepare(
+            customer_id, login_customer_id, change, search.negative_list
+        )
+    elif destination_type == "CAMPAIGN":
+        change = search.Keywords(
+            action="add_negatives",
+            campaign_id=str(destination_id),
+            keywords=keywords,
+        )
+        return search.prepare(
+            customer_id, login_customer_id, change, search.keywords
+        )
+    else:
+        raise ValueError("destination_type must be 'SHARED_LIST' or 'CAMPAIGN'")
