@@ -113,6 +113,9 @@ def _get_googleads_client(
     args = {
         "credentials": _create_credentials(),
         "use_proto_plus": True,
+        # Match the v25 resource imports above; SDK upgrades must not silently
+        # switch endpoints before that API version is available to the caller.
+        "version": "v25",
     }
 
     # If the developer-token is not set, avoid setting None.

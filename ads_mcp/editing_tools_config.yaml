@@ -1,0 +1,5 @@
+namespaces:
+  customers: true
+  search: true
+  metadata: true
+  editing: true

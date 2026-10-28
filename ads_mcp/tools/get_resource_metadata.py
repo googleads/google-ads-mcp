@@ -14,7 +14,8 @@
 
 """Tools for fetching metadata for Google Ads resources."""
 
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
+from pydantic import Field
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
@@ -24,8 +25,18 @@ metadata_mcp = FastMCP("metadata")
 
 @metadata_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_resource_metadata(
-    resource_name: str,
-    login_customer_id: str | int | None = None,
+    resource_name: Annotated[
+        str,
+        Field(
+            description="The name of the Google Ads resource (e.g., 'campaign', 'ad_group')."
+        ),
+    ],
+    login_customer_id: Annotated[
+        str | int | None,
+        Field(
+            description="Optional manager customer ID to use as the login-customer-id header."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource,
     including compatible metrics and segments.

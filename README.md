@@ -494,6 +494,12 @@ be simpler.
 How many active campaigns do I have for customer id 1234567890
 ```
 
+## Optional Search editing in this fork
+
+See [Search editing extensions](docs/extensions.md) for opt-in tools,
+proposal validation and approval, local installation, tests and provenance.
+The default tool profile remains compatible with the upstream read-only server.
+
 ## Contributing
 
 Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).
