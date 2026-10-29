@@ -1588,7 +1588,7 @@ def calculate_high_ticket_unit_economics(
 
     # Pull real account spend & contacts
     dropoff = audit_lead_dropoff(
-        customer_id, days=days, login_customer_id=login_customer_id
+        customer_id, days=days, login=login_customer_id
     )
     contacts = Decimal(str(dropoff["total_qualified_contacts"]))
     real_cpa_lead = (
@@ -1628,5 +1628,427 @@ def calculate_high_ticket_unit_economics(
         "max_allowable_cpa_per_contact": str(round(max_allowable_cpa_lead, 2)),
         "current_real_cpa_per_contact": str(real_cpa_lead),
         "unit_economics_status": status,
+        "strategic_guidance": guidance,
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_shared_negative_governance(
+    customer_id: str,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit shared negative keyword lists (shared sets) and campaign coverage.
+
+    Detects orphaned lists (reference_count == 0) that harbor thousands of unused negative
+    keywords, and flags active campaigns that lack shared negative protection.
+    """
+    cid = changes.customer(customer_id)
+    login = changes.customer(login_customer_id) if login_customer_id else None
+
+    # 1. Query shared sets of type NEGATIVE_KEYWORDS
+    set_fields = [
+        "shared_set.id",
+        "shared_set.name",
+        "shared_set.type",
+        "shared_set.member_count",
+        "shared_set.reference_count",
+    ]
+    shared_rows = changes.query(
+        cid,
+        "shared_set",
+        set_fields,
+        where="shared_set.type = " + repr("NEGATIVE_KEYWORDS"),
+        login=login,
+    )
+
+    orphaned_lists = []
+    active_shared_lists = []
+    total_dormant_terms = 0
+
+    for r in shared_rows:
+        set_id = str(r.get("shared_set.id", ""))
+        name = str(r.get("shared_set.name", ""))
+        members = int(r.get("shared_set.member_count", 0))
+        refs = int(r.get("shared_set.reference_count", 0))
+
+        item = {
+            "list_id": set_id,
+            "name": name,
+            "member_count": members,
+            "reference_count": refs,
+        }
+
+        if refs == 0:
+            item["status"] = "ORPHANED_INACTIVE"
+            orphaned_lists.append(item)
+            total_dormant_terms += members
+        else:
+            item["status"] = "ATTACHED_ACTIVE"
+            active_shared_lists.append(item)
+
+    # 2. Query active campaigns to check their attached negative lists
+    camp_fields = [
+        "campaign.id",
+        "campaign.name",
+        "campaign.status",
+    ]
+    camp_rows = changes.query(
+        cid,
+        "campaign",
+        camp_fields,
+        where="campaign.status = " + repr("ENABLED"),
+        login=login,
+    )
+
+    # 3. Query campaign_shared_set attachments
+    attach_fields = [
+        "campaign_shared_set.campaign",
+        "campaign_shared_set.shared_set",
+        "campaign_shared_set.status",
+    ]
+    try:
+        attach_rows = changes.query(
+            cid,
+            "campaign_shared_set",
+            attach_fields,
+            where="campaign_shared_set.status = " + repr("ENABLED"),
+            login=login,
+        )
+    except Exception:
+        attach_rows = []
+
+    # Map campaigns to attached set IDs
+    camp_attachments: dict[str, list[str]] = {}
+    for att in attach_rows:
+        camp_rn = att.get("campaign_shared_set.campaign", "")
+        set_rn = att.get("campaign_shared_set.shared_set", "")
+        camp_id = camp_rn.split("/")[-1] if "/" in camp_rn else camp_rn
+        set_id = set_rn.split("/")[-1] if "/" in set_rn else set_rn
+        camp_attachments.setdefault(camp_id, []).append(set_id)
+
+    unprotected_campaigns = []
+    for c in camp_rows:
+        c_id = str(c.get("campaign.id", ""))
+        c_name = str(c.get("campaign.name", ""))
+        attached = camp_attachments.get(c_id, [])
+        if not attached:
+            unprotected_campaigns.append(
+                {
+                    "campaign_id": c_id,
+                    "campaign_name": c_name,
+                    "attached_negative_lists_count": 0,
+                    "vulnerability": "HIGH_UNPROTECTED_AGAINST_SHARED_NEGATIVES",
+                }
+            )
+
+    recommendations = []
+    if orphaned_lists:
+        recommendations.append(
+            f"Alerta de Falsa Proteccion: Hay {len(orphaned_lists)} listas de negativas con "
+            f"{total_dormant_terms:,} terminos inactivos (reference_count: 0). "
+            "Usa prepare_negative_list(action='attach') para vincularlas a las campanas activas."
+        )
+    if unprotected_campaigns:
+        recommendations.append(
+            f"Vulnerabilidad de Campana: {len(unprotected_campaigns)} campanas activas no tienen "
+            "ninguna lista de negativas compartida vinculada."
+        )
+    if not recommendations:
+        recommendations.append(
+            "Gobernanza de listas compartidas optima: todas las listas tienen campanas vinculadas."
+        )
+
+    return {
+        "customer_id": customer_id,
+        "total_negative_lists_found": len(shared_rows),
+        "orphaned_negative_lists_count": len(orphaned_lists),
+        "total_dormant_negative_terms": total_dormant_terms,
+        "orphaned_negative_lists": orphaned_lists,
+        "active_shared_lists": active_shared_lists,
+        "unprotected_campaigns_count": len(unprotected_campaigns),
+        "unprotected_campaigns": unprotected_campaigns,
+        "recommendations": recommendations,
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def inspect_negative_list_terms(
+    customer_id: str,
+    list_id: str,
+    search_query: str | None = None,
+    limit: int = 50,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Inspect and filter exact negative keyword terms inside a shared negative list.
+
+    Allows fast searching inside large negative lists (e.g. 2,000+ terms) to verify if
+    specific terms or match types are already blocked without dumping huge payloads.
+    """
+    cid = changes.customer(customer_id)
+    login = changes.customer(login_customer_id) if login_customer_id else None
+    clean_list_id = str(list_id).replace("customers/", "").split("/")[-1]
+    shared_set_rn = f"customers/{cid}/sharedSets/{clean_list_id}"
+
+    fields = [
+        "shared_criterion.shared_set",
+        "shared_criterion.criterion_id",
+        "shared_criterion.keyword.text",
+        "shared_criterion.keyword.match_type",
+    ]
+    where_clause = f"shared_criterion.shared_set = '{shared_set_rn}'"
+
+    rows = changes.query(
+        cid,
+        "shared_criterion",
+        fields,
+        where=where_clause,
+        login=login,
+    )
+
+    total_terms_in_list = len(rows)
+    query_clean = (search_query or "").strip().lower()
+
+    filtered_terms = []
+    for r in rows:
+        kw_text = str(r.get("shared_criterion.keyword.text", ""))
+        match_type = str(r.get("shared_criterion.keyword.match_type", "BROAD"))
+        crit_id = str(r.get("shared_criterion.criterion_id", ""))
+
+        if not query_clean or query_clean in kw_text.lower():
+            filtered_terms.append(
+                {
+                    "criterion_id": crit_id,
+                    "keyword_text": kw_text,
+                    "match_type": match_type,
+                }
+            )
+
+    capped_limit = min(max(int(limit), 1), 200)
+
+    return {
+        "customer_id": customer_id,
+        "list_id": clean_list_id,
+        "total_terms_in_list": total_terms_in_list,
+        "search_filter_applied": search_query if search_query else None,
+        "matching_terms_count": len(filtered_terms),
+        "terms_sample": filtered_terms[:capped_limit],
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_bidding_strategy_readiness(
+    customer_id: str,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit algorithmic bidding maturity and readiness for Smart Bidding (Target CPA / Max Conversions).
+
+    Evaluates monthly conversion volume per campaign against statistical thresholds
+    (30+ conversions for Smart Bidding, <15 for Maximize Clicks with CPC cap) to prevent
+    campaign starvation or wild algorithmic bidding swings.
+    """
+    cid = changes.customer(customer_id)
+    login = changes.customer(login_customer_id) if login_customer_id else None
+    days = min(max(int(days), 7), 90)
+
+    fields = [
+        "campaign.id",
+        "campaign.name",
+        "campaign.status",
+        "campaign.bidding_strategy_type",
+        "campaign.target_cpa.target_cpa_micros",
+        "campaign.maximize_conversions.target_cpa_micros",
+        "metrics.conversions",
+        "metrics.cost_micros",
+        "metrics.cost_per_conversion",
+    ]
+    rows = changes.query(
+        cid,
+        "campaign",
+        fields,
+        where=f"segments.date DURING LAST_{days}_DAYS AND campaign.status = 'ENABLED'",
+        login=login,
+    )
+
+    campaign_evaluations = []
+    premature_smart_bidding_count = 0
+    ready_for_scaling_count = 0
+
+    for r in rows:
+        camp_id = str(r.get("campaign.id", ""))
+        name = str(r.get("campaign.name", ""))
+        strategy = str(r.get("campaign.bidding_strategy_type", "UNKNOWN"))
+        convs = float(r.get("metrics.conversions", 0.0))
+        cost = Decimal(str(r.get("metrics.cost_micros", 0))) / Decimal(
+            1_000_000
+        )
+        cpa = (
+            Decimal(str(r.get("metrics.cost_per_conversion", 0)))
+            / Decimal(1_000_000)
+            if convs > 0
+            else Decimal(0)
+        )
+
+        is_smart_bidding = strategy in (
+            "MAXIMIZE_CONVERSIONS",
+            "MAXIMIZE_CONVERSION_VALUE",
+            "TARGET_CPA",
+            "TARGET_ROAS",
+        )
+
+        if convs < 15:
+            maturity = "LEARNING_TOO_EARLY"
+            if is_smart_bidding:
+                readiness_status = "PREMATURE_SMART_BIDDING"
+                premature_smart_bidding_count += 1
+                guidance = (
+                    f"Riesgo de Estrangulamiento: Campana en {strategy} con solo {convs:.0f} conversiones en {days} dias. "
+                    "El algoritmo carece de muestra estadistica suficiente. Recomendado: Migrar a MAXIMIZE_CLICKS "
+                    "(TARGET_SPEND) con CPC Limite para acumular datos limpios."
+                )
+            else:
+                readiness_status = "APPROPRIATELY_CAPPED"
+                guidance = (
+                    f"Pase de aprendizaje adecuado: Operando en {strategy} con {convs:.0f} conversiones. "
+                    "Mantener hasta alcanzar al menos 15-30 conversiones antes de probar Smart Bidding."
+                )
+        elif 15 <= convs < 30:
+            maturity = "TRANSITION_ZONE"
+            readiness_status = "READY_FOR_MAX_CONVERSIONS_TEST"
+            guidance = (
+                f"Zona de transicion: {convs:.0f} conversiones acumuladas. Califica para probar MAXIMIZE_CONVERSIONS "
+                "sin target estricto de tCPA para medir la elasticidad del volumen."
+            )
+        else:
+            maturity = "SMART_BIDDING_MATURE"
+            ready_for_scaling_count += 1
+            readiness_status = "FULLY_READY_FOR_TARGET_CPA"
+            guidance = (
+                f"Madurez Algoritmica Optima: {convs:.0f} conversiones en {days} dias. Cumple el umbral estadistico "
+                f"(>= 30 conversiones). Puedes activar TARGET_CPA fijandolo en base al CPA historico ({round(cpa, 2)})."
+            )
+
+        campaign_evaluations.append(
+            {
+                "campaign_id": camp_id,
+                "campaign_name": name,
+                "bidding_strategy": strategy,
+                "conversions_in_period": round(convs, 1),
+                "total_spend": str(round(cost, 2)),
+                "cost_per_conversion": str(round(cpa, 2)),
+                "algorithmic_maturity": maturity,
+                "readiness_status": readiness_status,
+                "guidance": guidance,
+            }
+        )
+
+    return {
+        "customer_id": customer_id,
+        "analyzed_days": days,
+        "active_campaigns_analyzed": len(campaign_evaluations),
+        "premature_smart_bidding_alerts": premature_smart_bidding_count,
+        "ready_for_target_cpa_campaigns": ready_for_scaling_count,
+        "campaign_evaluations": campaign_evaluations,
+    }
+
+
+@intelligence_mcp.tool(annotations=READ)
+def audit_lead_to_sale_discrepancy(
+    customer_id: str,
+    real_qualified_calls: int,
+    real_closed_sales: int = 0,
+    days: int = 30,
+    login_customer_id: str | None = None,
+) -> dict:
+    """Audit discrepancy between Google Ads reported conversions and real CRM/sales calls.
+
+    Detects 'Algorithmic Poisoning' where campaigns optimize for low-quality WhatsApp/form clicks
+    that fail to materialize into scheduled calls or paying customers.
+    """
+    cid = changes.customer(customer_id)
+    login = changes.customer(login_customer_id) if login_customer_id else None
+    days = min(max(int(days), 7), 90)
+
+    # 1. Total spend and conversions from campaign level
+    camp_fields = [
+        "metrics.conversions",
+        "metrics.cost_micros",
+    ]
+    rows = changes.query(
+        cid,
+        "campaign",
+        camp_fields,
+        where=f"segments.date DURING LAST_{days}_DAYS AND campaign.status = 'ENABLED'",
+        login=login,
+    )
+
+    total_google_conversions = sum(
+        float(r.get("metrics.conversions", 0.0)) for r in rows
+    )
+    total_spend = sum(
+        Decimal(str(r.get("metrics.cost_micros", 0))) / Decimal(1_000_000)
+        for r in rows
+    )
+
+    qualified_calls = max(int(real_qualified_calls), 0)
+    closed_sales = max(int(real_closed_sales), 0)
+
+    # Lead qualification rate: real calls / google reported conversions
+    qualification_rate_pct = (
+        round((qualified_calls / total_google_conversions) * 100, 2)
+        if total_google_conversions > 0
+        else 0.0
+    )
+
+    # Real Cost Per Qualified Call
+    cpa_qualified_call = (
+        round(total_spend / Decimal(qualified_calls), 2)
+        if qualified_calls > 0
+        else Decimal(0)
+    )
+
+    # Real CAC
+    real_cac = (
+        round(total_spend / Decimal(closed_sales), 2)
+        if closed_sales > 0
+        else Decimal(0)
+    )
+
+    if total_google_conversions == 0:
+        verdict = "NO_CONVERSIONS_RECORDED"
+        guidance = "No se registraron conversiones en Google Ads durante el periodo para auditar discrepancia."
+    elif qualification_rate_pct < 20.0:
+        verdict = "ALGORITHMIC_POISONING"
+        guidance = (
+            f"Alerta Critica de Calificacion ({qualification_rate_pct}%): Solo {qualified_calls} llamadas calificadas de "
+            f"{total_google_conversions:.0f} conversiones reportadas por Google. El algoritmo esta optimizando para clicks "
+            "curiosos sin intencion ni capacidad de pago. Accion obligatoria: Endurecer el filtro en el copy del anuncio, "
+            "anadir preguntas filtro en el formulario/WhatsApp y no enviar eventos de conversion blandos a Google Ads."
+        )
+    elif 20.0 <= qualification_rate_pct < 50.0:
+        verdict = "MODERATE_FRICTION"
+        guidance = (
+            f"Friccion de Calificacion Media ({qualification_rate_pct}%): De cada 10 conversiones reportadas, menos de la mitad "
+            "llegan a llamada calificada. Revisar el Message Match en la landing y la rapidez de respuesta del setter."
+        )
+    else:
+        verdict = "HEALTHY_ACQUISITION_LOOP"
+        guidance = (
+            f"Bucle de Adquisicion Saludable ({qualification_rate_pct}%): Alta coherencia entre las conversiones de Google "
+            "y las llamadas reales en el CRM. Tu CPA real por llamada calificada es de "
+            f"${cpa_qualified_call:,.2f}."
+        )
+
+    return {
+        "customer_id": customer_id,
+        "analyzed_days": days,
+        "total_spend": str(round(total_spend, 2)),
+        "google_reported_conversions": round(total_google_conversions, 1),
+        "real_crm_qualified_calls": qualified_calls,
+        "real_closed_sales": closed_sales,
+        "lead_qualification_rate_pct": qualification_rate_pct,
+        "cpa_per_qualified_call": str(cpa_qualified_call),
+        "real_cac_per_sale": str(real_cac),
+        "discrepancy_verdict": verdict,
         "strategic_guidance": guidance,
     }
