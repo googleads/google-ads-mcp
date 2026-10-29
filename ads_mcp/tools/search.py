@@ -11,10 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications copyright 2026 Edd Vasquez and contributors.
+# Modified to support Google Ads MCP Extended features (API v25 explicit pinning and extended docstrings).
 
 """Tools for exposing the API Search method to the MCP server."""
 
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
+from pydantic import Field
 from fastmcp import FastMCP
 from fastmcp.tools import Tool
 from mcp.types import ToolAnnotations
@@ -27,13 +31,31 @@ from fastmcp.exceptions import ToolError
 
 
 def search(
-    customer_id: str | int,
-    fields: List[str],
-    resource: str,
-    conditions: List[str] = [],
-    orderings: List[str] = [],
-    limit: int | None = None,
-    login_customer_id: str | int | None = None,
+    customer_id: Annotated[
+        str | int, Field(description="The id of the customer")
+    ],
+    fields: Annotated[List[str], Field(description="The fields to fetch")],
+    resource: Annotated[
+        str, Field(description="The resource to return fields from")
+    ],
+    conditions: Annotated[
+        List[str],
+        Field(
+            description="List of conditions to filter the data, combined using AND clauses"
+        ),
+    ] = [],
+    orderings: Annotated[
+        List[str], Field(description="How the data is ordered")
+    ] = [],
+    limit: Annotated[
+        int | None, Field(description="The maximum number of rows to return")
+    ] = None,
+    login_customer_id: Annotated[
+        str | int | None,
+        Field(
+            description="Optional manager customer ID to use as the login-customer-id header."
+        ),
+    ] = None,
 ) -> List[Dict[str, Any]]:
     """Fetches data from the Google Ads API using the search method
 

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications copyright 2026 Edd Vasquez and contributors.
+# Modified to support Google Ads MCP Extended features (API v25 explicit pinning and extended docstrings).
 
 """Tools for exposing simple, core API methods to the MCP server."""
 
@@ -27,7 +30,15 @@ from google.ads.googleads.v25.services.types.customer_service import (
 customers_mcp = FastMCP("customers")
 
 
-@customers_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@customers_mcp.tool(
+    annotations=ToolAnnotations(readOnlyHint=True),
+    description=(
+        "Returns ids of customers directly accessible by the user authenticating the call.\n\n"
+        "Use this tool first to discover available customer IDs if the user hasn't\n"
+        "provided one. Most other tools require a valid customer ID as input.\n\n"
+        "Returns:\n    List[str]: A list of customer IDs."
+    ),
+)
 def list_accessible_customers() -> List[str]:
     """Returns ids of customers directly accessible by the user authenticating the call.
 

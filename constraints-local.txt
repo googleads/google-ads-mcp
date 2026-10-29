@@ -1,0 +1,5 @@
+# Reproducible local environment verified for this extension release.
+# Keep upstream's broad declared dependencies; use this file at installation.
+google-ads==34.0.0
+fastmcp==4.0.6
+mcp==2.3.0

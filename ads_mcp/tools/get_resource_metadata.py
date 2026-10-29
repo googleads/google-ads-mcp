@@ -11,10 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications copyright 2026 Edd Vasquez and contributors.
+# Modified to support Google Ads MCP Extended features (API v25 explicit pinning and extended docstrings).
 
 """Tools for fetching metadata for Google Ads resources."""
 
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
+from pydantic import Field
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import ads_mcp.utils as utils
@@ -24,8 +28,18 @@ metadata_mcp = FastMCP("metadata")
 
 @metadata_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_resource_metadata(
-    resource_name: str,
-    login_customer_id: str | int | None = None,
+    resource_name: Annotated[
+        str,
+        Field(
+            description="The name of the Google Ads resource (e.g., 'campaign', 'ad_group')."
+        ),
+    ],
+    login_customer_id: Annotated[
+        str | int | None,
+        Field(
+            description="Optional manager customer ID to use as the login-customer-id header."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """Retrieves the selectable, filterable, and sortable fields for a specific Google Ads resource,
     including compatible metrics and segments.

@@ -13,6 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modifications copyright 2026 Edd Vasquez and contributors.
+# Modified to support Google Ads MCP Extended features (API v25 explicit pinning and extended docstrings).
 
 """Common utilities used by the MCP server."""
 
@@ -113,6 +116,9 @@ def _get_googleads_client(
     args = {
         "credentials": _create_credentials(),
         "use_proto_plus": True,
+        # Match the v25 resource imports above; SDK upgrades must not silently
+        # switch endpoints before that API version is available to the caller.
+        "version": "v25",
     }
 
     # If the developer-token is not set, avoid setting None.

@@ -1,8 +1,26 @@
-# Google Ads MCP Server
+# Google Ads MCP Extended (Community Edition)
 
-This repo contains the source code for running an
-[MCP](https://modelcontextprotocol.io) server that interacts with the
-[Google Ads API](https://developers.google.com/google-ads/api).
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Upstream](https://img.shields.io/badge/Forked%20From-googleads%2Fgoogle--ads--mcp-orange)](https://github.com/googleads/google-ads-mcp)
+
+> [!NOTE]
+> **Legal Disclaimer / Aviso de No Afiliacion:**  
+> Este es un proyecto comunitario independiente mantenido por [Edd Vasquez](https://github.com/eddvasquez) y colaboradores. **No es un producto oficial de Google LLC**, ni esta respaldado, patrocinado o afiliado a Google LLC. Google Ads es una marca comercial de Google LLC. Este software se distribuye bajo los terminos de la [Licencia Apache 2.0](LICENSE).
+
+This repository is an **extended community fork** of Google's official [google-ads-mcp](https://github.com/googleads/google-ads-mcp) server. While the upstream official server provides read-only query tools, **Google Ads MCP Extended** adds a robust, safe, and human-in-the-loop editing layer for Search campaigns, budgets, ad groups, responsive search ads (RSAs), positive/negative keywords, and shared negative lists.
+
+---
+
+## What makes Extended different? (30 Tools Total)
+
+1. **Full Search Mutation Suite (12 Tools):** Safely create, update, and manage Search campaigns, ad groups, ads, budgets, keywords, and shared negative lists.
+2. **Media Buyer Intelligence & Funnel Economics Suite (15 Tools):** Purpose-built analytics for high-level media buyers, including real search query bleeders detection, auction bottleneck diagnosis (Lost to Budget vs. Lost to Rank), device breakdowns, and budget pacing.
+3. **High-Ticket & Unit Economics Engine:** Native frameworks to classify Transactional vs. Informational intent leaks, enforce anti-cliché Direct Response copy hygiene on RSAs, and inject pre-curated Universal Negative Shields against non-paying traffic.
+4. **Two-Phase Human-in-the-Loop Safety:** Every mutation is first Google-validated (`validate_only=True`) and stored as a structured `PREPARED` proposal with integrity hashes. Zero live advertising changes occur without explicit human confirmation in the client.
+5. **Double-Check Verification:** Automatically validates post-conditions and GAQL resource state after every applied change to detect desynchronizations or network timeouts.
+6. **Upstream Compatibility & Local-First:** 100% backward compatible with official query tools (`search`, `get_resource_metadata`, `list_accessible_customers`) connecting directly via stdio without remote SaaS hosting.
+
+---
 
 ## Tools
 
@@ -13,10 +31,41 @@ to provide several
 
 ### Tools available
 
+#### Standard Read-Only Tools (Official Upstream)
 - `search`: Retrieves information about the Google Ads account.
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
-- `list_accessible_customers`: Returns ids of customers directly accessible
-  by the user authenticating the call.
+- `list_accessible_customers`: Returns ids of customers directly accessible by the user authenticating the call.
+
+#### Media Buyer Intelligence & Audit Tools (Community Edition)
+- `intelligence_audit_search_terms`: Audits real search queries to identify bleeders (wasted spend without conversions), top converting terms, and negative keyword candidates with n-gram analysis.
+- `intelligence_prepare_mined_negatives`: Closed-loop bridge that Google-validates and prepares adding mined bleeder search terms to a shared negative list or campaign in 1 step.
+- `intelligence_audit_devices_and_geos`: Analyzes performance breakdown across devices (Mobile vs. Desktop vs. Tablet) and geographical views, providing explicit bid adjustment guidance.
+- `intelligence_audit_budget_pacing`: Audits monthly budget pacing and flighting to prevent end-of-month budget depletion or under-delivery.
+- `intelligence_audit_campaign_assets`: Audits ad asset / extension coverage (sitelinks, callouts, structured snippets) to diagnose and fix Ad Rank penalties.
+- `intelligence_audit_creative_fatigue`: Audits RSA headlines and descriptions by Google performance labels (LOW vs. BEST) to optimize ad strength.
+- `intelligence_audit_conversion_health`: Audits primary vs. secondary conversion actions and alerts on orphan primary goals without recent firing.
+- `intelligence_audit_copy_persuasion`: Evaluates RSA headlines/descriptions under the Direct Response framework, detecting generic clichés and verifying ICP pain/hooks.
+- `intelligence_classify_intent_funnel`: Classifies real search query spend into Transactional (High Intent) vs. Informational (Low Intent / Waste) to protect unit economics.
+- `intelligence_prepare_high_ticket_negative_shield`: 1-step injection of the High-Ticket Universal Negative Shield (45+ pre-curated high-friction negative keywords) to block non-paying traffic.
+- `intelligence_audit_quality_score_triad`: Audits the Quality Score Triad (Expected CTR, Ad Relevance, Landing Page Experience) to isolate post-click friction and ad rank penalties.
+- `intelligence_audit_lead_dropoff`: Audits conversion drop-off across the desanonimization journey (Ad Clicks -> Landing Page -> WhatsApp/Phone contacts).
+- `intelligence_calculate_high_ticket_unit_economics`: Calculates Max Allowable CPA per Lead and target sales call volumes based on offer ticket size and close rate.
+- `intelligence_analyze_impression_share`: Diagnoses auction bottlenecks (Search Impression Share, lost to budget vs. lost to rank) to provide explicit scaling recommendations.
+- `intelligence_check_account_health`: Instantly flags budget-constrained campaigns and responsive search ads (RSAs) with poor or average Ad Strength.
+
+#### Extended Safe Mutation Tools (Community Edition)
+- `prepare_campaign`: Prepares a validated creation, update or status change for a Search campaign.
+- `prepare_budget`: Prepares daily budget creations or updates.
+- `prepare_ad_group`: Prepares ad group creation, CPC bids, and status updates.
+- `prepare_ad`: Prepares Responsive Search Ads (RSAs) with headlines, descriptions, and URLs.
+- `prepare_keywords`: Prepares ad group keyword additions or status updates.
+- `prepare_negative_list`: Prepares shared negative keyword list creation or keyword additions.
+- `list_negative_lists`: Lists negative keyword lists attached to the account or campaigns.
+- `get_negative_list`: Inspects items within a shared negative list.
+- `get_proposal`: Inspects the details, expected changes, and status of a prepared plan.
+- `apply_proposal`: Applies a prepared proposal to Google Ads after explicit human confirmation.
+- `cancel_proposal`: Cancels a prepared proposal.
+- `reconcile_proposal`: Reconciles ambiguous states after network timeouts without re-applying mutations blindly.
 
 ### Configuring and Namespacing Tools
 
@@ -493,6 +542,12 @@ be simpler.
 ```
 How many active campaigns do I have for customer id 1234567890
 ```
+
+## Optional Search editing in this fork
+
+See [Search editing extensions](docs/extensions.md) for opt-in tools,
+proposal validation and approval, local installation, tests and provenance.
+The default tool profile remains compatible with the upstream read-only server.
 
 ## Contributing
 
