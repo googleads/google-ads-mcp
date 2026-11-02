@@ -29,7 +29,12 @@ def _strip_additional_properties(schema: dict) -> dict:
     if not isinstance(schema, dict):
         return schema
     for key, value in list(schema.items()):
-        if key in ("additionalProperties", "additional_properties"):
+        if key in (
+            "additionalProperties",
+            "additional_properties",
+            "x-fastmcp-wrap-result",
+            "title",
+        ):
             del schema[key]
         elif isinstance(value, dict):
             _strip_additional_properties(value)
@@ -71,7 +76,7 @@ def get_llm_response(
         # Gemini FunctionDeclaration: {name, description, parameters}
         # Truncate description to avoid hitting token limits with massive tool docs
         description = tool.get("description", "")
-        if tool["name"] == "search":
+        if tool["name"] in ("search", "search_search"):
             description = "Search for Google Ads resources such as campaigns, ad groups, keywords, and metrics using Google Ads Query Language (GAQL). Use this tool to find objects by name or status."
         elif len(description) > 1024:
             description = description[:1024] + "..."

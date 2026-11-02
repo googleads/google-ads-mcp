@@ -83,13 +83,7 @@ def search(
                 )
         return final_output
     except GoogleAdsException as ex:
-        error_msgs = [
-            f"Google Ads API Error: {error.message}"
-            for error in ex.failure.errors
-        ]
-        raise ToolError(
-            f"Request ID: {ex.request_id}\n" + "\n".join(error_msgs)
-        )
+        raise ToolError(utils.format_google_ads_error(ex)) from ex
 
 
 def _search_tool_description() -> str:

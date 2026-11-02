@@ -13,16 +13,27 @@ to provide several
 
 ### Tools available
 
-- `search`: Retrieves information about the Google Ads account.
+- `search`: Retrieves information about the Google Ads account using GAQL.
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
-- `list_accessible_customers`: Returns ids of customers directly accessible
+- `list_accessible_customers`: Returns IDs of customers directly accessible
   by the user authenticating the call.
+- `create_asset`: Creates Google Ads assets (`TEXT`, `IMAGE`, `YOUTUBE_VIDEO`, `SITELINK`, `CALLOUT`, `STRUCTURED_SNIPPET`, and other asset types via `extra_params`). Note: `image_asset_path` is supported in local `stdio` mode only; use base64 `image_asset_data` for remote HTTP deployments.
+- `upload_video_asset`: Uploads a local video file to YouTube via the Google Ads API using a background task so it can be referenced by video assets (supported in local `stdio` mode only).
+- `manage_labels`: Creates, updates, and removes account labels.
+- `manage_label_associations`: Creates and removes label associations on `CAMPAIGN`, `CUSTOMER`, `AD_GROUP`, and `AD_GROUP_CRITERION` resources.
+
+### Propose & Confirm Safety Workflow (Mutate Tools)
+
+All write/mutate tools (`create_asset`, `upload_video_asset`, `manage_labels`, and `manage_label_associations`) enforce a two-step **Propose & Confirm** safety workflow:
+
+1. **Propose (`validate_only=True`, default)**: Validates the operation (including a Google Ads API `validate_only` dry run where supported) without committing changes, returning human-readable `change_items` and a cryptographic `checksum` bound to the customer ID and parameters.
+2. **Confirm (`validate_only=False`)**: Requires passing the exact same parameters and `customer_id` together with the `checksum` returned in step 1 after explicit user approval. Any missing or mismatched checksum is rejected before mutating the account.
 
 ### Configuring and Namespacing Tools
 
-The Google Ads MCP server uses the `tools_config.yaml` to let you selectively enable or disable individual tools or tool categories (namespaces) and customize their namespace prefixes.
+The Google Ads MCP server uses `tools_config.yaml` to let you selectively enable or disable individual tools or tool categories (namespaces) and customize their namespace prefixes.
 
-A default `tools_config.yaml` with all tools enabled is bundled with the package, so the server works out of the box with no extra setup. To customize your installation, the server resolves the configuration in the following order:
+A default `tools_config.yaml` with all tools enabled is bundled with the package, so the server works out of the box with no extra setup. For strictly read-only deployments, set `labels: false` and `assets: false` in your `tools_config.yaml`. To customize your installation, the server resolves the configuration in the following order:
 
 1. An explicit path set via the `GOOGLE_ADS_MCP_TOOLS_CONFIG` environment variable.
 2. A `tools_config.yaml` file in the current working directory.
@@ -45,6 +56,10 @@ namespaces:
     prefix: "metadata"
     enabled_tools:
       - get_resource_metadata: true
+
+  # Option 4: Disable write/mutate categories for a strictly read-only server
+  labels: false
+  assets: false
 ```
 
 
@@ -191,7 +206,11 @@ This key is required for Streamable HTTP in Antigravity 2.8.1 and Antigravity
 IDE 2.5.5; `httpUrl` is not accepted by those versions. After authentication,
 both clients should list these namespaced tools:
 
+- `assets_create_asset`
+- `assets_upload_video_asset`
 - `customers_list_accessible_customers`
+- `labels_manage_label_associations`
+- `labels_manage_labels`
 - `metadata_get_resource_metadata`
 - `search_search`
 
