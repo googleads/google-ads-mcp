@@ -6,7 +6,9 @@ license = "Apache-2.0"
 dependencies = [
     "google-ads>=31.2.0",
     "mcp[cli]>=1.2.0",
-    "fastmcp>=3.2.0"
+    # 3.4.2 is the release checked for fastmcp_access_token_expiry_seconds
+    # and token_expiry_threshold_seconds on GoogleProvider.
+    "fastmcp>=3.4.2"
 ]
 
 description = "MCP Server for Google Ads, depends on Google Ads API."

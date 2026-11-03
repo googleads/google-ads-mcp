@@ -19,19 +19,61 @@ server using `@mcp.tool` annotations, thereby 'coordinating' the bootstrapping
 of the server.
 """
 
+import logging
 import os
 from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
 from ads_mcp.auth_storage import create_client_storage
+from ads_mcp.quota import QuotaMiddleware
+
+logger = logging.getLogger(__name__)
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
 _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
 _JWT_SIGNING_KEY = os.environ.get("GOOGLE_ADS_MCP_JWT_SIGNING_KEY")
 
+# Lifetime of the access token FastMCP hands to MCP clients. By default
+# FastMCP mirrors Google's 1 hour lifetime, and many MCP clients don't use the
+# refresh token, so users had to reconnect every hour. The FastMCP token is a
+# reference token: the server re-validates the Google token on every request
+# and refreshes it with the stored Google refresh token, so a longer lifetime
+# doesn't extend access beyond what Google allows.
+_DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 30 * 24 * 3600
+# Refresh the Google token this many seconds before it expires, so a request
+# never runs with a token that expires mid-flight.
+_TOKEN_EXPIRY_THRESHOLD_SECONDS = 60
+
+
+def _get_access_token_ttl() -> int:
+    value = os.environ.get("GOOGLE_ADS_MCP_ACCESS_TOKEN_TTL_SECONDS")
+    return int(value) if value else _DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+
+
+def _warn_if_storage_is_ephemeral(client_storage: Any) -> None:
+    """Warns when OAuth state won't survive a restart or reach other instances.
+
+    Without shared storage the mapping from a client's token to the user's
+    Google tokens lives on the instance's local disk. On Cloud Run that disk is
+    lost whenever an instance is replaced or scaled to zero, and isn't shared
+    between instances, so clients get a 401 and must log in again.
+    """
+    st_type = (os.environ.get("GOOGLE_ADS_MCP_STORAGE_TYPE") or "").lower()
+    if client_storage is not None and st_type not in ("memory", "filetree"):
+        return
+    logger.warning(
+        "OAuth tokens are stored on the local instance (%s). Users will have "
+        "to log in again after every restart or scale event, and whenever a "
+        "request reaches another instance. Set GOOGLE_ADS_MCP_STORAGE_TYPE to "
+        "'firestore' or 'redis' for deployments such as Cloud Run.",
+        st_type or "default file store",
+    )
+
+
 if _CLIENT_ID and _CLIENT_SECRET:
     client_storage = create_client_storage()
+    _warn_if_storage_is_ephemeral(client_storage)
     provider_kwargs: dict[str, Any] = {
         "client_id": _CLIENT_ID,
         "client_secret": _CLIENT_SECRET,
@@ -42,6 +84,8 @@ if _CLIENT_ID and _CLIENT_SECRET:
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/adwords",
         ],
+        "fastmcp_access_token_expiry_seconds": _get_access_token_ttl(),
+        "token_expiry_threshold_seconds": _TOKEN_EXPIRY_THRESHOLD_SECONDS,
     }
     if _JWT_SIGNING_KEY:
         provider_kwargs["jwt_signing_key"] = _JWT_SIGNING_KEY
@@ -52,6 +96,10 @@ if _CLIENT_ID and _CLIENT_SECRET:
     mcp = FastMCP("Google Ads Server", auth=auth)
 else:
     mcp = FastMCP("Google Ads Server")
+
+_quota_middleware = QuotaMiddleware.from_env()
+if _quota_middleware is not None:
+    mcp.add_middleware(_quota_middleware)
 
 
 def initialize_and_mount_tools(parent_mcp: FastMCP) -> None:

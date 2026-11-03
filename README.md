@@ -111,6 +111,32 @@ To enable it, set the following environment variables:
 - `GOOGLE_ADS_MCP_STORAGE_FIRESTORE_DATABASE`: (Optional) Firestore database name for `firestore` persistent storage. Defaults to `(default)`.
 - `GOOGLE_ADS_MCP_STORAGE_ENCRYPTION_KEY`: (Optional) Encryption key for stored OAuth tokens.
 - `GOOGLE_ADS_MCP_STORAGE_DISABLE_ENCRYPTION`: (Optional) Set to `true` to disable token encryption.
+- `GOOGLE_ADS_MCP_ACCESS_TOKEN_TTL_SECONDS`: (Optional) Lifetime of the access token issued to MCP clients. Defaults to 30 days. Google access tokens last one hour; the server refreshes them on its own with the stored Google refresh token, so clients stay connected without refreshing the token themselves. A user whose Google access is revoked still has to log in again.
+
+Staying logged in needs the OAuth state to survive restarts: with the default
+file store or `memory`, Cloud Run loses it whenever an instance is replaced or
+scaled to zero, and users must reconnect. Use `firestore` or `redis` there.
+Also note that while the OAuth consent screen is in the *Testing* publishing
+status, Google expires refresh tokens after 7 days.
+
+#### Request quota
+
+The server limits Google Ads API tool calls with a quota shared by every
+connection (and every instance, when the storage is `firestore` or `redis`;
+otherwise each instance counts on its own). Each tool result ends with the
+number of requests left, and a warning once the quota is almost used up. When
+it's used up, tool calls fail until the window resets. Windows are aligned to
+UTC.
+
+The Google Ads API doesn't report how much of a developer token's quota is
+left, so the server counts its own calls. Calls made with the same developer
+token by other applications aren't counted.
+
+- `GOOGLE_ADS_MCP_QUOTA_HOURLY_LIMIT`: (Optional) Tool calls allowed per hour. Defaults to `100`; `0` disables it.
+- `GOOGLE_ADS_MCP_QUOTA_DAILY_LIMIT`: (Optional) Daily operations of your developer token (for example `15000` for Basic access). Defaults to `0`, disabled.
+- `GOOGLE_ADS_MCP_QUOTA_DAILY_RESERVE_PERCENT`: (Optional) Share of the daily limit the server never uses. Defaults to `20`.
+- `GOOGLE_ADS_MCP_QUOTA_WARN_PERCENT`: (Optional) Remaining share below which users are warned. Defaults to `20`.
+- `GOOGLE_ADS_MCP_QUOTA_STORAGE_TYPE`: (Optional) `firestore`, `redis` or `memory`. Defaults to the OAuth storage backend, or `memory` for file storage. Firestore counters are kept in the `google_ads_mcp_quota` collection; add a TTL policy on its `expire_at` field to delete old windows.
 
 The `redis` and `firestore` backends need their storage library installed
 alongside the server: `pip install py-key-value-aio[redis]` and
@@ -345,8 +371,7 @@ Make sure to set the required environment variables:
 - `GOOGLE_ADS_MCP_STORAGE_TYPE`: (Recommended for production) Storage backend to persist OAuth tokens across instances. Set it to `firestore` to use Firestore through Application Default Credentials, which needs no VPC connector, or to `redis` along with `GOOGLE_ADS_MCP_STORAGE_REDIS_URL`.
 
   Using `firestore` requires three things: build the image with the extra
-  installed (change the Dockerfile to `uv pip install --system .[firestore]`),
-  create a Firestore database in the project, since one is not provisioned
+  installed (the bundled Dockerfile already does), create a Firestore database in the project, since one is not provisioned
   automatically, and grant the Cloud Run service account `roles/datastore.user`.
   Note that entries are not expired automatically: the store filters expired
   entries on read but never deletes them, and `expires_at` is written as a
