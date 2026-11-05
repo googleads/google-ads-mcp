@@ -16,11 +16,15 @@ import json
 import os
 import sys
 from tests.smoke import smoke_utils
-from google.genai import types
 
+# `google-genai` is only needed for the LLM token baselines, which are skipped
+# unless GEMINI_API_KEY is set. `llm_sender` imports it too, so one guard covers
+# both: without the package, the golden files still regenerate.
 try:
+    from google.genai import types
     from tests.smoke import llm_sender
 except ImportError:
+    types = None
     llm_sender = None
 
 
