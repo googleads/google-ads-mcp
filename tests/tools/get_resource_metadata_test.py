@@ -102,10 +102,10 @@ class TestGetResourceMetadata(unittest.TestCase):
 
     @patch("ads_mcp.utils.get_googleads_service")
     @patch("ads_mcp.utils.get_googleads_type")
-    def test_get_resource_metadata_metrics_failure_still_returns_attributes(
+    def test_get_resource_metadata_metrics_failure(
         self, mock_get_type, mock_get_service
     ):
-        """Tests that if metrics query fails, we still return attributes."""
+        """Tests that a RuntimeError is raised if the metrics/segments query fails."""
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
 
@@ -121,9 +121,13 @@ class TestGetResourceMetadata(unittest.TestCase):
             Exception("Metrics Fail"),
         ]
 
-        result = get_resource_metadata.get_resource_metadata("campaign")
+        with self.assertRaises(RuntimeError) as cm:
+            get_resource_metadata.get_resource_metadata("campaign")
 
-        self.assertIn("campaign.id", result["selectable"])
+        self.assertIn(
+            "API call to search_google_ads_fields failed: Metrics Fail",
+            str(cm.exception),
+        )
 
     @patch("ads_mcp.utils.get_googleads_service")
     @patch("ads_mcp.utils.get_googleads_type")

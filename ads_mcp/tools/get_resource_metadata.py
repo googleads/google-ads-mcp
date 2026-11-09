@@ -105,7 +105,10 @@ def get_resource_metadata(
             if field.sortable:
                 sortable.add(field.name)
     except Exception as e:
-        utils.logger.warning(f"Failed metrics/segments query: {e}")
+        utils.logger.error(f"Failed metrics/segments query: {e}")
+        raise RuntimeError(
+            f"API call to search_google_ads_fields failed: {e}"
+        ) from e
 
     return {
         "resource": resource_name,
