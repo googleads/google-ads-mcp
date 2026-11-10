@@ -123,7 +123,7 @@ def clean_customer_id(customer_id: str | int) -> str:
     return re.sub(r"\D", "", str(customer_id))
 
 
-def _get_login_customer_id(
+def get_login_customer_id(
     login_customer_id: str | int | None = None,
 ) -> str | None:
     """Returns login customer id, if set, from the parameter or the environment variable GOOGLE_ADS_LOGIN_CUSTOMER_ID."""
@@ -133,8 +133,12 @@ def _get_login_customer_id(
         else os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
     )
     if resolved_login_customer_id:
-        return clean_customer_id(resolved_login_customer_id)
+        return clean_customer_id(resolved_login_customer_id) or None
     return None
+
+
+# Backwards-compatible alias for internal callers and existing tests.
+_get_login_customer_id = get_login_customer_id
 
 
 def _get_googleads_client(

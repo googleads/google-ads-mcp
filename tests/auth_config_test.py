@@ -207,6 +207,8 @@ class TestAuthConfig(unittest.TestCase):
         import importlib
         import ads_mcp.coordinator as coord
 
+        mock_provider.reset_mock()
+        self.addCleanup(lambda: importlib.reload(coord))
         importlib.reload(coord)
 
         mock_provider.assert_called_once()
