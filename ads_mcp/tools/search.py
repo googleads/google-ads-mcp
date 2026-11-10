@@ -21,6 +21,7 @@ from mcp.types import ToolAnnotations
 
 search_mcp = FastMCP("search")
 
+from ads_mcp.audit import redact_gaql_text
 import ads_mcp.utils as utils
 from google.ads.googleads.errors import GoogleAdsException
 from fastmcp.exceptions import ToolError
@@ -68,7 +69,7 @@ def search(
     query_parts.append(" PARAMETERS omit_unselected_resource_names=true")
 
     query = "".join(query_parts)
-    utils.logger.info(f"ads_mcp.search query {query}")
+    utils.logger.debug("ads_mcp.search query %s", redact_gaql_text(query))
 
     try:
         query_result = ga_service.search_stream(
