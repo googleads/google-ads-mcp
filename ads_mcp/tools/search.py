@@ -118,6 +118,13 @@ def _search_tool_description() -> str:
     All dates should be in the form YYYY-MM-DD and must include the dashes (-)
     Date ranges must be finite and must include a start and end date
 
+### Hints for historical metrics
+    Status fields (campaign.status, ad_group.status, ad_group_criterion.status, ad_group_ad.status) hold the current status, not the status during the date range
+    When selecting metrics over a date range, do not filter on status (e.g. campaign.status = 'ENABLED' or campaign.status != 'REMOVED')
+    Entities paused or removed during the range would drop out and totals would understate cost and conversions
+    To leave out removed entities with no activity, remove rows with zero impressions after the query instead
+    Filter on status only when asking what is live now
+
 ### Hints for limits
     Requests to resource change_event must specify a LIMIT of less than or equal to 10000
 
