@@ -99,3 +99,47 @@ class TestToolSchemas(unittest.IsolatedAsyncioTestCase):
                 [],
                 f"Parameter '{param}' default must be an empty list",
             )
+
+
+class TestParameterDescriptions(unittest.IsolatedAsyncioTestCase):
+    """Verifies that every published parameter describes itself.
+
+    A parameter with no description is a parameter the caller has to guess at.
+    `search` is the tool that gets this wrong most easily: its description is
+    generated at runtime, and an earlier version built it by overwriting the
+    function's docstring, which stopped the `Args:` section from being parsed
+    and dropped every parameter description from the schema.
+    """
+
+    async def test_every_parameter_has_a_description(self):
+        """No tool may publish a parameter without a description."""
+        tools = await mcp.list_tools()
+        self.assertGreater(
+            len(tools), 0, "No tools are registered on the server"
+        )
+
+        for tool in tools:
+            properties = tool.parameters.get("properties", {})
+            for param_name, param_schema in properties.items():
+                with self.subTest(tool=tool.name, parameter=param_name):
+                    self.assertTrue(
+                        param_schema.get("description"),
+                        f"Tool '{tool.name}' publishes parameter "
+                        f"'{param_name}' with no description",
+                    )
+
+    async def test_search_conditions_names_itself_as_the_filter(self):
+        """`conditions` is the description that keeps callers off `where`."""
+        tools = await mcp.list_tools()
+        search_tool = next(
+            (t for t in tools if t.name == "search_search"), None
+        )
+        self.assertIsNotNone(search_tool, "search tool not found")
+
+        description = search_tool.parameters["properties"]["conditions"][
+            "description"
+        ]
+        self.assertEqual(
+            description,
+            "List of conditions to filter the data, combined using AND clauses",
+        )
