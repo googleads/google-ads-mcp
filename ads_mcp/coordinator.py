@@ -26,7 +26,12 @@ from fastmcp.server.auth.providers.google import GoogleProvider
 from fastmcp_tasks import TasksExtension
 from mcp import types as mcp_types
 from mcp.server.subscriptions import InMemorySubscriptionBus, ListenHandler
-from ads_mcp.auth_storage import create_client_storage
+from ads_mcp.audit import AuditMiddleware
+from ads_mcp.auth_storage import (
+    create_audit_storage,
+    create_client_storage,
+    get_audit_storage_ttl,
+)
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
@@ -57,6 +62,13 @@ else:
     mcp = FastMCP("Google Ads Server")
 
 mcp.add_extension(TasksExtension())
+mcp.add_middleware(
+    AuditMiddleware(
+        storage=create_audit_storage(),
+        ttl=get_audit_storage_ttl(),
+        server=mcp,
+    )
+)
 
 
 def ensure_subscriptions_listen(server: FastMCP) -> bool:
@@ -135,6 +147,11 @@ def initialize_and_mount_tools(parent_mcp: FastMCP) -> None:
 
         # Determine prefix/namespace
         namespace_prefix = config.get_namespace_prefix(category)
+
+        # Instrument background-task tools on this sub-server for worker auditing
+        for mw in parent_mcp.middleware:
+            if isinstance(mw, AuditMiddleware):
+                mw.instrument_server(sub_mcp, namespace=namespace_prefix)
 
         # Mount the sub-server
         parent_mcp.mount(sub_mcp, namespace=namespace_prefix or None)

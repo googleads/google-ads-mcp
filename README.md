@@ -29,6 +29,20 @@ All write/mutate tools (`create_asset`, `upload_video_asset`, `manage_labels`, a
 1. **Propose (`validate_only=True`, default)**: Validates the operation (including a Google Ads API `validate_only` dry run where supported) without committing changes, returning human-readable `change_items` and a cryptographic `checksum` bound to the customer ID and parameters.
 2. **Confirm (`validate_only=False`)**: Requires passing the exact same parameters and `customer_id` together with the `checksum` returned in step 1 after explicit user approval. Any missing or mismatched checksum is rejected before mutating the account.
 
+### Tool Call Auditability
+
+Every tool invocation (including background task executions via `TasksExtension`) is audited by `AuditMiddleware`, which emits structured JSON audit records (`event: "tool_call"` and `"task_execution"`) to the `ads_mcp.audit` logger containing:
+- **Who (`actor`)**: Auth mode (`oauth` or `adc`), opaque OAuth identifiers (`sub`, `client_id`, `scopes`), MCP `session_id` (per-request on sessionless MCP `2026-07-28` connections), and MCP `client_info` (raw PII such as `email` and `name` is omitted).
+- **What & Where**: Unique `audit_id`, tool name, MCP `call_id` (and `task_id` for background tasks), `received_at` UTC timestamp, `customer_id`, `login_customer_id`, `mutation_phase` (`READ`, `PROPOSE`, or `COMMIT`), `checksum` (both the checksum issued by `PROPOSE` and the checksum verified by `COMMIT`), `schema_hash`, `status` (`completed`, `empty`, `enqueued`, `error`, or `failed`), `duration_ms`, and redacted `arguments` (binary/base64 media payloads and Google Ads sensitive/PII fields—in both `snake_case` and protobuf JSON `camelCase`—are replaced with `REDACTED`).
+
+To optionally persist audit records to a key-value store (`filetree`, `redis`, `firestore`, or `memory`), configure the `GOOGLE_ADS_MCP_AUDIT_STORAGE_*` environment variables:
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_TYPE`: Storage backend (`filetree`, `redis`, `firestore`, or `memory`).
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_PATH`: Directory path for `filetree` storage.
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_REDIS_URL`: Redis URL for `redis` storage.
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_FIRESTORE_PROJECT` / `GOOGLE_ADS_MCP_AUDIT_STORAGE_FIRESTORE_DATABASE`: Project and database for `firestore` storage.
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_TTL_SECONDS`: Optional retention TTL (in seconds) applied to persisted audit records.
+- `GOOGLE_ADS_MCP_AUDIT_STORAGE_ENCRYPTION_KEY` / `GOOGLE_ADS_MCP_AUDIT_STORAGE_DISABLE_ENCRYPTION`: Optional Fernet encryption settings for stored audit records. Stored records remain unencrypted redacted JSON by default so backends like Firestore stay queryable across OAuth secret rotations; set `GOOGLE_ADS_MCP_AUDIT_STORAGE_ENCRYPTION_KEY` to enable Fernet encryption with a dedicated HKDF salt isolated from OAuth token storage.
+
 ### Configuring and Namespacing Tools
 
 The Google Ads MCP server uses `tools_config.yaml` to let you selectively enable or disable individual tools or tool categories (namespaces) and customize their namespace prefixes.

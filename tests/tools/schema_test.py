@@ -99,3 +99,44 @@ class TestToolSchemas(unittest.IsolatedAsyncioTestCase):
                 [],
                 f"Parameter '{param}' default must be an empty list",
             )
+
+    async def test_all_tools_define_read_only_hint_annotation(self):
+        """Verifies every tool sets ToolAnnotations.readOnlyHint and mutate tools expose validate_only/checksum."""
+        tools = await mcp.list_tools()
+        self.assertGreater(
+            len(tools), 0, "No tools are registered on the server"
+        )
+
+        for tool in tools:
+            self.assertIsNotNone(
+                tool.annotations,
+                f"Tool '{tool.name}' must define ToolAnnotations.",
+            )
+            self.assertIsInstance(
+                tool.annotations.read_only_hint,
+                bool,
+                f"Tool '{tool.name}' must explicitly set ToolAnnotations.read_only_hint to True or False.",
+            )
+            properties = tool.parameters.get("properties", {})
+            if tool.annotations.read_only_hint is False:
+                self.assertIn(
+                    "validate_only",
+                    properties,
+                    f"Mutate tool '{tool.name}' (read_only_hint=False) must accept 'validate_only'.",
+                )
+                self.assertEqual(
+                    properties["validate_only"].get("default"),
+                    True,
+                    f"Mutate tool '{tool.name}' must default 'validate_only' to True.",
+                )
+                self.assertIn(
+                    "checksum",
+                    properties,
+                    f"Mutate tool '{tool.name}' (read_only_hint=False) must accept 'checksum'.",
+                )
+            else:
+                self.assertNotIn(
+                    "validate_only",
+                    properties,
+                    f"Read-only tool '{tool.name}' (read_only_hint=True) should not define 'validate_only'.",
+                )

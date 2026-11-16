@@ -15,7 +15,7 @@
     "output_tokens": 66,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 65
+    "tool_tokens": 61
   },
   {
     "prompt": "Show me all my accounts.",
@@ -42,25 +42,25 @@
     "output_tokens": 87,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 62
+    "tool_tokens": 64
   },
   {
     "prompt": "Get keywords for campaign 'Summer Sale' in account {customer_id}.",
     "expected_tool": "search_search",
     "prompt_tokens": 4052,
-    "output_tokens": 158,
+    "output_tokens": 104,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 63
+    "tool_tokens": 62
   },
   {
     "prompt": "Show me the metrics for customer {customer_id}.",
     "expected_tool": "search_search",
     "prompt_tokens": 4048,
-    "output_tokens": 88,
+    "output_tokens": 79,
     "model": "gemini-3.5-flash-lite",
     "thought_tokens": null,
-    "tool_tokens": 58
+    "tool_tokens": 64
   },
   {
     "prompt": "Generate a daily report of clicks for all active campaigns in account {customer_id}.",
@@ -69,7 +69,7 @@
     "output_tokens": 73,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 62
+    "tool_tokens": 61
   },
   {
     "prompt": "What fields are available for the campaign resource?",
@@ -114,13 +114,13 @@
     "output_tokens": 53,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 71
+    "tool_tokens": 69
   },
   {
     "prompt": "Associate label 12345 with campaign 67890 for customer {customer_id}.",
     "expected_tool": "labels_manage_label_associations",
     "prompt_tokens": 4060,
-    "output_tokens": 77,
+    "output_tokens": 81,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
     "tool_tokens": 76
@@ -150,6 +150,6 @@
     "output_tokens": 73,
     "thought_tokens": null,
     "model": "gemini-3.5-flash-lite",
-    "tool_tokens": 72
+    "tool_tokens": 69
   }
 ]
