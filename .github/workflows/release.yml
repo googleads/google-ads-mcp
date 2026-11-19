@@ -301,49 +301,75 @@ jobs:
           name: python-package-distributions-${{ github.run_id }}
           path: artifact
 
+      - name: Verify package version
+        id: pkg_version
+        run: |
+          set -euo pipefail
+          PKG_VER="${GITHUB_REF_NAME#v}"
+          test -f "artifact/dist/google_ads_mcp-${PKG_VER}-py3-none-any.whl"
+          test -f "artifact/dist/google_ads_mcp-${PKG_VER}.tar.gz"
+          echo "pkg_ver=${PKG_VER}" >> "$GITHUB_OUTPUT"
+
       - name: Authenticate to Google Cloud for OSS Exit Gate
         id: auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          token_format: 'access_token'
           workload_identity_provider: 'projects/305452601764/locations/global/workloadIdentityPools/builders/providers/github'
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
-      - name: Clean up stale releases from staging repo
+      - name: Clean up previous staging attempt for this version (if any)
+        env:
+          PKG_VER: ${{ steps.pkg_version.outputs.pkg_ver }}
         run: |
-          # clean up stale releases from staging repo
-          packages=$(gcloud artifacts packages list \
+          set -euo pipefail
+          if gcloud artifacts versions describe "${PKG_VER}" \
+            --package="google-ads-mcp" \
+            --project="oss-exit-gate-prod" \
+            --location="us" \
+            --repository="google-ads-mcp--pypi" >/dev/null 2>&1; then
+            gcloud artifacts versions delete "${PKG_VER}" \
+              --package="google-ads-mcp" \
               --project="oss-exit-gate-prod" \
               --location="us" \
               --repository="google-ads-mcp--pypi" \
-              --format="value(name)" 2>/dev/null)
+              --quiet
+          fi
 
-          echo "${packages}" | xargs -r -I {} sh -c '
-              package_name=$(basename "{}")
-              echo "Deleting package: $package_name..."
-              gcloud artifacts packages delete "{}" \
-                  --project="oss-exit-gate-prod" \
-                  --location="us" \
-                  --repository="google-ads-mcp--pypi" \
-                  --quiet
-          '
+      - name: Stage distributions to OSS Exit Gate
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+        with:
+          packages-dir: artifact/dist/
+          repository-url: https://us-python.pkg.dev/oss-exit-gate-prod/google-ads-mcp--pypi/
+          user: oauth2accesstoken
+          password: ${{ steps.auth.outputs.auth_token }}
+          attestations: false
 
-      - name: Stage distributions to Artifact Registry and trigger OSS Exit Gate
+      - name: Upload OSS Exit Gate manifest
         env:
-          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PKG_VER: ${{ steps.pkg_version.outputs.pkg_ver }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          python3 -m pip install --upgrade pip twine
-          TWINE_USERNAME=oauth2accesstoken TWINE_PASSWORD="${ACCESS_TOKEN}" python3 -m twine upload --repository-url https://us-python.pkg.dev/oss-exit-gate-prod/google-ads-mcp--pypi/ artifact/dist/*
-          cat << 'MANIFEST' > manifest.json
+          set -euo pipefail
+          cat <<EOF > manifest.json
           {
-            "publish_all": true
+            "publish_all": false,
+            "publishing_groups": [
+              {
+                "packages": [
+                  {
+                    "name": "google-ads-mcp",
+                    "version": "${PKG_VER}"
+                  }
+                ]
+              }
+            ]
           }
-          MANIFEST
-          gcloud storage cp manifest.json "gs://oss-exit-gate-prod-projects-bucket/google-ads-mcp/pypi/manifests/manifest-${RUN_ID}-${RUN_ATTEMPT}.json"
+          EOF
+          gcloud storage cp manifest.json \
+            "gs://oss-exit-gate-prod-projects-bucket/google-ads-mcp/pypi/manifests/manifest-${PKG_VER}-${RUN_ID}-${RUN_ATTEMPT}.json"
 
   github-release:
     name: Create GitHub Release
