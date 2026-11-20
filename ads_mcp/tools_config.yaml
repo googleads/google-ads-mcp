@@ -11,3 +11,7 @@ namespaces:
   customers: ""
   search: ""
   metadata: ""
+  labels: ""
+  assets: ""
+  campaigns: ""
+  reporting: ""

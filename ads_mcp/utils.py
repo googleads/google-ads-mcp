@@ -16,12 +16,14 @@
 
 """Common utilities used by the MCP server."""
 
+from enum import Enum
 from typing import Any
 import proto
 from google.protobuf.message import Message as PbMessage
 from google.protobuf.json_format import MessageToDict
 import logging
 from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
 from google.ads.googleads.v25.services.services.google_ads_service import (
     GoogleAdsServiceClient,
 )
@@ -47,9 +49,32 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # OAuth scope for the Google Ads API. Google Ads does not publish a separate
-# read-only scope; access is restricted to read methods by the tools this
-# server exposes (see ads_mcp/tools/).
+# read-only scope; exposed mutation tools require propose-and-confirm.
 _ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
+
+
+class MutateOperation(str, Enum):
+    """Common Google Ads mutation operations."""
+
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    REMOVE = "REMOVE"
+
+
+def is_remote_oauth_mode() -> bool:
+    """Returns whether the server is running with hosted OAuth credentials."""
+    return bool(
+        os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
+        and os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
+    )
+
+
+def format_google_ads_error(ex: GoogleAdsException) -> str:
+    """Formats a Google Ads API error consistently across all tools."""
+    details = "\n".join(
+        f"Google Ads API Error: {error.message}" for error in ex.failure.errors
+    )
+    return f"Request ID: {ex.request_id}" + (f"\n{details}" if details else "")
 
 
 @contextlib.contextmanager
@@ -299,9 +324,21 @@ def get_googleads_service(
     login_customer_id: str | int | None = None,
     account_name: str | None = None,
 ) -> GoogleAdsServiceClient:
-    return _get_googleads_client(
-        login_customer_id=login_customer_id, account_name=account_name
-    ).get_service(serviceName, interceptors=[MCPHeaderInterceptor()])
+    return get_googleads_service_from_client(
+        _get_googleads_client(
+            login_customer_id=login_customer_id, account_name=account_name
+        ),
+        serviceName,
+    )
+
+
+def get_googleads_service_from_client(
+    client: GoogleAdsClient, service_name: str
+) -> Any:
+    """Gets a service from an existing account-scoped client with MCP telemetry."""
+    return client.get_service(
+        service_name, interceptors=[MCPHeaderInterceptor()]
+    )
 
 
 def get_googleads_type(typeName: str, account_name: str | None = None):
@@ -311,7 +348,7 @@ def get_googleads_type(typeName: str, account_name: str | None = None):
 def get_googleads_client(
     login_customer_id: str | int | None = None,
     account_name: str | None = None,
-):
+) -> GoogleAdsClient:
     return _get_googleads_client(
         login_customer_id=login_customer_id, account_name=account_name
     )
@@ -335,6 +372,11 @@ def format_output_row(row: proto.Message, attributes):
         attr: format_output_value(get_nested_attr(row, attr))
         for attr in attributes
     }
+
+
+def extract_id(resource_name_or_id: str) -> str:
+    """Returns a resource ID from a Google Ads resource name or a raw ID."""
+    return resource_name_or_id.rsplit("/", maxsplit=1)[-1]
 
 
 def get_gaql_resources_filepath():
